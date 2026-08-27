@@ -86,3 +86,94 @@ real data does not share them.**
 
 **Regression tests:** `TC-134` (real shape ingests, column null, raw value preserved),
 `TC-135` (the store names the field).
+
+---
+
+## DEF-004 — A third-party repository name reached a query expression and broke it
+**Found:** 2026-08-27 at the 1,000 rung · **Severity: HIGH (security-relevant)** · **Status: CLOSED**
+**Requirement:** `NFR-021`, `REQ-024` · **Component:** `packages/connectors/gitskills/src/repo-licence-reader.js`
+
+**Symptom.** The ladder halted at rung 1,000 with `HTTP 422: Parameter 'where' contains errors or
+invalid symbols` — correctly *not* retried, since 422 is permanent.
+
+**Cause.** One real repository:
+
+```
+Michaelunkai/study--AI_ML-AI_and_Machine_Learning-Artificial_Intelligence-openclaw
+```
+
+GitHub permits repeated hyphens, so this is a legal repository name. **`--` is a SQL comment
+marker.** The name was interpolated into the `where` clause, and everything after `--` became a
+comment.
+
+**Why this is a security finding and not a formatting bug.** `NFR-021` says third-party content is
+untrusted at every stage. **A repository name is third-party content**, and it was reaching a query
+language. We were fortunate in the failure mode: the service's parser was strict and returned 422.
+**A more permissive parser would have silently returned the wrong rows** — licences attributed to
+the wrong repositories, with no error anywhere. Wrong licence data is precisely the failure this
+project cannot afford (`RSK-004`).
+
+The pattern generalises: any identifier that arrives from a source and is composed into a query,
+path, or command is an injection surface. This one was read-only against someone else's service;
+the next one might not be.
+
+**Fix.** There is no parameterised form of this API, so the only safe posture is to **refuse to
+build a query from a name we cannot express**. `isQueryableName()` rejects `--`, `/*`, `*/`, quotes,
+backticks, semicolons, backslashes and control characters. Rejected names are **recorded and
+reported** (`REQ-085`), never silently dropped.
+
+**The safe failure mode turned out to be the correct one.** An unqueryable name yields no L2
+licence, which resolves to rights `unknown` — already the conservative default (`DEC-018`). Nothing
+special had to be invented for the error path; the existing design absorbed it.
+
+**Regression tests:** `TC-165` (the real name plus classic injection shapes are refused; ordinary
+names unaffected), `TC-166` (an unsafe name produces `null`, is reported, and **generates zero
+requests**).
+
+**Also observed in the same scan, and handled correctly by existing code:** transient
+`500 "dataset index is loading"`, `500 "Authentication check ... temporary internal issue"` and
+`504 Gateway Time-out`. All are retried with backoff by `fetchWithRetry`; only the 422 was
+permanent. The retry taxonomy from increment 7 earned its keep here.
+
+---
+
+## DEF-005 — Parser rejected legitimate real-world YAML; the security guard produced false positives
+**Found:** 2026-08-27 at the 1,000 rung · **Severity: HIGH** · **Status: CLOSED**
+**Requirement:** `REQ-035`, `REQ-036`, `REQ-037`, `NFR-021` · **Component:** `frontmatter.js`
+
+**Symptom.** 9 parse failures in 438 real documents (2.1%).
+
+**Four distinct causes, all ours:**
+
+| # | Shape | Why it failed |
+| --- | --- | --- |
+| 1 | Sequence of maps — `arguments:` then `- name: x` with sibling keys | only scalar list items were supported |
+| 2 | Plain scalar wrapping onto indented lines — the common `description:` shape | continuation lines were read as key/value pairs |
+| 3 | Block sequence at the parent's indent (`edam_topics:` then `- ...` at the same column) | items were expected to be more indented; YAML permits either |
+| 4 | **`*SummarizedExperiment*` in prose rejected as a YAML alias** | the anchor guard matched any whitespace-preceded `&`/`*` |
+
+**Cause 4 is the one worth dwelling on.** A security guard that rejects legitimate documents is a
+defect that **looks like a win** — the failure reads as "we refused something dangerous", so nobody
+investigates. Markdown emphasis is ordinary prose in a description field, and we were refusing to
+index any skill that used it.
+
+Anchors and aliases occupy a **value position** — `key: &a x`, `- *a` — so the guard now inspects
+the value after a `key:` or `- ` marker rather than scanning raw text. `TC-167` asserts that
+`*emphasis*` and `R&D` parse while genuine anchors, aliases and tags are still refused.
+
+**Fix.** The parser was rewritten as a recursive-descent block parser over an explicit line cursor
+(`parseMap` / `parseSeq`), which handles all four shapes. All limits retained: 12-deep nesting,
+500 keys, 8 KB scalars, 2,000 lines, prototype-pollution guard.
+
+**Result: 9 failures → 2**, and both remaining are genuinely malformed documents that *should*
+fail — an unclosed fence, and a stray quote left by an unbalanced multi-line string. Structural
+oracle agreement **97.7% over 438 records**.
+
+**Regression tests:** `TC-167` (emphasis vs real anchors), `TC-168` (sequence of maps),
+`TC-169` (wrapped scalar), `TC-170` (sequence at parent indent), `TC-171` (wrapped sequence item),
+`TC-172` (the two documents that should still fail).
+
+**Lesson, the third time in this project.** `DEF-002` and `DEF-003` were both "fixtures encode the
+author's assumptions". This is the same, sharpened: **I wrote a YAML subset by imagining what
+`SKILL.md` files look like.** 438 real documents disagreed four separate ways, and no amount of
+unit testing against my own fixtures would have surfaced any of them.

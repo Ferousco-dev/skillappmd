@@ -182,7 +182,7 @@ architecture accommodates it. Only **M** requirements gate G4.
 | --- | --- | --- |
 | **REQ-001** | The system shall define a `SourceConnector` contract with operations `discover()`, `fetch()`, `identify()`, `getMetadata()`, `getContent()`, `getVersion()`. No core component shall reference a named source. | M |
 | **REQ-002** | Every connector shall emit `DiscoveryRecord` objects of one normalised shape regardless of source. | M |
-| **REQ-003** | The system shall implement `GitSkillsCorpusConnector` reading the CC-BY-4.0 Parquet corpus. | M |
+| **REQ-003** | The system shall implement `GitSkillsCorpusConnector` reading the CC-BY-4.0 GitSkills **corpus** (`CR-002`, amended from "Parquet corpus"). Two readers behind one `CorpusReader` seam: a row-API reader for sampling and validation (≤2,000 rows), and a Parquet reader for bulk ingestion (>2,000 rows or any full-corpus pass). | M |
 | **REQ-004** | The system shall implement `SkillsMPConnector` using **only** the documented REST and MCP endpoints, never HTML scraping of `/creators/**`. | M |
 | **REQ-005** | The system shall implement `GitHubConnector` resolving `owner/repo` + path to repository metadata, licence and content via the official API. Demoted because the corpus supplies both content and L2 licence; the `SourceConnector` abstraction (`REQ-001`, `REQ-008`) remains **M** and is unaffected. | S |
 | **REQ-006** | Each connector shall declare its access policy — rate limits, auth mode, permitted methods, ToS notes — as data the runtime enforces. | M |
@@ -352,7 +352,7 @@ requirements; the following are.
 | --- | --- |
 | **NFR-001** | Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs. |
 | **NFR-002** | Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's `dedup_primary` on exact-content grouping over a ≥10,000-row sample. **This is a quality target, not an automatic gate failure** (`DEC-023`): a shortfall is a finding to triage, since legitimate policy differences from the oracle are expected. The binding obligation is that **every disagreement is individually explained**; an unexplained disagreement *is* a gate failure. |
-| **NFR-003** | Parser `frontmatter_valid` shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other. |
+| **NFR-003** | **AMENDED** (`CR-004`). Parser **structural** validity — parsed, with `name` and `description` present — shall agree with the corpus `frontmatter_valid` column on ≥99% of a stratified sample. **Spec conformance is a separate AppMD inference (`DOM-006`) and is not graded against the oracle**, because the two columns answer different questions. Every disagreement shall be explained; unexplained disagreement is the gate failure (`DEC-023`). Observed 2026-08-27: **97.7%** at n=300, with all 3 residual disagreements being oracle errors. |
 | **NFR-004** | 100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time. |
 | **NFR-005** | 100% of canonical field values shall be classifiable as source fact or AppMD inference. |
 | **NFR-006** | 0 canonical records shall carry `redistributable = true` without a recorded L2 licence evidencing it. |

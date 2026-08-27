@@ -197,3 +197,84 @@ test('TC-110 CR-004 the two verdicts are reported separately, never collapsed', 
   // DOM-006: the stricter verdict is OUR conclusion, not a fact the source asserted.
   assert.notEqual(r.frontmatterValid, r.specConformant);
 });
+
+
+test('TC-167 DEF-005 markdown emphasis is not a YAML alias', () => {
+  // Real case: a description containing *SummarizedExperiment* was rejected as an
+  // anchor. A guard that refuses legitimate documents is a defect that LOOKS like a
+  // security win, which is the most expensive kind to notice.
+  const r = parseSkill('---\nname: a\ndescription: uses *SummarizedExperiment* and R&D notes\n---\nb');
+  assert.equal(r.ok, true);
+  assert.equal(r.frontmatterValid, true);
+  // The genuine constructs are still refused.
+  for (const bad of ['---\nname: a\ndescription: d\nx: &anchor 1\ny: *anchor\n---\nb',
+                     '---\nname: a\ndescription: d\nx: !!python/object:os.system\n---\nb']) {
+    assert.equal(parseSkill(bad).ok, false, 'a real anchor or tag must still be rejected');
+  }
+});
+
+test('TC-168 DEF-005 a sequence of maps parses (real shape: `arguments:`)', () => {
+  const r = parseSkill([
+    '---', 'name: release-report', 'description: d', 'arguments:',
+    '  - name: branch-source', '    description: Source branch', '    required: true',
+    '  - name: branch-target', '    description: Target branch', '    required: false',
+    '---', 'body'].join('\n'));
+  assert.equal(r.ok, true);
+  assert.equal(r.frontmatterValid, true);
+  assert.equal(r.frontmatter.arguments.length, 2);
+  assert.equal(r.frontmatter.arguments[0].name, 'branch-source');
+  assert.equal(r.frontmatter.arguments[0].required, true);
+  assert.equal(r.frontmatter.arguments[1].required, false);
+});
+
+test('TC-169 DEF-005 a plain scalar wrapping onto indented lines is joined', () => {
+  const r = parseSkill([
+    '---', 'name: cv-ratio',
+    'description: Use when after normalizing a feature matrix when you have',
+    '  both study samples and QC replicates in the same experiment.',
+    '  Use it to remove features that are poorly reproducible.',
+    'license: CC-BY-4.0', '---', 'body'].join('\n'));
+  assert.equal(r.ok, true);
+  assert.match(r.frontmatter.description, /^Use when after normalizing/);
+  assert.match(r.frontmatter.description, /poorly reproducible\.$/);
+  assert.equal(r.frontmatter.license, 'CC-BY-4.0', 'the following key is not swallowed');
+});
+
+test('TC-170 DEF-005 block sequences at the parent indent parse (real shape: edam_topics)', () => {
+  const r = parseSkill([
+    '---', 'name: a', 'description: d', 'metadata:',
+    '  edam_operation: http://edamontology.org/operation_3695',
+    '  edam_topics:',
+    '  - http://edamontology.org/topic_0091',
+    '  - http://edamontology.org/topic_3172',
+    '  tools:', '  - R', '  - notame', '---', 'b'].join('\n'));
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.frontmatter.metadata.tools, ['R', 'notame']);
+  assert.equal(r.frontmatter.metadata.edam_topics.length, 2);
+});
+
+test('TC-171 DEF-005 a wrapped sequence item is joined, not rejected', () => {
+  const r = parseSkill([
+    '---', 'name: a', 'description: d', 'notes:',
+    '- Internally, mzQuality uses a SummarizedExperiment object to store',
+    '  the data and its metadata together.',
+    '- A second note.', '---', 'b'].join('\n'));
+  assert.equal(r.ok, true);
+  assert.equal(r.frontmatter.notes.length, 2);
+  assert.match(r.frontmatter.notes[0], /metadata together\.$/);
+});
+
+test('TC-172 REQ-037 genuinely malformed documents still fail, with a reason', () => {
+  // The two that remain unparsed in a 438-document real sample, and should.
+  // NeuralBlitz/Mito: a fence opened and never closed.
+  const unterminated = parseSkill('---\nname: a\n\n## not frontmatter\n');
+  assert.equal(unterminated.ok, false);
+  assert.equal(unterminated.code, 'unterminated_frontmatter');
+
+  // Kimurist2024/rverythong-skills: a stray quote on its own line, left behind by an
+  // unbalanced multi-line quoted string. It has no colon, so it is not a key/value pair.
+  const stray = parseSkill(['---', 'name: a', "description: 'opening quote", "'", '---', 'b'].join('\n'));
+  assert.equal(stray.ok, false);
+  assert.equal(stray.code, 'malformed_yaml');
+  assert.ok(stray.reason.length > 0, 'a failure always carries a reason (REQ-037)');
+});

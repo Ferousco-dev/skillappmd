@@ -189,3 +189,29 @@ test('TC-137 NFR-023 a stated Retry-After overrides our own backoff', async () =
     assert.equal(waits[0], 7000, 'the source\'s stated delay is honoured, not our shorter one');
   } finally { globalThis.fetch = orig; }
 });
+
+
+test('TC-165 DEF-004/NFR-021 a repo name that cannot be safely queried is excluded, not interpolated', async () => {
+  const { isQueryableName } = await import('../src/repo-licence-reader.js');
+  // The real case, found at the 1,000 rung: GitHub allows repeated hyphens, and `--`
+  // is a SQL comment marker. The service returned 422; a more permissive parser
+  // would have returned WRONG DATA silently.
+  assert.equal(isQueryableName('Michaelunkai/study--AI_ML-Artificial_Intelligence-openclaw'), false);
+  const unsafe = ["o/r';DROP TABLE x;--", 'o/r"quote', 'o/r;semi', 'o/r/*comment*/', 'o/r\\back'];
+  for (const bad of unsafe) {
+    assert.equal(isQueryableName(bad), false, JSON.stringify(bad) + ' must be refused');
+  }
+  for (const ok of ['owner/repo', 'Some-Owner/some_repo.v2', 'a0/b-c_d.e']) {
+    assert.equal(isQueryableName(ok), true, ok + ' must remain queryable');
+  }
+});
+
+test('TC-166 DEF-004 an unqueryable name resolves to no licence, which is rights UNKNOWN', async () => {
+  const { RepoLicenceReader } = await import('../src/repo-licence-reader.js');
+  const r = new RepoLicenceReader({ cacheDir: '/tmp/appmd-test-cache-' + Date.now() });
+  const unsafe = 'Michaelunkai/study--AI_ML-openclaw';
+  const m = await r.lookup([unsafe]);       // no network: it never becomes a request
+  assert.equal(m.get(unsafe), null, 'no licence -> L2 UNKNOWN -> rights unknown (DEC-018)');
+  assert.deepEqual(r.unqueryable, [unsafe], 'and it is REPORTED, never silently dropped');
+  assert.equal(r.requests, 0, 'no query was constructed from an unsafe name');
+});

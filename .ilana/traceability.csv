@@ -35,7 +35,7 @@ REQ-033,"Raw content shall be treated as internal processing data, behind an acc
 REQ-034,"Every raw record shall carry a retention rule derived from its rights posture, and shall be deletable both on request and on retention expiry, the deletion recorded as a tombstone that survives the bytes.",functional,M,DES-021;DES-022,,,designed
 REQ-035,The parser shall extract YAML frontmatter and Markdown body from SKILL.md.,functional,M,DES-023,,TC-093;TC-099;TC-106;TC-107,implemented
 REQ-036,"The parser shall treat only name and description as required, and shall preserve unrecognised frontmatter keys rather than rejecting or discarding them.",functional,M,DES-023,,TC-094;TC-117,implemented
-REQ-037,"The parser shall handle malformed YAML, absent frontmatter, empty files and non-UTF-8 bytes by recording a parse failure with reason — never by crashing and never by silently emitting an empty record.",functional,M,DES-024;UI-003,,TC-098,implemented
+REQ-037,"The parser shall handle malformed YAML, absent frontmatter, empty files and non-UTF-8 bytes by recording a parse failure with reason — never by crashing and never by silently emitting an empty record.",functional,M,DES-024;UI-003,,TC-098;TC-172,implemented
 REQ-038,"The parser shall record frontmatter_valid per the spec's stated constraints (name ≤64 chars [a-z0-9-], description non-empty ≤1024, no XML tags, reserved words).",functional,M,DES-023,,TC-095;TC-096;TC-097,implemented
 REQ-039,"Normalisation shall produce a canonical record carrying mandatory attribution: repository, owner, canonical source URL. A record shall not be storable without them.",functional,M,DES-025;DES-041,,TC-111;TC-119,implemented
 REQ-040,"Normalisation shall record every field as source fact or AppMD inference, with provenance, and shall never merge the two into one field.",functional,M,DES-025;DES-036,,TC-113,implemented
@@ -117,7 +117,7 @@ NFR-017,Every future AI-derived result shall be cached keyed by content hash and
 NFR-018,Corpus disk use in Phase 1 shall not exceed 1 GB (DEC-011: repos + one artifacts shard).,non-functional,M,DES-004,,,designed
 NFR-019,"No secret shall appear in source control, logs, raw records, canonical records or API responses. Verified by a secret-scan in CI over the working tree and by assertion tests over log and API output.",non-functional,M,DES-046,,,designed
 NFR-020,"All credentials shall be supplied by environment/secret store, never by literal.",non-functional,M,DES-046,,,designed
-NFR-021,"Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it.",non-functional,M,DES-045,,,designed
+NFR-021,"Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it.",non-functional,M,DES-045,,TC-165,implemented
 NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason.",non-functional,M,DES-024;DES-045,,TC-100;TC-101;TC-102;TC-103;TC-104,implemented
 NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,DES-002;DES-015,,TC-137,implemented
 NFR-024,"The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50).",non-functional,M,DES-007,,TC-033,implemented

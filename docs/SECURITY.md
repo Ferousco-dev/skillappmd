@@ -31,6 +31,22 @@ They are routinely conflated. They have different failure modes and different vi
 | **Prompt injection in content** | Content is **data**. No pipeline stage passes it to a model in Phase 1 (`NFR-015` — zero AI spend). When AI is added, content is untrusted input inside a fenced boundary |
 | Zip/archive bombs in siblings | `artifact_siblings` not ingested in Phase 1 |
 
+### 2.1 Identifiers from sources are untrusted input too (`DEF-004`)
+
+A repository name is third-party content. At the 1,000 rung, the real repository
+`Michaelunkai/study--AI_ML-...-openclaw` broke a query expression because **`--` is a SQL comment
+marker** and GitHub permits repeated hyphens.
+
+We were lucky in the failure mode: the remote parser was strict and returned 422. **A permissive
+parser would have silently returned the wrong rows** — licences attributed to the wrong
+repositories, no error raised, `RSK-004` realised without a trace.
+
+**Rule.** Any identifier arriving from a source and composed into a query, path, or command is an
+injection surface, regardless of how innocuous it looks. Where a parameterised form exists, use it.
+Where none exists — as with the datasets-server `where` parameter — **refuse to build the
+expression** rather than sanitise it, record the refusal, and let the record fall to the
+conservative default.
+
 **Secrets** (`NFR-019`, `NFR-020`, `REQ-086`, `REQ-071`): environment/secret store only, never
 literals; never in source control, logs, raw records, canonical records or API responses. Verified
 by CI secret-scan **plus** assertion tests over log and API output — scanning the tree catches

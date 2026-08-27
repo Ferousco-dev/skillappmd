@@ -623,3 +623,18 @@ would have permitted a build 1,000× slower than the code actually is, and no on
 > a regression in our code would be invisible behind network variance.
 
 *Article 10, closed properly: the claim now has an instrument, and the instrument has a scope.*
+
+---
+
+## DEC-035 — `CR-002` and `CR-004` approved
+**Status:** DECIDED · user approval 2026-08-27
+
+**`CR-002`** — `REQ-003` names the **corpus**, not the file format. Row-API reader for sampling
+and validation (≤2,000 rows); Parquet reader for bulk (>2,000 rows or a full-corpus pass).
+
+**`CR-004`** — `NFR-003` grades **structural** validity against the oracle. Spec conformance is a
+separate AppMD inference and is not graded against it. `DEC-033` confirmed.
+
+Both risks were found by running against real data rather than by review. Worth noting that
+neither was a coding error: one was a **requirement that named an implementation** and the other a
+**metric that compared incomparable things**. Both would have passed any amount of code review.

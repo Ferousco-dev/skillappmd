@@ -14,8 +14,22 @@ import { fetchWithRetry } from './retry.js';
 const BASE = 'https://datasets-server.huggingface.co/filter';
 const DATASET = 'mvaccargiu/gitskills';
 
+/**
+ * DEF-004 / NFR-021. A repository name is THIRD-PARTY CONTENT and reaches a query
+ * expression. GitHub permits repeated hyphens, so `study--AI_ML-...` is a legal name -
+ * and `--` is a SQL comment marker, which silently truncates the rest of the clause.
+ * The service returned 422; a more permissive parser would have returned WRONG DATA.
+ *
+ * There is no parameterised form of this API, so the only safe posture is to refuse to
+ * build a query from a name we cannot express. An unqueryable name yields no L2 licence,
+ * which resolves to rights `unknown` - already the conservative default (DEC-018).
+ * The safe failure mode and the correct one are the same here.
+ */
+const UNSAFE_IN_WHERE = /--|\/\*|\*\/|['"`;\\]|[\u0000-\u001f]/;
+export const isQueryableName = (n) => typeof n === 'string' && n !== '' && !UNSAFE_IN_WHERE.test(n);
+
 export class RepoLicenceReader {
-  #cacheDir; #ua; #batch; #requests = 0;
+  #cacheDir; #ua; #batch; #requests = 0; #unqueryable = [];
 
   constructor({ cacheDir = 'data/corpus/gitskills/repos', batchSize = 20,
                 userAgent = 'AppMD-Ingest/0.1 (+https://skill.appmd.dev; skill indexing)' } = {}) {
@@ -24,15 +38,22 @@ export class RepoLicenceReader {
   }
 
   get requests() { return this.#requests; }
+  /** Names excluded from querying, surfaced in the run report (REQ-085). */
+  get unqueryable() { return [...this.#unqueryable]; }
 
   /** @returns {Map<string, {license, stars, forks, is_fork, language, created_at, pushed_at}>} */
   async lookup(fullNames) {
-    const wanted = [...new Set(fullNames)].filter(Boolean).sort();
+    const all = [...new Set(fullNames)].filter(Boolean).sort();
+    const wanted = all.filter(isQueryableName);
+    this.#unqueryable = all.filter((n) => !isQueryableName(n));
+
     const out = new Map();
     for (let i = 0; i < wanted.length; i += this.#batch) {
       const chunk = wanted.slice(i, i + this.#batch);
       for (const [k, v] of await this.#fetchChunk(chunk)) out.set(k, v);
     }
+    // Recorded, never silently dropped (REQ-085): these resolve to rights `unknown`.
+    for (const n of this.#unqueryable) out.set(n, null);
     // A repository absent from `repos` is recorded as such, never guessed (REQ-057).
     for (const n of wanted) if (!out.has(n)) out.set(n, null);
     return out;

@@ -568,3 +568,47 @@ Two UI defects found and fixed during the demo rather than shipped:
     its path and stays identifiable.
 
 164 tests, 164 pass.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 9 COMPLETE (rungs 100, 1000)
+The batch ladder. NFR-001 byte-identical re-run is the gate at every rung.
+
+  RUNG 100    43 ingested   digest sha256:bdb075f3...  PASS identical
+  RUNG 1,000  438 ingested  digest sha256:30ef44ec...  PASS identical
+              2.63e-2% of the corpus, offsets 0 - 3,417,499, 10 strata
+              rights unknown 67.4% (consistent with the 68.7% measured in increment 7)
+              81ms for 438 records (5,419 rec/s)
+
+TWO DEFECTS FOUND, BOTH BY REAL DATA AT SCALE, BOTH CLOSED:
+
+DEF-004 (HIGH, security-relevant): the real repository
+  Michaelunkai/study--AI_ML-...-openclaw broke a query expression because `--` is a
+  SQL comment marker and GitHub permits repeated hyphens. A repository name is
+  THIRD-PARTY CONTENT reaching a query language - exactly what NFR-021 covers.
+  We were lucky in the failure mode: the remote parser was strict and returned 422.
+  A permissive parser would have SILENTLY RETURNED THE WRONG ROWS - licences
+  attributed to the wrong repositories, no error, RSK-004 realised without a trace.
+  Fixed by refusing to build a query from a name we cannot express, rather than by
+  sanitising it. Unqueryable names resolve to rights `unknown`, which is already the
+  conservative default - the safe failure mode and the correct one coincided.
+  Recorded as a general rule in SECURITY.md SS2.1.
+
+DEF-005 (HIGH): 9 parse failures in 438 real documents, four distinct causes, all ours:
+  sequences of maps; plain scalars wrapping onto indented lines; block sequences at the
+  parent indent; and - the instructive one - MARKDOWN EMPHASIS (*SummarizedExperiment*)
+  rejected as a YAML alias. A security guard that refuses legitimate documents is a
+  defect that LOOKS LIKE A WIN, so nobody investigates it. Parser rewritten as a
+  recursive-descent block parser; all limits retained. 9 failures -> 2, and both
+  remaining are genuinely malformed. Structural oracle agreement 97.7% over 438.
+
+Transient failures observed and handled correctly by existing code: 500 "dataset index
+is loading", 500 "Authentication check ... temporary internal issue", 504 Gateway
+Time-out - all retried with backoff; only the 422 was permanent and correctly not
+retried. The retry taxonomy built in increment 7 earned its keep.
+
+CR-005 RAISED: the 10,000 rung crosses the trigger CR-002 approved, so it needs the
+Parquet reader - the first dependency this project would take (DEC-030). Not decided
+unilaterally. Recommended option A (parquet-wasm, no native build) as its own
+increment, because the rung's value is dedup breadth and that deserves a decision
+rather than a batch-size flag.
+
+172 tests, 172 pass.

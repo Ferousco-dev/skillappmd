@@ -144,6 +144,20 @@ exceeds the row cap (proposed: >2,000 rows, or any full-corpus pass).
 **Requested:** approve the amendment, or direct that Parquet be implemented now with the
 dependency install that entails.
 
+### DISPOSITION — 2026-08-27: **APPROVED**
+
+`REQ-003` is amended to name the **corpus**, not the file format. Two readers, one trigger:
+
+| Reader | Use | Trigger |
+| --- | --- | --- |
+| `HfRowsCorpusReader` | sampling and validation | default, up to 2,000 rows |
+| `ParquetCorpusReader` | bulk ingestion | **>2,000 rows, or any full-corpus pass** |
+
+`FixtureCorpusReader` remains for offline tests (`NFR-030`). **CR-002 CLOSED.**
+Consequence carried into increment 9: the 10,000 rung crosses the trigger, so it needs
+the Parquet reader — which is the first thing in this project that requires a dependency
+(`DEC-030`). Raised as `CR-005` rather than decided unilaterally.
+
 ---
 
 ## CR-003 — Backend commits tracked front-end files; caused by `git add -A` in a shared tree
@@ -249,3 +263,58 @@ third party (`ETH-001`). The signal is retained either way.
 **Current measured status against the amended wording:** 97.7% at n=300. Below 99%, entirely
 because of three oracle errors. `DEC-023` makes this a finding to triage, not a build failure —
 and it is triaged.
+
+### DISPOSITION — 2026-08-27: **APPROVED**
+
+`NFR-003` is amended to grade **structural** validity against the oracle; spec conformance is a
+separate AppMD inference and is not graded against it. `DEC-033` confirmed: contested spec
+readings warn rather than invalidate. **CR-004 CLOSED.**
+
+---
+
+## CR-005 — The 10,000 rung needs a Parquet reader, which needs the project's first dependency
+**Raised:** 2026-08-27 · `[architect]` · **Status: OPEN — user's ruling requested**
+**Created by:** `CR-002`'s approved trigger · **Affects:** `REQ-003`, `DEC-030`, `NFR-030`
+
+### The situation
+
+`CR-002` was approved with the trigger: **row API ≤2,000 rows; Parquet above that.** Increment 9's
+top rung is 10,000, which crosses it.
+
+Node has no built-in Parquet reader. Every option is a third-party package:
+
+| Option | Size | Notes |
+| --- | --- | --- |
+| `@duckdb/node-api` | large, native binary | fastest; reads remote Parquet over HTTP; native build per platform |
+| `parquetjs` / `parquet-wasm` | moderate | pure JS or WASM; slower; WASM avoids native builds |
+| `apache-arrow` | moderate | needs a Parquet layer alongside |
+
+**This would be the project's first runtime dependency.** `DEC-030` has held zero dependencies so
+far, which is why `NFR-028`'s dependency lint has had nothing to catch and why `NFR-030` (tests
+without network) has been free rather than fought for.
+
+### What is genuinely at stake
+
+**Not** correctness. The `CorpusReader` seam means a Parquet reader is a drop-in third
+implementation, and every pipeline stage is already proven against real data at the 100 and 1,000
+rungs. What the 10,000 rung adds is **breadth of evidence** — most importantly for deduplication,
+where increment 6's collapse proof covered only **4 duplicate groups**.
+
+### Options
+
+| # | Option | Cost | What it buys |
+| --- | --- | --- | --- |
+| **A** | Add a Parquet dependency (recommend `parquet-wasm` — no native build) | first dependency; ~10 MB; `NFR-030` needs a fixture path for offline tests | real 10,000 rung, full-corpus capability, honours the `CR-002` trigger |
+| **B** | Raise the row-API cap to 10,000 for validation only | zero dependencies; ~100 requests, politely paced | the rung, but **violates the trigger you just approved** |
+| **C** | Cap the real-data ladder at 2,000; validate 10,000 on synthetic fixtures | zero dependencies | performance already proven (958 ms/10,000, increment 8); **dedup breadth stays thin** |
+
+### Recommendation: **A**, deferred to increment 9b
+
+Do the ladder now at **100 → 1,000 → 2,000 on real data** (inside the approved trigger, no
+dependency), and treat the Parquet reader as its own increment with its own decision.
+
+Reasoning: the 10,000 rung's value is dedup breadth, and that is worth doing properly rather than
+smuggling in as a side effect of a batch-size flag. Option B would mean approving a rule and
+breaking it in the same session, which is worse than either honouring it or changing it openly.
+
+**Requested:** approve A (and the package choice), or direct B or C.
