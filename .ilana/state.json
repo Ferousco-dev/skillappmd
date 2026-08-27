@@ -11,7 +11,7 @@
     "RSK-002",
     "RSK-004",
     "RSK-007",
-    "ETH-001"
+    "G4-raw-storage-absent"
   ],
   "overrides": [],
   "counters": {
@@ -20,7 +20,7 @@
     "DOM": 13,
     "DES": 71,
     "UI": 10,
-    "TC": 193,
+    "TC": 220,
     "DEF": 6,
     "CR": 6,
     "RSK": 8,
@@ -31,7 +31,8 @@
   "attempts": {
     "G1": 2,
     "G2": 1,
-    "G3": 1
+    "G3": 1,
+    "G4": 1
   },
   "scope_deferred": [
     "frontend",

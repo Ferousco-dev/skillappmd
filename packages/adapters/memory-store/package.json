@@ -1,0 +1,2 @@
+{ "name": "@appmd/adapter-memory-store", "version": "0.1.0", "private": true, "type": "module",
+  "description": "CanonicalStore adapter with NO SQL. Exists to prove the port does not leak SQL (DEC-027, G4)." }

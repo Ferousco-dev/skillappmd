@@ -739,3 +739,50 @@ Two API/store tests asserted schema_version 1 and were updated to the constant r
 than a literal, so the next migration does not break them.
 
 193 tests, 193 pass.
+
+## 2026-08-27 | G4 | constructor + verifier | GATE FAIL
+Evidence: .ilana/gates/G4.md. Criteria 1-8 and 10 PASS (two with declared deviations),
+criterion 9 WAIVED (solo project, no second human; recorded as a waiver, not a pass).
+
+GATE FAILS ON COMPLETENESS, not quality: REQ-029..REQ-034 and REQ-052 are ABSENT.
+The ObjectStore port is defined and HAS NO ADAPTER. raw_object_key is a column that is
+always null. The RAW storage layer was never built.
+
+  REQ-032 is the load-bearing casualty. BRIEF SS10's argument - "if our AI model improves
+  six months later, reprocess old raw data without crawling the source again" - does not
+  hold. REQ-095 re-analysis correctly IDENTIFIES affected records and then has nothing to
+  reprocess from. DEC-019's rights-aware retention governs bytes that were never stored:
+  the 90-of-131 process-then-delete postures measured in increment 7 apply to nothing.
+
+  THE SIGNAL I HAD AND DID NOT CHASE: increment 10's removal demo printed
+  "bytes deleted false - no object store configured". I recorded it as correct behaviour
+  for a null port and moved on. It WAS correct behaviour, and it was also the system
+  telling me a whole layer was missing. A graceful degradation that nobody questions is
+  how an absent subsystem stays invisible.
+
+  Root cause is ROADMAP.md SS2: increment 2 was written as "canonical store + backup" and
+  raw storage never got an increment. ARCHITECTURE.md SS5 lists it as a Phase 1 subsystem
+  and INGESTION.md SS5 specifies it - the design was right, the plan lost it.
+
+TRACEABILITY, split honestly rather than reported as one number:
+  52/87 mandatory REQ carry a test. Of the 35 that do not:
+    7 are ABSENT (the gate failure above)
+   29 are IMPLEMENTED but no test NAMES the requirement - a traceability defect, not a
+      capability gap, and phase 05 work rather than construction work.
+
+ETH-001 DISCHARGED. All six conditions verified against the RUNNING implementation, not
+asserted from the design: no bare score is representable (no numeric score field exists
+at all), the notice says "does not certify or verify", the word "safe" appears nowhere in
+any response, RemovalService provides the appeal route, assertInference throws without a
+version, and appmd_inference: appears in field_origins on the wire.
+
+DEC-027 PORTABILITY PROOF PASSED. Built MemoryCanonicalStore - plain JS maps, zero SQL.
+One contract suite, 27/27 against both adapters, skill-core and ingestion UNMODIFIED
+(verified by git status). A Postgres adapter would have proved LESS: it shares SQL with
+SQLite, so a port leaking SQL would still pass. TC-207: a SQL store and a plain-map store
+produce the SAME canonical digest byte for byte.
+The suite immediately caught a real divergence - the memory adapter validated cursors
+lazily inside a findIndex callback, so an empty store never validated at all. A
+same-family adapter pair would never have surfaced it.
+
+220 tests, 220 pass. G4 attempt 1 FAILS. Remediation: increment 11 (raw storage).
