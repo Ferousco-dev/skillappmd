@@ -131,9 +131,16 @@ Every one of those is written up in `.ilana/defects.md` with what it cost and wh
 
 ## Status
 
-**The API is live:** [`skillappmd-api.ferouslos6.workers.dev/api/v1/health`](https://skillappmd-api.ferouslos6.workers.dev/api/v1/health) — Cloudflare Workers + D1, seeded with a handful of records.
+**Live at [skill.appmd.dev](https://skill.appmd.dev)** — the site on Vercel, the API on Cloudflare Workers + D1, one origin (Next proxies `/api/v1/*` to the Worker).
 
-The npm package is **not published yet**, so the install command at the top does not work. The site is not deployed. This README will say so until both change.
+```
+https://skill.appmd.dev/api/v1/health
+https://skill.appmd.dev/api/v1/search?q=pdf
+```
+
+The index currently holds a handful of seed records, not the full corpus — the ingestion ladder has been proven to 10,000 records locally but has not been run against production D1.
+
+The npm package is **not published yet**, so `npx skillappmd@latest init` does not work. This README will say so until it does.
 
 Semantic search (task → capability, rather than keyword matching) is specified and costed in `.ilana/changes.md` as `CR-010`, and is not built. Today, `q=extract content from a web page` returns **zero results** while `q=html` returns one — which is the whole argument for building it.
 

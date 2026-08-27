@@ -49,3 +49,5 @@ packages/connectors/gitskills/node_modules/
 # --- raw object store: bytes are never vendored (REQ-033, NFR-019) ---
 data/raw/
 data/objects/
+.vercel
+.env*
