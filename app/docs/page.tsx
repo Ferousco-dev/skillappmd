@@ -456,14 +456,15 @@ ETag: "e0cf892928f391420d37091455012c66"`}</Pre>
 
           <Section id="status" title="Status">
             <P>
-              The index and the read API are the current phase. Semantic resolution, capability
-              matching and composition are planned and not yet built, so the install command above
-              is not published yet. This page will say so until that changes.
+              The index and the read API are live. The resolver is published on npm, so the install
+              command above works. Semantic resolution, capability matching and composition are
+              planned and not yet built.
             </P>
             <P>
-              Nothing described here is deployed. The API runs locally and has been verified against
-              10,000 real records; the figures on this page come from our own measurements of the
-              corpus rather than from any other index.
+              The index currently holds a small number of seed records rather than the full corpus.
+              The ingestion pipeline has been verified against 10,000 real records and re-runs
+              byte-identically, but has not yet been run at scale against the live database. The
+              corpus figures on this page come from our own measurements, not from any other index.
             </P>
           </Section>
         </article>

@@ -1082,3 +1082,20 @@ record no-store, CORS echoes a listed origin and omits an unlisted one.
 
 NOT deployed: database_id is a placeholder and wrangler login is interactive.
 405/405 passing. 152/152 mandatory requirements traced.
+
+## 2026-08-27 | increment 13 | developer | PUBLISHED — skillappmd@0.1.0 live on npm
+Verified from the PUBLIC registry, not the local tarball: `npx skillappmd@latest init` into a
+clean HOME writes exactly one file, ~/.claude/skills/skillappmd/SKILL.md, reporting
+api https://skill.appmd.dev. fileCount 6, unpacked 14.2 kB, MIT, repository linked.
+
+This is the path DEF-011 broke. The bug was invisible from source and invisible in every
+test, because all of them ran the module from the repository rather than as an installed
+binary. It was found by packing and installing, and it is now guarded by TC-353 through a
+real symlink.
+
+The account had no 2FA when the first publish attempt returned 403, so `--otp` could not
+have worked - the guidance to use it was wrong and was corrected once `npm profile get`
+showed `two-factor auth: disabled`. With a passkey (WebAuthn) there is no code at all:
+`npm publish` opens a browser flow instead.
+
+README and docs/page.tsx updated: both had said "not published yet".

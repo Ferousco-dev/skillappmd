@@ -138,9 +138,9 @@ https://skill.appmd.dev/api/v1/health
 https://skill.appmd.dev/api/v1/search?q=pdf
 ```
 
-The index currently holds a handful of seed records, not the full corpus — the ingestion ladder has been proven to 10,000 records locally but has not been run against production D1.
+**Published on npm:** [`skillappmd`](https://www.npmjs.com/package/skillappmd) — `npx skillappmd@latest init` works today.
 
-The npm package is **not published yet**, so `npx skillappmd@latest init` does not work. This README will say so until it does.
+The index currently holds a handful of seed records, not the full corpus. The ingestion ladder is proven to 10,000 records locally and byte-identical on re-run, but has not been run against production D1.
 
 Semantic search (task → capability, rather than keyword matching) is specified and costed in `.ilana/changes.md` as `CR-010`, and is not built. Today, `q=extract content from a web page` returns **zero results** while `q=html` returns one — which is the whole argument for building it.
 
