@@ -131,7 +131,9 @@ Every one of those is written up in `.ilana/defects.md` with what it cost and wh
 
 ## Status
 
-The index, the read API, the CLI and the resolver package are built and tested. **Nothing is deployed yet**, and the npm package is not published — so the install command above does not work yet. This README will say so until it does.
+**The API is live:** [`skillappmd-api.ferouslos6.workers.dev/api/v1/health`](https://skillappmd-api.ferouslos6.workers.dev/api/v1/health) — Cloudflare Workers + D1, seeded with a handful of records.
+
+The npm package is **not published yet**, so the install command at the top does not work. The site is not deployed. This README will say so until both change.
 
 Semantic search (task → capability, rather than keyword matching) is specified and costed in `.ilana/changes.md` as `CR-010`, and is not built. Today, `q=extract content from a web page` returns **zero results** while `q=html` returns one — which is the whole argument for building it.
 

@@ -21,7 +21,7 @@ ALLOWED_ORIGINS = "https://skillappmd.dev,https://www.skillappmd.dev,http://loca
 [[d1_databases]]
 binding = "DB"
 database_name = "skillappmd-canonical"
-database_id = "PLACEHOLDER — run: wrangler d1 create skillappmd-canonical"
+database_id = "36d4c6a7-d261-4152-876b-1ac8f5955e77"
 
 # R2 holds RAW bytes under the rights-aware retention of REQ-098/DEC-019.
 # Commented out until the bucket exists: a binding to a missing bucket fails at deploy,
