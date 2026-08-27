@@ -29,7 +29,7 @@ export class SqliteCanonicalStore {
 
   // ---- migrations (REQ-094, DES-034) ---------------------------------------
 
-  schemaVersion() {
+  async schemaVersion() {
     try {
       const r = this.#db.prepare('SELECT version FROM schema_meta WHERE id = 1').get();
       return r ? r.version : 0;
@@ -37,9 +37,9 @@ export class SqliteCanonicalStore {
   }
 
   /** Re-runnable. Records what it touched. Applies only migrations above current version. */
-  migrate({ now }) {
+  async migrate({ now }) {
     if (typeof now !== 'string') throw new TypeError('migrate requires an explicit UTC timestamp (NFR-038)');
-    const from = this.schemaVersion();
+    const from = await this.schemaVersion();
     const applied = [];
     for (const m of MIGRATIONS) {
       if (m.version <= from) continue;
@@ -61,21 +61,21 @@ export class SqliteCanonicalStore {
         throw new Error(`REQ-094: migration ${m.version} (${m.name}) failed and was rolled back: ${e.message}`);
       }
     }
-    return { from, to: this.schemaVersion(), applied };
+    return { from, to: await this.schemaVersion(), applied };
   }
 
-  migrationLog() { return this.#db.prepare('SELECT * FROM migration_log ORDER BY version').all(); }
+  async migrationLog() { return this.#db.prepare('SELECT * FROM migration_log ORDER BY version').all(); }
 
   // ---- writes --------------------------------------------------------------
 
-  upsertSource({ id, accessPolicy, now }) {
+  async upsertSource({ id, accessPolicy, now }) {
     this.#db.prepare(
       'INSERT INTO sources (id, access_policy, registered_at) VALUES (?,?,?) ' +
       'ON CONFLICT(id) DO UPDATE SET access_policy = excluded.access_policy'
     ).run(id, json(accessPolicy), now);
   }
 
-  upsertRepository(r) {
+  async upsertRepository(r) {
     this.#db.prepare(
       `INSERT INTO repositories (full_name, owner, identity_class, stars, forks, is_fork,
          language, licence_raw, licence_spdx, created_at, pushed_at, first_seen_at)
@@ -95,7 +95,7 @@ export class SqliteCanonicalStore {
    * by skill-core assertions - defence in depth, because a write path that can be
    * bypassed is not an invariant.
    */
-  upsertCanonical(c) {
+  async upsertCanonical(c) {
     // DEC-031 / DEF-003: defence in depth. A cryptic "cannot be bound to parameter 7"
     // costs far more to diagnose than a named field, and this write path will be
     // reached by bulk loaders and future adapters that never read the normaliser.
@@ -134,7 +134,7 @@ export class SqliteCanonicalStore {
     return c.id;
   }
 
-  upsertOccurrence(o) {
+  async upsertOccurrence(o) {
     this.#db.prepare(
       `INSERT INTO occurrences (occurrence_key, source_id, repo_full_name, path,
          content_hash, normalised_hash, canonical_id, relationship, relationship_reason,
@@ -152,13 +152,13 @@ export class SqliteCanonicalStore {
 
   // ---- reads ---------------------------------------------------------------
 
-  findByContentHash(h) {
+  async findByContentHash(h) {
     return this.#db.prepare('SELECT * FROM canonical_skills WHERE content_hash = ?').get(h) ?? null;
   }
-  findByNormalisedHash(h) {
+  async findByNormalisedHash(h) {
     return this.#db.prepare('SELECT * FROM canonical_skills WHERE normalised_hash = ? LIMIT 1').get(h) ?? null;
   }
-  getCanonical(id) {
+  async getCanonical(id) {
     return this.#db.prepare('SELECT * FROM canonical_skills WHERE id = ?').get(id) ?? null;
   }
 
@@ -166,7 +166,7 @@ export class SqliteCanonicalStore {
    * NFR-032 / NFR-039: cursor pagination only. Offset pagination is incorrect
    * under concurrent writes and degrades linearly at depth.
    */
-  cursorScan({ cursor = null, limit = 50 } = {}) {
+  async cursorScan({ cursor = null, limit = 50 } = {}) {
     const n = Math.min(Math.max(1, limit), 100);
     const rows = cursor
       ? this.#db.prepare(
@@ -177,7 +177,7 @@ export class SqliteCanonicalStore {
     return { rows, cursor: { next, limit: n } };
   }
 
-  listOccurrences({ canonicalId, cursor = null, limit = 50 } = {}) {
+  async listOccurrences({ canonicalId, cursor = null, limit = 50 } = {}) {
     const n = Math.min(Math.max(1, limit), 100);
     const rows = cursor
       ? this.#db.prepare(
@@ -190,7 +190,7 @@ export class SqliteCanonicalStore {
     return { rows, cursor: { next, limit: n } };
   }
 
-  getSource(id) {
+  async getSource(id) {
     return this.#db.prepare('SELECT * FROM sources WHERE id = ?').get(id) ?? null;
   }
 
@@ -204,7 +204,7 @@ export class SqliteCanonicalStore {
    * Before increment 11 this queried canonical_skills directly, which meant there was
    * no derived index and therefore nothing for REQ-052 to rebuild.
    */
-  search({ q, cursor = null, limit = 50 }) {
+  async search({ q, cursor = null, limit = 50 }) {
     const n = Math.min(Math.max(1, limit), 100);
     const like = `%${String(q).toLowerCase().replace(/[%_]/g, (c) => '\\' + c)}%`;
     const rows = cursor
@@ -220,7 +220,7 @@ export class SqliteCanonicalStore {
     return { rows, cursor: { next, limit: n } };
   }
 
-  counts() {
+  async counts() {
     // DEF-004's rule generalised: no identifier is interpolated into SQL, even one that
     // is currently a local literal. A future edit that made `t` a parameter would turn
     // this into an injection site silently, and the fixed form costs nothing.
@@ -235,7 +235,7 @@ export class SqliteCanonicalStore {
 
   // ---- jobs and cursors ----------------------------------------------------
 
-  recordJob(j) {
+  async recordJob(j) {
     this.#db.prepare(
       `INSERT INTO jobs (job_id, skill_ref, source_id, stage, attempt, status, started_at, completed_at, error, content_hash)
        VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -247,17 +247,17 @@ export class SqliteCanonicalStore {
     ).run(j.jobId, j.skillRef, j.sourceId, j.stage, j.attempt, j.status,
           j.startedAt, j.completedAt ?? null, j.error ?? null, j.contentHash ?? null);
   }
-  getJob(id) { return this.#db.prepare('SELECT * FROM jobs WHERE job_id = ?').get(id) ?? null; }
+  async getJob(id) { return this.#db.prepare('SELECT * FROM jobs WHERE job_id = ?').get(id) ?? null; }
   /** REQ-084: the operator's real question is "what happened to this skill?" */
-  listJobs({ skillRef }) {
+  async listJobs({ skillRef }) {
     return this.#db.prepare('SELECT * FROM jobs WHERE skill_ref = ? ORDER BY started_at').all(skillRef);
   }
 
-  getCursor(id) {
+  async getCursor(id) {
     const r = this.#db.prepare('SELECT position FROM cursors WHERE id = ?').get(id);
     return r ? r.position : null;
   }
-  setCursor(id, sourceId, position, now) {
+  async setCursor(id, sourceId, position, now) {
     this.#db.prepare(
       'INSERT INTO cursors (id, source_id, position, updated_at) VALUES (?,?,?,?) ' +
       'ON CONFLICT(id) DO UPDATE SET position=excluded.position, updated_at=excluded.updated_at'
@@ -266,7 +266,7 @@ export class SqliteCanonicalStore {
 
   // ---- raw objects (REQ-030, REQ-034) -------------------------------------
 
-  upsertRawObject(r) {
+  async upsertRawObject(r) {
     this.#db.prepare(
       `INSERT INTO raw_objects (content_hash, object_key, source_id, source_url,
          source_version_ref, retrieved_at, size_bytes, rights_state, retention_policy,
@@ -282,24 +282,24 @@ export class SqliteCanonicalStore {
     return r.contentHash;
   }
 
-  getRawObject(contentHash) {
+  async getRawObject(contentHash) {
     return this.#db.prepare('SELECT * FROM raw_objects WHERE content_hash = ?').get(contentHash) ?? null;
   }
 
   /** REQ-034: retention is a QUERY over recorded expiry, not a background guess. */
-  findExpiredRaw({ now, limit = 500 }) {
+  async findExpiredRaw({ now, limit = 500 }) {
     return this.#db.prepare(
       `SELECT * FROM raw_objects WHERE state = 'retained' AND expires_at IS NOT NULL
          AND expires_at <= ? ORDER BY expires_at LIMIT ?`).all(now, limit);
   }
 
-  markRawDeleted({ contentHash, now, reason }) {
+  async markRawDeleted({ contentHash, now, reason }) {
     this.#db.prepare(
       `UPDATE raw_objects SET state='deleted', deleted_at=?, deleted_reason=? WHERE content_hash = ?`)
       .run(now, reason, contentHash);
   }
 
-  rawCounts() {
+  async rawCounts() {
     const one = (st) => this.#db.prepare(
       'SELECT COUNT(*) AS n FROM raw_objects WHERE state = ?').get(st).n;
     return { retained: one('retained'), expired: one('expired'), deleted: one('deleted'),
@@ -309,13 +309,13 @@ export class SqliteCanonicalStore {
   // ---- derived search index (REQ-051, REQ-052) -----------------------------
 
   /** Derived and DISPOSABLE. Dropping this loses nothing (DATABASE.md SS1). */
-  clearSearchIndex() {
+  async clearSearchIndex() {
     const before = this.#db.prepare('SELECT COUNT(*) AS n FROM search_index').get().n;
     this.#db.exec('DELETE FROM search_index');
     return before;
   }
 
-  indexCanonical({ canonicalId, haystack, declaredName, createdAt, now }) {
+  async indexCanonical({ canonicalId, haystack, declaredName, createdAt, now }) {
     this.#db.prepare(
       `INSERT INTO search_index (canonical_id, haystack, declared_name, created_at, indexed_at)
        VALUES (?,?,?,?,?)
@@ -324,12 +324,12 @@ export class SqliteCanonicalStore {
     ).run(canonicalId, haystack, declaredName ?? null, createdAt, now);
   }
 
-  searchIndexCount() {
+  async searchIndexCount() {
     return this.#db.prepare('SELECT COUNT(*) AS n FROM search_index').get().n;
   }
 
   /** Iterates canonical for a rebuild. Cursor-based: never loads the table (NFR-031). */
-  canonicalForIndexing({ cursor = null, limit = 500 } = {}) {
+  async canonicalForIndexing({ cursor = null, limit = 500 } = {}) {
     const n = Math.min(Math.max(1, limit), 1000);
     const rows = cursor
       ? this.#db.prepare(
@@ -345,7 +345,7 @@ export class SqliteCanonicalStore {
 
   // ---- removal and correction (REQ-063, DEC-015) --------------------------
 
-  recordRemovalRequest(r) {
+  async recordRemovalRequest(r) {
     this.#db.prepare(
       `INSERT INTO removal_requests (request_id, canonical_id, content_hash, repository, kind,
          reason, requested_by, requested_at, disposition, disposition_reason, actioned_at, actor)
@@ -359,10 +359,10 @@ export class SqliteCanonicalStore {
     return r.requestId;
   }
 
-  getRemovalRequest(id) {
+  async getRemovalRequest(id) {
     return this.#db.prepare('SELECT * FROM removal_requests WHERE request_id = ?').get(id) ?? null;
   }
-  listRemovalRequests({ repository = null, disposition = null } = {}) {
+  async listRemovalRequests({ repository = null, disposition = null } = {}) {
     if (repository) return this.#db.prepare(
       'SELECT * FROM removal_requests WHERE repository = ? ORDER BY requested_at').all(repository);
     if (disposition) return this.#db.prepare(
@@ -375,20 +375,20 @@ export class SqliteCanonicalStore {
    * and the tombstone survive permanently. The canonical row is NOT deleted - an
    * index that can silently lose records is not an index.
    */
-  markTombstoned({ canonicalId, now }) {
+  async markTombstoned({ canonicalId, now }) {
     this.#db.prepare(
       `UPDATE canonical_skills SET tombstoned_at = ?, content_bytes_held = 0, updated_at = ?
        WHERE id = ?`).run(now, now, canonicalId);
   }
 
-  tombstonedCount() {
+  async tombstonedCount() {
     return this.#db.prepare(
       'SELECT COUNT(*) AS n FROM canonical_skills WHERE tombstoned_at IS NOT NULL').get().n;
   }
 
   // ---- re-analysis (REQ-095) ----------------------------------------------
 
-  setAnalyserVersions(canonicalId, versions, now) {
+  async setAnalyserVersions(canonicalId, versions, now) {
     this.#db.prepare(
       'UPDATE canonical_skills SET analyser_versions = ?, updated_at = ? WHERE id = ?')
       .run(JSON.stringify(versions), now, canonicalId);
@@ -399,7 +399,7 @@ export class SqliteCanonicalStore {
    * Returns records whose recorded version for `analyser` differs from `version`,
    * including records that have never been analysed by it.
    */
-  findForReanalysis({ analyser, version, cursor = null, limit = 100 }) {
+  async findForReanalysis({ analyser, version, cursor = null, limit = 100 }) {
     const n = Math.min(Math.max(1, limit), 1000);
     const rows = cursor
       ? this.#db.prepare(
@@ -416,22 +416,22 @@ export class SqliteCanonicalStore {
   }
 
   /** DEC-015: bytes deletable, provenance envelope permanent. */
-  tombstone({ contentHash, reason, actor, now, provenance }) {
+  async tombstone({ contentHash, reason, actor, now, provenance }) {
     this.#db.prepare(
       'INSERT OR REPLACE INTO tombstones (content_hash, reason, actor, created_at, provenance_json) VALUES (?,?,?,?,?)'
     ).run(contentHash, reason, actor, now, json(provenance));
   }
-  tombstoneCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM tombstones').get().n; }
+  async tombstoneCount() { return this.#db.prepare('SELECT COUNT(*) AS n FROM tombstones').get().n; }
 
   // ---- backup / restore / verify (REQ-091, NFR-035, DEC-022) ---------------
 
   /** Uses SQLite's own consistent snapshot rather than copying a live file. */
-  backup(targetPath) {
+  async backup(targetPath) {
     if (this.#path === ':memory:') throw new Error('cannot back up an in-memory store');
     mkdirSync(dirname(targetPath), { recursive: true });
     this.#db.exec('PRAGMA wal_checkpoint(FULL)');
     copyFileSync(this.#path, targetPath);
-    return { path: targetPath, ...this.digest() };
+    return { path: targetPath, ...(await this.digest()) };
   }
 
   /**
@@ -439,11 +439,11 @@ export class SqliteCanonicalStore {
    * record count and content-hash digest match. A restore procedure that has never
    * been executed is a document, not a capability (DEC-022).
    */
-  digest() {
+  async digest() {
     const rows = this.#db.prepare('SELECT content_hash FROM canonical_skills ORDER BY content_hash').all();
     const h = createHash('sha256');
     for (const r of rows) h.update(r.content_hash);
-    return { records: rows.length, digest: 'sha256:' + h.digest('hex'), schemaVersion: this.schemaVersion() };
+    return { records: rows.length, digest: 'sha256:' + h.digest('hex'), schemaVersion: await this.schemaVersion() };
   }
 
   static restore(backupPath, targetPath) {
@@ -453,11 +453,11 @@ export class SqliteCanonicalStore {
     return new SqliteCanonicalStore(targetPath);
   }
 
-  static verifyRestore(backupPath, expected) {
+  static async verifyRestore(backupPath, expected) {
     const scratch = `${backupPath}.verify`;
     const s = SqliteCanonicalStore.restore(backupPath, scratch);
     try {
-      const actual = s.digest();
+      const actual = await s.digest();
       const ok = actual.records === expected.records && actual.digest === expected.digest;
       return { ok, expected, actual,
                reason: ok ? 'record count and digest match'

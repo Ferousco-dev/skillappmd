@@ -32,7 +32,7 @@ function runOn(archBody) {
   return spawnSync(process.execPath, [CHECKER, dir], { encoding: 'utf8' });
 }
 
-test('TC-315 the subsystem checker passes when every in-scope subsystem names a real increment', () => {
+test('TC-315 the subsystem checker passes when every in-scope subsystem names a real increment', async () => {
   const r = runOn(arch('2'));
   assert.equal(r.status, 0);
   assert.match(r.stdout, /2\/2 Phase-1 subsystems are assigned/);
@@ -40,19 +40,19 @@ test('TC-315 the subsystem checker passes when every in-scope subsystem names a 
   assert.doesNotMatch(r.stdout, /Search/);
 });
 
-test('TC-316 the checker FAILS when an in-scope subsystem names no increment', () => {
+test('TC-316 the checker FAILS when an in-scope subsystem names no increment', async () => {
   const r = runOn(arch('—'));
   assert.equal(r.status, 1, 'a subsystem with no increment must fail the build, not warn');
   assert.match(r.stdout, /Storage .* names NO increment/);
 });
 
-test('TC-317 the checker FAILS when a subsystem names an increment that does not exist', () => {
+test('TC-317 the checker FAILS when a subsystem names an increment that does not exist', async () => {
   const r = runOn(arch('7'));
   assert.equal(r.status, 1);
   assert.match(r.stdout, /names increment 7, which is not in ROADMAP\.md/);
 });
 
-test('TC-318 the checker passes against this repository as it stands', () => {
+test('TC-318 the checker passes against this repository as it stands', async () => {
   const r = spawnSync(process.execPath, [CHECKER, REPO], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout);
 });

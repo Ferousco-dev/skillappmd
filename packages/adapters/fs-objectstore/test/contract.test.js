@@ -23,7 +23,7 @@ const ADAPTERS = [
 ];
 
 for (const [name, make] of ADAPTERS) {
-  test(`TC-208 [${name}] DES-017 the adapter satisfies the ObjectStore contract`, () => {
+  test(`TC-208 [${name}] DES-017 the adapter satisfies the ObjectStore contract`, async () => {
     assert.ok(assertObjectStoreContract(make()));
   });
 
@@ -116,7 +116,7 @@ test('TC-215 DEC-015 deleting bytes preserves the metadata envelope', async () =
   assert.equal(await s.exists(key), false);
 });
 
-test('TC-216 REQ-033 raw access requires a permitted internal purpose', () => {
+test('TC-216 REQ-033 raw access requires a permitted internal purpose', async () => {
   for (const p of Object.values(RAW_PURPOSE)) assert.ok(assertRawPurpose(p));
   for (const bad of ['serve', 'api', 'public', 'download', '', undefined]) {
     assert.throws(() => assertRawPurpose(bad), /REQ-033 violated/,

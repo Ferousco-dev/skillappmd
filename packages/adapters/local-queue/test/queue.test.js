@@ -28,7 +28,7 @@ test('TC-072 REQ-019 maxAttempts must be a bounded positive integer', async () =
   queue.close();
 });
 
-test('TC-073 REQ-018 a message carrying raw content is REJECTED at send', () => {
+test('TC-073 REQ-018 a message carrying raw content is REJECTED at send', async () => {
   const queue = q();
   assert.throws(() => queue.send('ingest', { content: '---\nname: x\n---\nbody' }), /REQ-018/);
   assert.throws(() => queue.send('ingest', { nested: { body: 'raw text here' } }), /REQ-018/);
@@ -37,7 +37,7 @@ test('TC-073 REQ-018 a message carrying raw content is REJECTED at send', () => 
   queue.close();
 });
 
-test('TC-074 REQ-018 the guard names the offending field', () => {
+test('TC-074 REQ-018 the guard names the offending field', async () => {
   assert.throws(() => assertReferenceOnly({ a: { b: { content: 'x' } } }), /"a\.b\.content"/);
 });
 
@@ -174,7 +174,7 @@ test('TC-084 REQ-019 jitter actually varies the deferral across messages', async
   queue.close();
 });
 
-test('TC-083 NFR-038 the queue refuses an implicit clock', () => {
+test('TC-083 NFR-038 the queue refuses an implicit clock', async () => {
   assert.throws(() => new LocalQueue({}), /clock/);
 });
 

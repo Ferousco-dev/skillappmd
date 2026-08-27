@@ -28,15 +28,15 @@ export class RemovalService {
    * Records the request FIRST, before deciding anything. A refusal that leaves no
    * trace is indistinguishable from never having been asked.
    */
-  submit({ requestId, canonicalId = null, repository, kind = REQUEST_KIND.REMOVAL,
+  async submit({ requestId, canonicalId = null, repository, kind = REQUEST_KIND.REMOVAL,
            reason, requestedBy }) {
     if (!repository) throw new Error('REQ-063 violated: a request must name a repository');
     if (!reason) throw new Error('REQ-063 violated: a request must carry a reason');
     if (!requestedBy) throw new Error('REQ-063 violated: a request must name its requester');
     if (!Object.values(REQUEST_KIND).includes(kind)) throw new Error(`unknown request kind: ${kind}`);
 
-    const record = this.#store.getCanonical?.(canonicalId) ?? null;
-    this.#store.recordRemovalRequest({
+    const record = (await this.#store.getCanonical?.(canonicalId)) ?? null;
+    await this.#store.recordRemovalRequest({
       requestId, canonicalId, contentHash: record?.content_hash ?? null,
       repository, kind, reason, requestedBy,
       requestedAt: this.#clock(), disposition: DISPOSITION.PENDING,
@@ -51,13 +51,13 @@ export class RemovalService {
    * author is owed even after removal.
    */
   async action({ requestId, actor, dispositionReason = null }) {
-    const req = this.#store.getRemovalRequest(requestId);
+    const req = await this.#store.getRemovalRequest(requestId);
     if (!req) throw new Error(`removal request not found: ${requestId}`);
     if (req.disposition !== DISPOSITION.PENDING) {
       throw new Error(`request ${requestId} is already ${req.disposition}`);
     }
     const now = this.#clock();
-    const canonical = req.canonical_id ? this.#store.getCanonical(req.canonical_id) : null;
+    const canonical = req.canonical_id ? await this.#store.getCanonical(req.canonical_id) : null;
 
     let bytesDeleted = false;
     if (canonical) {
@@ -65,7 +65,7 @@ export class RemovalService {
         await this.#objects.delete(canonical.content_hash);
         bytesDeleted = true;
       }
-      this.#store.tombstone({
+      await this.#store.tombstone({
         contentHash: canonical.content_hash, reason: req.reason, actor, now,
         // The envelope outlives the bytes: who, what, where, and under what claim.
         provenance: {
@@ -80,10 +80,10 @@ export class RemovalService {
           kind: req.kind,
         },
       });
-      this.#store.markTombstoned({ canonicalId: canonical.id, now });
+      await this.#store.markTombstoned({ canonicalId: canonical.id, now });
     }
 
-    this.#store.recordRemovalRequest({
+    await this.#store.recordRemovalRequest({
       requestId: req.request_id, canonicalId: req.canonical_id, contentHash: req.content_hash,
       repository: req.repository, kind: req.kind, reason: req.reason,
       requestedBy: req.requested_by, requestedAt: req.requested_at,
@@ -93,11 +93,11 @@ export class RemovalService {
   }
 
   /** A decline is recorded with its reason, and remains visible to the requester. */
-  decline({ requestId, actor, dispositionReason }) {
-    const req = this.#store.getRemovalRequest(requestId);
+  async decline({ requestId, actor, dispositionReason }) {
+    const req = await this.#store.getRemovalRequest(requestId);
     if (!req) throw new Error(`removal request not found: ${requestId}`);
     if (!dispositionReason) throw new Error('REQ-063 violated: a decline must carry a reason');
-    this.#store.recordRemovalRequest({
+    await this.#store.recordRemovalRequest({
       requestId: req.request_id, canonicalId: req.canonical_id, contentHash: req.content_hash,
       repository: req.repository, kind: req.kind, reason: req.reason,
       requestedBy: req.requested_by, requestedAt: req.requested_at,
@@ -107,16 +107,17 @@ export class RemovalService {
     return { requestId, disposition: DISPOSITION.DECLINED };
   }
 
-  history(repository) { return this.#store.listRemovalRequests({ repository }); }
+  async history(repository) { return this.#store.listRemovalRequests({ repository }); }
 
   /**
    * NFR-010: a rebuild after tombstoning is "equivalent MINUS tombstoned records".
    * The count is reported rather than the difference being quietly absorbed.
    */
-  rebuildReport() {
-    const counts = this.#store.counts();
-    return { canonical: counts.canonical, tombstoned: this.#store.tombstonedCount(),
-             servable: counts.canonical - this.#store.tombstonedCount(),
+  async rebuildReport() {
+    const counts = await this.#store.counts();
+    const tombstoned = await this.#store.tombstonedCount();
+    return { canonical: counts.canonical, tombstoned,
+             servable: counts.canonical - tombstoned,
              note: 'A rebuilt index is equivalent minus tombstoned records, never identical.' };
   }
 }

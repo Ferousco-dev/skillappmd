@@ -33,15 +33,15 @@ export function fingerprint(rawText) {
  * The index is populated by rebuildSearchIndex() (REQ-052), which is also the recovery
  * path, so there is one way to build it rather than two that can disagree.
  */
-export function resolveOccurrence({ store, discovery, canonical, fingerprints, now, rawObjectKey = null }) {
+export async function resolveOccurrence({ store, discovery, canonical, fingerprints, now, rawObjectKey = null }) {
   if (typeof now !== 'string') throw new TypeError('resolveOccurrence requires a UTC timestamp (NFR-038)');
 
   // Tier 1: exact bytes (REQ-044).
-  const exact = store.findByContentHash(fingerprints.contentHash);
+  const exact = await store.findByContentHash(fingerprints.contentHash);
   // Tier 2: identical after normalisation - catches CRLF/LF and trailing-whitespace
   // variants that are pervasive across 282,200 repositories and would otherwise
   // inflate the canonical count with pure noise (DEC-012).
-  const near = exact ? null : store.findByNormalisedHash(fingerprints.normalisedHash);
+  const near = exact ? null : await store.findByNormalisedHash(fingerprints.normalisedHash);
 
   const decision = resolveRelationship(
     { contentHash: fingerprints.contentHash, normalisedHash: fingerprints.normalisedHash },
@@ -52,14 +52,14 @@ export function resolveOccurrence({ store, discovery, canonical, fingerprints, n
   let canonicalId = decision.canonicalId;
   let created = false;
   if (!canonicalId) {
-    canonicalId = store.upsertCanonical(canonical);
+    canonicalId = await store.upsertCanonical(canonical);
     created = true;
   }
 
   const key = occurrenceKey({ source: discovery.source, repoFullName: discovery.repo_full_name,
                               path: discovery.path, contentHash: fingerprints.contentHash });
 
-  store.upsertOccurrence({
+  await store.upsertOccurrence({
     occurrenceKey: key, sourceId: discovery.source,
     repoFullName: discovery.repo_full_name, path: discovery.path,
     contentHash: fingerprints.contentHash, normalisedHash: fingerprints.normalisedHash,

@@ -76,3 +76,22 @@ becomes real, and the `RateLimiter` port already exists to absorb the fix.
 shared mutable counters with TTL is exactly Redis's shape, and unlike caching it is not something
 the edge can do for free. Durable Objects are the Cloudflare-native alternative and avoid an
 external paid dependency. Neither is built.
+
+---
+
+## `RSK-010` — the `NFR-014` memory margin is now 4 MB
+
+**Raised:** 2026-08-27 (`CR-008`) · **Owner:** `[architect]` · **Review:** before the 100k rung
+**Likelihood:** high at any larger batch · **Impact:** moderate — a budget breach fails `NFR-014`
+
+Making the store port asynchronous allocates a Promise per store call. Measured at the 10,000-record
+rung: **peak delta 119 MB → 124 MB**, against a 128 MB budget. The ladder still passes, but the
+headroom fell from 9 MB to **4 MB**, and `DEF-007` was originally raised at 131 MB — so this is
+within 7 MB of a defect the project has already had once.
+
+**Not accepted silently.** The mitigation is known and cheap: the pipeline streams one record at a
+time, so the Promises are short-lived and the pressure is allocation rate rather than retention.
+Batching store calls per record (one round trip instead of three) would recover most of it and is
+also what a D1 adapter wants anyway, since each call there is a network round trip.
+
+**Trigger:** the first ladder rung above 10,000 records, or the first D1 measurement.

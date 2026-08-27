@@ -16,19 +16,19 @@
  * equivalence when records were deliberately left out - "equivalent minus tombstoned"
  * is the honest phrase and it is in the returned object, not only in prose.
  */
-export function rebuildSearchIndex({ store, now, batchSize = 500 }) {
+export async function rebuildSearchIndex({ store, now, batchSize = 500 }) {
   if (typeof now !== 'string') throw new TypeError('rebuildSearchIndex requires a UTC timestamp (NFR-038)');
 
-  const dropped = store.clearSearchIndex();
+  const dropped = await store.clearSearchIndex();
 
   let indexed = 0, excludedTombstoned = 0, scanned = 0;
   let cursor = null;
   do {
-    const page = store.canonicalForIndexing({ cursor, limit: batchSize });
+    const page = await store.canonicalForIndexing({ cursor, limit: batchSize });
     for (const row of page.rows) {
       scanned++;
       if (row.tombstoned_at) { excludedTombstoned++; continue; }
-      store.indexCanonical({
+      await store.indexCanonical({
         canonicalId: row.id,
         // Metadata only. Raw content is never indexed (REQ-033, REQ-062).
         haystack: `${row.declared_name ?? ''} ${row.declared_description ?? ''}`.toLowerCase().trim(),

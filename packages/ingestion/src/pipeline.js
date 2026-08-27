@@ -38,7 +38,7 @@ export async function ingestRecord({ store, objects, discovery, rawText, repoLic
 
   // ---- CANONICAL ---------------------------------------------------------
   const canonical = normalise({ discovery, parsed, rawText, repoLicence, now });
-  const res = resolveOccurrence({
+  const res = await resolveOccurrence({
     store, discovery, canonical, fingerprints: fingerprint(rawText), now,
     rawObjectKey: raw.rawObjectKey,
   });
@@ -46,7 +46,7 @@ export async function ingestRecord({ store, objects, discovery, rawText, repoLic
   // Eventual consistency by default (DATABASE.md SS46). Callers that want search to be
   // correct immediately - an interactive tool, a test - opt in and pay the memory.
   if (indexOnWrite && typeof store.indexCanonical === 'function') {
-    indexOne(store, canonical, res.canonicalId, now);
+    await indexOne(store, canonical, res.canonicalId, now);
   }
 
   return { ...res, rawObjectKey: raw.rawObjectKey, retentionPolicy: raw.retentionPolicy,
@@ -61,10 +61,10 @@ export async function ingestRecord({ store, objects, discovery, rawText, repoLic
  * store and the canonical store.
  */
 /** One place that knows how a canonical record becomes an index entry. */
-export function indexOne(store, canonical, canonicalId, now) {
+export async function indexOne(store, canonical, canonicalId, now) {
   const name = canonical.declared?.name ?? null;
   const description = canonical.declared?.description ?? null;
-  store.indexCanonical({
+  await store.indexCanonical({
     canonicalId,
     haystack: `${name ?? ''} ${description ?? ''}`.toLowerCase().trim(),
     declaredName: name,
@@ -95,7 +95,7 @@ export async function reprocessFromRaw({ store, objects, contentHash, repoLicenc
 
   const parsed = parseSkill(raw.text);
   const canonical = normalise({ discovery, parsed, rawText: raw.text, repoLicence, now });
-  const res = resolveOccurrence({
+  const res = await resolveOccurrence({
     store, discovery, canonical, fingerprints: fingerprint(raw.text), now,
     rawObjectKey: contentHash,
   });

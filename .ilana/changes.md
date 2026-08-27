@@ -410,3 +410,39 @@ against the intake's "cheap by construction" principle.
 **Where Redis would genuinely earn its place** is `RateLimiter`, not `Cache`: the current adapter
 counts in process memory, so on Workers each colo would enforce its own limit and `REQ-097` would
 be globally unenforced. Recorded as `RSK-009`, not built.
+
+---
+
+## CR-008 — `CanonicalStore` becomes asynchronous
+
+**Raised:** 2026-08-27 · **Requested by:** user (option A) · **Status:** APPROVED
+**Closes:** `DEF-009` · **Against:** SRS v1.2, `DEC-027`, `NFR-027`
+
+### Why
+
+`DEF-009`: the port is synchronous and both adapters that proved its portability are synchronous
+too. D1 and every PostgreSQL driver are asynchronous, so `DEC-027`'s migration path cannot be
+walked. The claim was never falsifiable with the adapters on hand.
+
+### Change
+
+Every `CanonicalStore` method returns a Promise. `resolveOccurrence()`, the pipeline helpers,
+`ApiRouter.handle()` and the CLI become async. **`skill-core/` is not touched** — it is pure and
+never sees a store, which is why this is mechanical rather than a redesign.
+
+Adds `DEC-040`. Amends `DATABASE.md` §8 and `DEC-027`.
+
+### The rule this establishes
+
+**A port that models I/O shall be asynchronous, whether or not its first adapter needs to be.**
+Synchrony is not an implementation detail an adapter may choose; it is a constraint the port
+imposes on every future adapter. `NFR-027` gains this explicitly, because the cost of discovering
+it late is exactly what `DEF-009` measured.
+
+### Verification that this actually closed the gap
+
+Not "the tests still pass" — they would pass with three synchronous adapters. The contract suite
+must run against an adapter whose timing genuinely differs, otherwise `DEF-009` recurs unchanged.
+A deliberately deferred in-memory adapter (resolving on a later turn of the event loop) is added
+for that purpose, so the suite contains at least one adapter that **cannot** be satisfied by
+synchronous code.

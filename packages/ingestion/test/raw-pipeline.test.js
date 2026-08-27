@@ -25,9 +25,9 @@ const disco = (repo = 'owner/repo', path = 'skills/x/SKILL.md') => ({
   discovered_at: '2026-08-20T00:00:00Z', version_ref: 'blobsha123',
   source_payload: { file_sha: 'blobsha123' } });
 
-function rig({ root = null } = {}) {
+async function rig({ root = null } = {}) {
   const store = new SqliteCanonicalStore(':memory:');
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   const objects = new FsObjectStore({ root: root ?? tmp() });
   return { store, objects };
 }
@@ -36,7 +36,7 @@ function rig({ root = null } = {}) {
 
 test('TC-219 REQ-029 ingestion writes RAW BYTES to disk before parsing', async () => {
   const root = tmp();
-  const { store, objects } = rig({ root });
+  const { store, objects } = await rig({ root });
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
   const hex = r.rawObjectKey.slice('sha256:'.length);
@@ -47,20 +47,20 @@ test('TC-219 REQ-029 ingestion writes RAW BYTES to disk before parsing', async (
 });
 
 test('TC-220 REQ-029 raw_object_key is persisted on the occurrence', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
-  const occ = store.listOccurrences({ canonicalId: r.canonicalId }).rows[0];
+  const occ = (await store.listOccurrences({ canonicalId: r.canonicalId })).rows[0];
   assert.equal(occ.raw_object_key, r.rawObjectKey);
   assert.equal(occ.raw_object_key, contentHash(SKILL), 'and it IS the content hash');
   store.close();
 });
 
 test('TC-221 REQ-030 the raw record retains source, URL, timestamp, version and hash', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
-  const row = store.getRawObject(r.rawObjectKey);
+  const row = await store.getRawObject(r.rawObjectKey);
   assert.equal(row.source_id, 'gitskills');
   assert.equal(row.source_url, 'https://github.com/owner/repo/blob/HEAD/skills/x/SKILL.md');
   assert.equal(row.retrieved_at, '2026-08-20T00:00:00Z', 'the RETRIEVAL time, not now');
@@ -77,31 +77,31 @@ test('TC-221 REQ-030 the raw record retains source, URL, timestamp, version and 
 });
 
 test('TC-222 REQ-031 ingestion REFUSES to proceed when raw persistence fails', async () => {
-  const { store } = rig();
+  const { store } = await rig();
   const broken = { async put() { throw new Error('disk full'); }, async get() {}, async head() {},
                    async exists() { return false; }, async delete() { return false; } };
-  await assert.rejects(() => ingestRecord({ store, objects: broken, discovery: disco(),
+  await assert.rejects(async () => ingestRecord({ store, objects: broken, discovery: disco(),
                                             rawText: SKILL, repoLicence: 'MIT', now: NOW }), /disk full/);
-  assert.equal(store.counts().canonical, 0,
+  assert.equal((await store.counts()).canonical, 0,
     'no canonical record claims a raw reference the system does not hold');
   store.close();
 });
 
 test('TC-223 REQ-029 ingestion requires an ObjectStore at all', async () => {
-  const { store } = rig();
-  await assert.rejects(() => ingestRecord({ store, objects: null, discovery: disco(),
+  const { store } = await rig();
+  await assert.rejects(async () => ingestRecord({ store, objects: null, discovery: disco(),
                                             rawText: SKILL, now: NOW }), /REQ-029 violated/);
   store.close();
 });
 
 test('TC-224 REQ-031 re-ingesting identical content does not mutate raw', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const a = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL, repoLicence: 'MIT', now: NOW });
   const before = (await objects.get(a.rawObjectKey)).bytes.toString();
   await ingestRecord({ store, objects, discovery: disco('other/repo'), rawText: SKILL, repoLicence: 'MIT', now: NOW });
   assert.equal((await objects.get(a.rawObjectKey)).bytes.toString(), before, 'raw is untouched');
-  assert.equal(store.counts().canonical, 1);
-  assert.equal(store.counts().occurrences, 2, 'evidence still accumulates');
+  assert.equal((await store.counts()).canonical, 1);
+  assert.equal((await store.counts()).occurrences, 2, 'evidence still accumulates');
   store.close();
 });
 
@@ -109,12 +109,12 @@ test('TC-224 REQ-031 re-ingesting identical content does not mutate raw', async 
 
 test('TC-225 REQ-032 reprocess from RAW with the source PROVABLY unavailable', async () => {
   const root = tmp();
-  const { store, objects } = rig({ root });
+  const { store, objects } = await rig({ root });
 
   // 1-2. Ingest and store the real bytes.
   const first = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                      repoLicence: 'MIT', now: NOW });
-  assert.equal(store.counts().canonical, 1);
+  assert.equal((await store.counts()).canonical, 1);
 
   // 3-4. Make the source unavailable. Every connector method throws, and global fetch
   //      is replaced so ANY network call - from anywhere - fails the test loudly.
@@ -153,20 +153,20 @@ test('TC-225 REQ-032 reprocess from RAW with the source PROVABLY unavailable', a
 
 test('TC-226 REQ-032 reprocessing reads the REAL stored bytes, not a mock', async () => {
   const root = tmp();
-  const { store, objects } = rig({ root });
+  const { store, objects } = await rig({ root });
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
   // Deleting the file from underneath must break reprocessing. If it still succeeded,
   // the test would be reading something other than the stored object.
   const hex = r.rawObjectKey.slice('sha256:'.length);
   rmSync(join(root, 'sha256', hex.slice(0, 2), hex.slice(2, 4), `${hex}.raw`), { force: true });
-  await assert.rejects(() => reprocessFromRaw({ store, objects, contentHash: r.rawObjectKey, now: NOW }),
+  await assert.rejects(async () => reprocessFromRaw({ store, objects, contentHash: r.rawObjectKey, now: NOW }),
     RawUnavailableError, 'proof that the earlier pass genuinely read from disk');
   store.close();
 });
 
 test('TC-227 REQ-032/DEC-019 a deleted raw object never silently re-fetches the source', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
   await deleteRawFor({ objects, store, contentHash: r.rawObjectKey, now: NOW, reason: 'test' });
@@ -180,7 +180,7 @@ test('TC-227 REQ-032/DEC-019 a deleted raw object never silently re-fetches the 
 // ---------------------------------------------------------------- retention
 
 test('TC-228 REQ-034/DEC-019 retention policy follows the rights posture', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const unknown = await ingestRecord({ store, objects, discovery: disco('a/one'),
     rawText: SKILL, repoLicence: null, now: NOW });
   const copyleft = await ingestRecord({ store, objects, discovery: disco('b/two'),
@@ -188,20 +188,20 @@ test('TC-228 REQ-034/DEC-019 retention policy follows the rights posture', async
   const permissive = await ingestRecord({ store, objects, discovery: disco('c/three'),
     rawText: SKILL.replace('raw-demo', 'raw-three'), repoLicence: 'MIT', now: NOW });
 
-  assert.equal(store.getRawObject(unknown.rawObjectKey).retention_policy, RETENTION_POLICY.PROCESS_THEN_DELETE);
-  assert.equal(store.getRawObject(copyleft.rawObjectKey).retention_policy, RETENTION_POLICY.SHORT);
-  assert.equal(store.getRawObject(permissive.rawObjectKey).retention_policy, RETENTION_POLICY.STANDARD);
+  assert.equal((await store.getRawObject(unknown.rawObjectKey)).retention_policy, RETENTION_POLICY.PROCESS_THEN_DELETE);
+  assert.equal((await store.getRawObject(copyleft.rawObjectKey)).retention_policy, RETENTION_POLICY.SHORT);
+  assert.equal((await store.getRawObject(permissive.rawObjectKey)).retention_policy, RETENTION_POLICY.STANDARD);
   store.close();
 });
 
 test('TC-229 REQ-034 expiry deletes REAL bytes and the state becomes observable', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const unknown = await ingestRecord({ store, objects, discovery: disco('a/one'),
     rawText: SKILL, repoLicence: null, now: NOW });                    // process-then-delete
   const keep = await ingestRecord({ store, objects, discovery: disco('c/three'),
     rawText: SKILL.replace('raw-demo', 'keeper'), repoLicence: 'MIT', now: NOW });  // 90 days
 
-  assert.equal(store.rawCounts().retained, 2);
+  assert.equal((await store.rawCounts()).retained, 2);
   assert.equal(await objects.exists(unknown.rawObjectKey), true, 'bytes exist before expiry');
 
   const res = await applyRetention({ objects, store, now: NOW });
@@ -210,16 +210,16 @@ test('TC-229 REQ-034 expiry deletes REAL bytes and the state becomes observable'
   assert.equal(await objects.exists(unknown.rawObjectKey), false, 'BYTES ARE GONE');
   assert.equal(await objects.exists(keep.rawObjectKey), true, 'the 90-day object is untouched');
 
-  const row = store.getRawObject(unknown.rawObjectKey);
+  const row = await store.getRawObject(unknown.rawObjectKey);
   assert.equal(row.state, 'deleted');
   assert.ok(row.deleted_at);
   assert.equal(row.source_url, 'https://github.com/a/one/blob/HEAD/skills/x/SKILL.md',
     'DEC-015: the envelope outlives the bytes');
-  assert.deepEqual(store.rawCounts(), { retained: 1, expired: 0, deleted: 1, total: 2 });
+  assert.deepEqual(await store.rawCounts(), { retained: 1, expired: 0, deleted: 1, total: 2 });
   store.close();
 });
 
-test('TC-230 REQ-034 expiry dates derive from the policy, not from wishful thinking', () => {
+test('TC-230 REQ-034 expiry dates derive from the policy, not from wishful thinking', async () => {
   // toISOString() normalises to millisecond precision; the assertion was originally
   // written against the un-normalised input and was wrong about the CODE, not the code
   // being wrong about the policy.
@@ -237,85 +237,85 @@ test('TC-230 REQ-034 expiry dates derive from the policy, not from wishful think
 // ---------------------------------------------------------------- removal
 
 test('TC-231 REQ-063 author removal now deletes REAL raw bytes', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
   assert.equal(await objects.exists(r.rawObjectKey), true);
 
   const svc = new RemovalService({ store, objects, clock });
-  svc.submit({ requestId: 'rq1', canonicalId: r.canonicalId, repository: 'owner/repo',
+  await svc.submit({ requestId: 'rq1', canonicalId: r.canonicalId, repository: 'owner/repo',
                reason: 'I did not consent', requestedBy: 'author@example' });
   const res = await svc.action({ requestId: 'rq1', actor: 'operator' });
 
   assert.equal(res.bytesDeleted, true, 'increment 10 reported false here; now there are bytes');
   assert.equal(await objects.exists(r.rawObjectKey), false, 'BYTES ARE GONE');
-  assert.equal(store.tombstoneCount(), 1, 'the envelope survives');
-  const canonical = store.getCanonical(r.canonicalId);
+  assert.equal(await store.tombstoneCount(), 1, 'the envelope survives');
+  const canonical = await store.getCanonical(r.canonicalId);
   assert.ok(canonical, 'the canonical record is retained');
   assert.equal(canonical.attribution_repository, 'owner/repo', 'attribution survives removal');
   store.close();
 });
 
 test('TC-232 REQ-063/REQ-052 removed content disappears from the rebuilt index and the API', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const a = await ingestRecord({ store, objects, discovery: disco('a/one'),
     rawText: SKILL, repoLicence: 'MIT', now: NOW });
   await ingestRecord({ store, objects, discovery: disco('b/two'),
     rawText: SKILL.replace('raw-demo', 'survivor'), repoLicence: 'MIT', now: NOW });
 
-  rebuildSearchIndex({ store, now: NOW });
-  assert.equal(store.search({ q: 'raw-demo' }).rows.length, 1, 'present before removal');
+  await rebuildSearchIndex({ store, now: NOW });
+  assert.equal((await store.search({ q: 'raw-demo' })).rows.length, 1, 'present before removal');
 
   const svc = new RemovalService({ store, objects, clock });
-  svc.submit({ requestId: 'rq1', canonicalId: a.canonicalId, repository: 'a/one',
+  await svc.submit({ requestId: 'rq1', canonicalId: a.canonicalId, repository: 'a/one',
                reason: 'removal', requestedBy: 'author' });
   await svc.action({ requestId: 'rq1', actor: 'op' });
 
-  const rb = rebuildSearchIndex({ store, now: NOW });
+  const rb = await rebuildSearchIndex({ store, now: NOW });
   assert.equal(rb.excludedTombstoned, 1);
   assert.equal(rb.indexed, 1);
-  assert.equal(store.search({ q: 'raw-demo' }).rows.length, 0, 'gone from the index');
-  assert.equal(store.search({ q: 'survivor' }).rows.length, 1, 'the other record is unaffected');
+  assert.equal((await store.search({ q: 'raw-demo' })).rows.length, 0, 'gone from the index');
+  assert.equal((await store.search({ q: 'survivor' })).rows.length, 1, 'the other record is unaffected');
   store.close();
 });
 
 // ---------------------------------------------------------------- rebuild
 
 test('TC-233 REQ-052 the index is genuinely DESTROYED and REBUILT from canonical', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   for (let i = 0; i < 12; i++) {
     await ingestRecord({ store, objects, discovery: disco(`o/r${i}`),
       rawText: SKILL.replace('raw-demo', `skill-${i}`), repoLicence: 'MIT', now: NOW });
   }
-  const first = rebuildSearchIndex({ store, now: NOW });
+  const first = await rebuildSearchIndex({ store, now: NOW });
   assert.equal(first.indexed, 12);
-  assert.equal(store.searchIndexCount(), 12);
+  assert.equal(await store.searchIndexCount(), 12);
 
   // Destroy it, as NFR-010 requires the test to do.
-  assert.equal(store.clearSearchIndex(), 12);
-  assert.equal(store.searchIndexCount(), 0);
-  assert.equal(store.search({ q: 'skill-5' }).rows.length, 0, 'search is genuinely broken now');
+  assert.equal(await store.clearSearchIndex(), 12);
+  assert.equal(await store.searchIndexCount(), 0);
+  assert.equal((await store.search({ q: 'skill-5' })).rows.length, 0, 'search is genuinely broken now');
 
-  const second = rebuildSearchIndex({ store, now: NOW });
+  const second = await rebuildSearchIndex({ store, now: NOW });
   assert.equal(second.indexed, 12, 'rebuilt from canonical alone');
   assert.equal(second.sourceContact, false);
-  assert.equal(store.search({ q: 'skill-5' }).rows.length, 1, 'search works again');
-  assert.equal(store.counts().canonical, 12, 'canonical was never touched');
+  assert.equal((await store.search({ q: 'skill-5' })).rows.length, 1, 'search works again');
+  assert.equal((await store.counts()).canonical, 12, 'canonical was never touched');
   store.close();
 });
 
 test('TC-234 NFR-010 the rebuild report never claims equivalence when records were excluded', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const a = await ingestRecord({ store, objects, discovery: disco('a/one'), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
   await ingestRecord({ store, objects, discovery: disco('b/two'),
     rawText: SKILL.replace('raw-demo', 'other'), repoLicence: 'MIT', now: NOW });
 
-  const clean = rebuildSearchIndex({ store, now: NOW });
+  const clean = await rebuildSearchIndex({ store, now: NOW });
   assert.match(clean.equivalence, /^equivalent to canonical$/);
 
-  store.markTombstoned({ canonicalId: a.canonicalId, now: NOW });
-  const after = rebuildSearchIndex({ store, now: NOW });
+  await store.markTombstoned({ canonicalId: a.canonicalId, now: NOW });
+  const after = await rebuildSearchIndex({ store, now: NOW });
   assert.equal(after.excludedTombstoned, 1);
   assert.match(after.equivalence, /MINUS 1 tombstoned/);
   assert.notEqual(after.equivalence, 'equivalent to canonical');
@@ -323,16 +323,16 @@ test('TC-234 NFR-010 the rebuild report never claims equivalence when records we
 });
 
 test('TC-235 REQ-052 rebuilding twice is deterministic', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   for (let i = 0; i < 8; i++) {
     await ingestRecord({ store, objects, discovery: disco(`o/r${i}`),
       rawText: SKILL.replace('raw-demo', `det-${i}`), repoLicence: 'MIT', now: NOW });
   }
-  const a = rebuildSearchIndex({ store, now: NOW });
-  const b = rebuildSearchIndex({ store, now: NOW });
+  const a = await rebuildSearchIndex({ store, now: NOW });
+  const b = await rebuildSearchIndex({ store, now: NOW });
   assert.equal(a.indexed, b.indexed);
   assert.equal(a.excludedTombstoned, b.excludedTombstoned);
-  assert.equal(store.search({ q: 'det-3' }).rows.length, 1);
+  assert.equal((await store.search({ q: 'det-3' })).rows.length, 1);
   store.close();
 });
 
@@ -341,20 +341,20 @@ test('TC-235 REQ-052 rebuilding twice is deterministic', async () => {
 test('TC-236 DEC-027 the RAW pipeline runs unchanged on a no-SQL store and a no-filesystem object store', async () => {
   // Neither adapter here touches SQL or a filesystem. The pipeline code is identical.
   const store = new MemoryCanonicalStore();
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   const objects = new MemoryObjectStore();
 
   const r = await ingestRecord({ store, objects, discovery: disco(), rawText: SKILL,
                                  repoLicence: 'MIT', now: NOW });
   assert.equal(r.rawObjectKey, contentHash(SKILL));
-  assert.equal(store.getRawObject(r.rawObjectKey).source_id, 'gitskills');
+  assert.equal((await store.getRawObject(r.rawObjectKey)).source_id, 'gitskills');
 
   const again = await reprocessFromRaw({ store, objects, contentHash: r.rawObjectKey, now: NOW });
   assert.equal(again.canonicalId, r.canonicalId);
 
-  const rb = rebuildSearchIndex({ store, now: NOW });
+  const rb = await rebuildSearchIndex({ store, now: NOW });
   assert.equal(rb.indexed, 1);
-  assert.equal(store.search({ q: 'raw-demo' }).rows.length, 1);
+  assert.equal((await store.search({ q: 'raw-demo' })).rows.length, 1);
 
   await applyRetention({ objects, store, now: '2027-01-01T00:00:00Z' });
   assert.equal(await objects.exists(r.rawObjectKey), false, 'retention deletes here too');
@@ -364,7 +364,7 @@ test('TC-236 DEC-027 the RAW pipeline runs unchanged on a no-SQL store and a no-
 // ---------------------------------------------------------------- re-analysis
 
 test('TC-237 REQ-095/REQ-032 re-analysis reprocesses from raw with no source', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const ids = [];
   for (let i = 0; i < 3; i++) {
     const r = await ingestRecord({ store, objects, discovery: disco(`o/r${i}`),
@@ -372,9 +372,9 @@ test('TC-237 REQ-095/REQ-032 re-analysis reprocesses from raw with no source', a
     ids.push(r);
   }
   const svc = new ReanalysisService({ store, clock });
-  svc.stamp(ids[0].canonicalId, { parser: '0.1.0' });
+  await svc.stamp(ids[0].canonicalId, { parser: '0.1.0' });
 
-  const plan = svc.plan({ analyser: 'parser', version: '0.2.0' });
+  const plan = await svc.plan({ analyser: 'parser', version: '0.2.0' });
   assert.equal(plan.count, 3, 'stale and never-analysed alike');
 
   // Now actually do the work the plan describes - from raw, with no connector in scope.

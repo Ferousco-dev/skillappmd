@@ -30,9 +30,9 @@ export class MemoryCanonicalStore {
   #index = new Map();
   #migrationLog = [];
 
-  schemaVersion() { return this.#version; }
+  async schemaVersion() { return this.#version; }
 
-  migrate({ now }) {
+  async migrate({ now }) {
     if (typeof now !== 'string') throw new TypeError('migrate requires an explicit UTC timestamp (NFR-038)');
     const from = this.#version;
     const applied = [];
@@ -43,15 +43,15 @@ export class MemoryCanonicalStore {
     }
     return { from, to: this.#version, applied };
   }
-  migrationLog() { return [...this.#migrationLog]; }
+  async migrationLog() { return [...this.#migrationLog]; }
 
-  upsertSource({ id, accessPolicy, now }) {
+  async upsertSource({ id, accessPolicy, now }) {
     this.#sources.set(id, { id, access_policy: JSON.stringify(accessPolicy), registered_at: now });
   }
-  getSource(id) { return this.#sources.get(id) ?? null; }
-  upsertRepository() { /* repositories are not queried by the contract suite */ }
+  async getSource(id) { return this.#sources.get(id) ?? null; }
+  async upsertRepository() { /* repositories are not queried by the contract suite */ }
 
-  upsertCanonical(c) {
+  async upsertCanonical(c) {
     // NFR-004 / NFR-006 enforced here too: the invariant belongs to the DOMAIN, so
     // every adapter must uphold it, not just the one with CHECK constraints (DEC-031).
     for (const f of ['repository', 'owner', 'canonical_source_url']) {
@@ -98,11 +98,11 @@ export class MemoryCanonicalStore {
     return id;
   }
 
-  findByContentHash(h) { const id = this.#byContent.get(h); return id ? clone(this.#canonical.get(id)) : null; }
-  findByNormalisedHash(h) { const id = this.#byNormalised.get(h); return id ? clone(this.#canonical.get(id)) : null; }
-  getCanonical(id) { const r = this.#canonical.get(id); return r ? clone(r) : null; }
+  async findByContentHash(h) { const id = this.#byContent.get(h); return id ? clone(this.#canonical.get(id)) : null; }
+  async findByNormalisedHash(h) { const id = this.#byNormalised.get(h); return id ? clone(this.#canonical.get(id)) : null; }
+  async getCanonical(id) { const r = this.#canonical.get(id); return r ? clone(r) : null; }
 
-  upsertOccurrence(o) {
+  async upsertOccurrence(o) {
     const prev = this.#occurrences.get(o.occurrenceKey) ?? {};
     this.#occurrences.set(o.occurrenceKey, { ...prev,
       occurrence_key: o.occurrenceKey, source_id: o.sourceId, repo_full_name: o.repoFullName,
@@ -115,7 +115,7 @@ export class MemoryCanonicalStore {
   }
 
   /** Cursor semantics identical to the SQL adapter, implemented by sorting a list. */
-  cursorScan({ cursor = null, limit = 50 } = {}) {
+  async cursorScan({ cursor = null, limit = 50 } = {}) {
     const n = Math.min(Math.max(1, limit), 100);
     // Decoded EAGERLY: validating inside the findIndex callback meant an empty store
     // never validated the cursor at all (TC-201).
@@ -128,7 +128,7 @@ export class MemoryCanonicalStore {
     return { rows, cursor: { next, limit: n } };
   }
 
-  listOccurrences({ canonicalId, cursor = null, limit = 50 } = {}) {
+  async listOccurrences({ canonicalId, cursor = null, limit = 50 } = {}) {
     const n = Math.min(Math.max(1, limit), 100);
     const after = cursor === null ? null : decode(cursor);
     const all = [...this.#occurrences.values()]
@@ -140,7 +140,7 @@ export class MemoryCanonicalStore {
   }
 
   /** Reads the DERIVED INDEX, matching the SQL adapter's semantics exactly. */
-  search({ q, cursor = null, limit = 50 }) {
+  async search({ q, cursor = null, limit = 50 }) {
     const term = String(q).toLowerCase();
     const n = Math.min(Math.max(1, limit), 100);
     const after = cursor === null ? null : decode(cursor);
@@ -154,39 +154,39 @@ export class MemoryCanonicalStore {
     return { rows, cursor: { next: page.length === n ? encode(last.created_at + last.canonical_id) : null, limit: n } };
   }
 
-  counts() {
+  async counts() {
     return { canonical: this.#canonical.size, occurrences: this.#occurrences.size,
              repositories: 0, jobs: this.#jobs.size, tombstones: this.#tombstones.size };
   }
 
-  recordJob(j) {
+  async recordJob(j) {
     const prev = this.#jobs.get(j.jobId);
     this.#jobs.set(j.jobId, { job_id: j.jobId, skill_ref: j.skillRef, source_id: j.sourceId,
       stage: j.stage, attempt: j.attempt, status: j.status,
       started_at: prev?.started_at ?? j.startedAt,   // starting sets it; completing must not move it
       completed_at: j.completedAt ?? null, error: j.error ?? null, content_hash: j.contentHash ?? null });
   }
-  getJob(id) { const j = this.#jobs.get(id); return j ? clone(j) : null; }
-  listJobs({ skillRef }) {
+  async getJob(id) { const j = this.#jobs.get(id); return j ? clone(j) : null; }
+  async listJobs({ skillRef }) {
     return [...this.#jobs.values()].filter((j) => j.skill_ref === skillRef)
       .sort((a, b) => a.started_at.localeCompare(b.started_at)).map(clone);
   }
 
-  getCursor(id) { return this.#cursors.get(id) ?? null; }
-  setCursor(id, _src, position) { this.#cursors.set(id, position); }
+  async getCursor(id) { return this.#cursors.get(id) ?? null; }
+  async setCursor(id, _src, position) { this.#cursors.set(id, position); }
 
-  tombstone({ contentHash, reason, actor, now, provenance }) {
+  async tombstone({ contentHash, reason, actor, now, provenance }) {
     this.#tombstones.set(contentHash, { content_hash: contentHash, reason, actor,
       created_at: now, provenance_json: JSON.stringify(provenance) });
   }
-  tombstoneCount() { return this.#tombstones.size; }
-  markTombstoned({ canonicalId, now }) {
+  async tombstoneCount() { return this.#tombstones.size; }
+  async markTombstoned({ canonicalId, now }) {
     const r = this.#canonical.get(canonicalId);
     if (r) { r.tombstoned_at = now; r.content_bytes_held = 0; r.updated_at = now; }
   }
-  tombstonedCount() { return [...this.#canonical.values()].filter((r) => r.tombstoned_at).length; }
+  async tombstonedCount() { return [...this.#canonical.values()].filter((r) => r.tombstoned_at).length; }
 
-  recordRemovalRequest(r) {
+  async recordRemovalRequest(r) {
     const prev = this.#removals.get(r.requestId) ?? {};
     this.#removals.set(r.requestId, { ...prev,
       request_id: r.requestId, canonical_id: r.canonicalId ?? null, content_hash: r.contentHash ?? null,
@@ -196,19 +196,19 @@ export class MemoryCanonicalStore {
       actor: r.actor ?? null });
     return r.requestId;
   }
-  getRemovalRequest(id) { const r = this.#removals.get(id); return r ? clone(r) : null; }
-  listRemovalRequests({ repository = null, disposition = null } = {}) {
+  async getRemovalRequest(id) { const r = this.#removals.get(id); return r ? clone(r) : null; }
+  async listRemovalRequests({ repository = null, disposition = null } = {}) {
     return [...this.#removals.values()]
       .filter((r) => (!repository || r.repository === repository) &&
                      (!disposition || r.disposition === disposition))
       .sort((a, b) => a.requested_at.localeCompare(b.requested_at)).map(clone);
   }
 
-  setAnalyserVersions(id, versions) {
+  async setAnalyserVersions(id, versions) {
     const r = this.#canonical.get(id);
     if (r) r.analyser_versions = JSON.stringify(versions);
   }
-  findForReanalysis({ analyser, version, cursor = null, limit = 100 }) {
+  async findForReanalysis({ analyser, version, cursor = null, limit = 100 }) {
     const n = Math.min(Math.max(1, limit), 1000);
     const after = cursor === null ? null : decode(cursor);
     const all = [...this.#canonical.values()]
@@ -221,7 +221,7 @@ export class MemoryCanonicalStore {
 
   // ---- raw objects + derived index parity (increment 11) -------------------
 
-  upsertRawObject(r) {
+  async upsertRawObject(r) {
     const prev = this.#raw.get(r.contentHash);
     this.#raw.set(r.contentHash, { ...prev,
       content_hash: r.contentHash, object_key: r.objectKey, source_id: r.sourceId,
@@ -233,28 +233,28 @@ export class MemoryCanonicalStore {
       deleted_reason: r.deletedReason ?? prev?.deleted_reason ?? null });
     return r.contentHash;
   }
-  getRawObject(h) { const r = this.#raw.get(h); return r ? clone(r) : null; }
-  findExpiredRaw({ now, limit = 500 }) {
+  async getRawObject(h) { const r = this.#raw.get(h); return r ? clone(r) : null; }
+  async findExpiredRaw({ now, limit = 500 }) {
     return [...this.#raw.values()]
       .filter((r) => r.state === 'retained' && r.expires_at && r.expires_at <= now)
       .sort((a, b) => a.expires_at.localeCompare(b.expires_at)).slice(0, limit).map(clone);
   }
-  markRawDeleted({ contentHash, now, reason }) {
+  async markRawDeleted({ contentHash, now, reason }) {
     const r = this.#raw.get(contentHash);
     if (r) { r.state = 'deleted'; r.deleted_at = now; r.deleted_reason = reason; }
   }
-  rawCounts() {
+  async rawCounts() {
     const c = (st) => [...this.#raw.values()].filter((r) => r.state === st).length;
     return { retained: c('retained'), expired: c('expired'), deleted: c('deleted'), total: this.#raw.size };
   }
 
-  clearSearchIndex() { const n = this.#index.size; this.#index.clear(); return n; }
-  indexCanonical({ canonicalId, haystack, declaredName, createdAt, now }) {
+  async clearSearchIndex() { const n = this.#index.size; this.#index.clear(); return n; }
+  async indexCanonical({ canonicalId, haystack, declaredName, createdAt, now }) {
     this.#index.set(canonicalId, { canonical_id: canonicalId, haystack,
       declared_name: declaredName ?? null, created_at: createdAt, indexed_at: now });
   }
-  searchIndexCount() { return this.#index.size; }
-  canonicalForIndexing({ cursor = null, limit = 500 } = {}) {
+  async searchIndexCount() { return this.#index.size; }
+  async canonicalForIndexing({ cursor = null, limit = 500 } = {}) {
     const after = cursor === null ? null : decode(cursor);
     const all = [...this.#canonical.values()]
       .sort((a, b) => (a.created_at + a.id).localeCompare(b.created_at + b.id));
@@ -265,7 +265,7 @@ export class MemoryCanonicalStore {
     return { rows, cursor: { next: rows.length === limit ? encode(rows.at(-1).created_at + rows.at(-1).id) : null, limit } };
   }
 
-  digest() {
+  async digest() {
     const hashes = [...this.#canonical.values()].map((r) => r.content_hash).sort();
     const h = createHash('sha256');
     for (const x of hashes) h.update(x);

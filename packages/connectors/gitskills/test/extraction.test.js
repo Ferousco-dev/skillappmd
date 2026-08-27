@@ -67,12 +67,12 @@ test('TC-176 NFR-001 readRange is deterministic: the same range yields the same 
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('TC-177 INTERFACE CORPUS_NOT_FOUND names the recovery action', () => {
+test('TC-177 INTERFACE CORPUS_NOT_FOUND names the recovery action', async () => {
   assert.throws(() => new JsonlCorpusReader({ path: '/nope/missing.jsonl' }),
     /CORPUS_NOT_FOUND.*appmd corpus extract/s);
 });
 
-test('TC-178 DEC-024 the shard plan spreads strata across the size-ordered shards', () => {
+test('TC-178 DEC-024 the shard plan spreads strata across the size-ordered shards', async () => {
   const plan = shardPlan({ total: 10_000, strata: 10 });
   assert.equal(plan.reduce((a, p) => a + p.take, 0), 10_000, 'the plan sums to the request');
   assert.equal(plan.length, 10);
@@ -83,13 +83,13 @@ test('TC-178 DEC-024 the shard plan spreads strata across the size-ordered shard
   for (let i = 1; i < shards.length; i++) assert.ok(shards[i] > shards[i - 1], 'monotonic');
 });
 
-test('TC-179 shardPlan is exact for awkward totals', () => {
+test('TC-179 shardPlan is exact for awkward totals', async () => {
   for (const n of [1, 7, 99, 101, 9999]) {
     assert.equal(shardPlan({ total: n, strata: 10 }).reduce((a, p) => a + p.take, 0), n);
   }
 });
 
-test('TC-180 CR-005 the shard URL targets the real CC-BY-4.0 corpus', () => {
+test('TC-180 CR-005 the shard URL targets the real CC-BY-4.0 corpus', async () => {
   const u = shardUrl(7);
   assert.match(u, /^https:\/\/huggingface\.co\/datasets\/mvaccargiu\/gitskills\//);
   assert.match(u, /0007\.parquet$/);

@@ -305,3 +305,64 @@ declared gaps.
 **Note on `RSK-002`.** `REQ-004`'s absence has one accidental benefit worth recording: no live
 SkillsMP call has ever been made from this codebase, so the unresolved robots-versus-API question
 has not been acted on either way.
+
+---
+
+## `DEF-009` — the portability proof shares an assumption neither adapter can violate
+
+**Found:** 2026-08-27, first hour of Phase 2 deployment work · **Severity:** HIGH
+**Status:** OPEN · **Against:** `DEC-027`, `DATABASE.md` §8, `NFR-027`
+
+### The claim
+
+`DATABASE.md` §8 states a falsifiable test: *"the Postgres adapter can be written, and the full
+test suite pass against it, without editing one line in `skill-core/` or `ingestion/`."* `DEC-027`
+describes the SQLite → D1 move as **"a driver swap"**. G4 accepted both on the strength of
+`MemoryCanonicalStore`: zero SQL, same pipeline code, identical canonical digest.
+
+### The defect
+
+**The `CanonicalStore` port is entirely synchronous, and so are both adapters that "proved" it.**
+`node:sqlite` is synchronous. A `Map` is synchronous. The proof compared two synchronous
+implementations and concluded the port was implementation-independent.
+
+**D1's client API is asynchronous** — `stmt.first()`, `.all()`, `.run()` all return Promises
+(verified against Cloudflare's documentation, 2026-08-27). PostgreSQL drivers are asynchronous too.
+
+There are **zero `await`s on the store** anywhere in `packages/ingestion/src` or `apps/api/src`.
+`resolveOccurrence()` and `ApiRouter.handle()` are synchronous functions that return values
+directly. A D1 adapter cannot satisfy this port. The stated falsifiable test **fails** — and it
+fails at the first real attempt to use it, which is exactly what it was written to detect.
+
+### Why the existing controls did not catch it
+
+`depcheck.js` enforces *dependency direction*. The contract suite enforces *behavioural
+equivalence*. Neither can see an **I/O shape** assumption, because both adapters make the same one.
+Two implementations agreeing proves less than it appears to when they were chosen for convenience
+rather than for difference — the memory adapter was written to have no SQL, not to have different
+timing.
+
+**This is the G8 finding again in a new costume.** `C1` was a count nobody verified; this is a
+claim nobody could falsify with the adapters on hand. The lesson is the same: an assertion is only
+worth what the attempt to break it cost.
+
+### What is NOT wrong
+
+The port genuinely leaks no SQL. `MemoryCanonicalStore` has none and passes everything. That half
+of `NFR-027` holds and is worth keeping — it is why the fix is mechanical rather than a redesign.
+
+### Blast radius if the port goes async
+
+43 store call sites in domain and application code, 15 test files. `skill-core/` is untouched (it
+is pure; it never sees a store), so `DEC-027`'s deeper claim — that the *domain* is portable —
+survives.
+
+### Disposition
+
+Open pending the user's decision on `CR-008`. Deployment is blocked on it: there is no correct
+D1 adapter to write until the port's shape is settled.
+
+**CLOSED 2026-08-27** by `CR-008`. Port and all callers asynchronous; `DeferredMemoryCanonicalStore`
+added so the contract suite contains an adapter synchronous code cannot satisfy (`TC-330`). It runs
+the full contract suite AND the whole ingestion pipeline (`TC-253 [deferred+memory]`). 370/370
+passing; ladder byte-identical at every rung.

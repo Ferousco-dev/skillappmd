@@ -33,7 +33,7 @@ function distance(a, b) {
                          d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
   return d[a.length][b.length];
 }
-function nearest(word, candidates) {
+async function nearest(word, candidates) {
   const scored = candidates.map((c) => [c, distance(word, c)]).sort((x, y) => x[1] - y[1]);
   return scored[0] && scored[0][1] <= Math.max(2, Math.floor(word.length / 2)) ? scored[0][0] : null;
 }
@@ -76,9 +76,9 @@ function out(obj, human) {
   else human();
 }
 
-function open() {
+async function open() {
   const s = new SqliteCanonicalStore(DB);
-  if (s.schemaVersion() === 0) s.migrate({ now: NOW() });
+  if (await s.schemaVersion() === 0) await s.migrate({ now: NOW() });
   return s;
 }
 
@@ -88,7 +88,7 @@ try {
     // UI-005 tolerance: suggest the NEAREST noun, not merely one sharing a first letter.
     // "skil" suggesting "source" is worse than no suggestion - it sends the operator
     // to the wrong place with confidence.
-    const near = nearest(noun, Object.keys(NOUNS));
+    const near = await nearest(noun, Object.keys(NOUNS));
     console.error(`unknown noun "${noun}".${near ? ` Did you mean "${near}"?` : ''}`);
     console.error(`known nouns: ${Object.keys(NOUNS).join(', ')}`);
     process.exit(2);
@@ -99,10 +99,10 @@ try {
   }
 
   if (noun === 'doctor') {
-    const s = open();
-    const c = s.counts();
+    const s = await open();
+    const c = await s.counts();
     const report = {
-      database: DB, schema_version: s.schemaVersion(), counts: c,
+      database: DB, schema_version: await s.schemaVersion(), counts: c,
       dead_letter_queue: 'not configured in CLI context (set for consumers, DEC-025)',
       corpus_path: 'data/corpus/', timestamps: 'UTC RFC3339 (NFR-038)',
     };
@@ -129,10 +129,10 @@ try {
   }
 
   else if (noun === 'skill') {
-    const s = open();
+    const s = await open();
     const router = new ApiRouter({ store: s, clock: NOW, limiter: null });
     if (verb === 'get') {
-      const r = router.handle({ method: 'GET', path: `/api/v1/skills/${rest[0]}`, query: {} });
+      const r = await router.handle({ method: 'GET', path: `/api/v1/skills/${rest[0]}`, query: {} });
       if (r.status !== 200) { console.error(`${r.body.error.code}: ${r.body.error.message}`); process.exit(1); }
       out(r.body, () => {
         const d = r.body.data;
@@ -145,7 +145,7 @@ try {
         console.log(`  content       not served (${d.content_notice})`);
       });
     } else {
-      const r = router.handle({ method: 'GET', path: '/api/v1/skills',
+      const r = await router.handle({ method: 'GET', path: '/api/v1/skills',
         query: { cursor: flags.cursor, limit: flags.limit } });
       out(r.body, () => {
         for (const d of r.body.data) {
@@ -161,9 +161,9 @@ try {
   }
 
   else if (noun === 'occurrence' && verb === 'list') {
-    const s = open();
+    const s = await open();
     const router = new ApiRouter({ store: s, clock: NOW, limiter: null });
-    const r = router.handle({ method: 'GET', path: `/api/v1/skills/${flags.skill}/occurrences`,
+    const r = await router.handle({ method: 'GET', path: `/api/v1/skills/${flags.skill}/occurrences`,
       query: { cursor: flags.cursor, limit: flags.limit } });
     if (r.status !== 200) { console.error(`${r.body.error.code}: ${r.body.error.message}`); process.exit(1); }
     out(r.body, () => {
@@ -174,8 +174,8 @@ try {
   }
 
   else if (noun === 'job' && verb === 'list') {
-    const s = open();
-    const jobs = s.listJobs({ skillRef: flags['skill-ref'] });
+    const s = await open();
+    const jobs = await s.listJobs({ skillRef: flags['skill-ref'] });
     out({ jobs }, () => {
       for (const j of jobs) console.log(`${j.stage.padEnd(16)} ${j.status.padEnd(14)} attempt ${j.attempt}  ${j.started_at}${j.error ? `  ${j.error}` : ''}`);
       if (!jobs.length) console.log('(no jobs for that skill_ref)');
@@ -184,14 +184,14 @@ try {
   }
 
   else if (noun === 'backup') {
-    const s = open();
+    const s = await open();
     if (verb === 'create') {
       const target = flags.out ?? `data/backups/canonical-${Date.now()}.db`;
-      const r = s.backup(target);
+      const r = await s.backup(target);
       out(r, () => console.log(`backup written: ${r.path}\n  records ${r.records}\n  digest  ${r.digest}`));
     } else if (verb === 'verify') {
-      const expected = s.digest();
-      const v = SqliteCanonicalStore.verifyRestore(rest[0], expected);
+      const expected = await s.digest();
+      const v = await SqliteCanonicalStore.verifyRestore(rest[0], expected);
       out(v, () => console.log(v.ok ? `verified: ${v.reason}` : `VERIFY FAILED: ${v.reason}`));
       if (!v.ok) process.exit(1);
     } else if (verb === 'restore') {
@@ -203,7 +203,7 @@ try {
       }
       s.close();
       const restored = SqliteCanonicalStore.restore(rest[0], DB);
-      const d = restored.digest();
+      const d = await restored.digest();
       console.log(`restored ${d.records} records into ${DB}\n  digest ${d.digest}`);
       restored.close();
       process.exit(0);
@@ -212,17 +212,17 @@ try {
   }
 
   else if (noun === 'removal') {
-    const s2 = open();
+    const s2 = await open();
     const { RemovalService } = await import('../../../packages/ingestion/src/index.js');
     const svc = new RemovalService({ store: s2, clock: NOW });
     if (verb === 'request') {
       const id = flags.id ?? `rq_${Date.now().toString(36)}`;
-      const r = svc.submit({ requestId: id, canonicalId: flags.skill ?? null,
+      const r = await svc.submit({ requestId: id, canonicalId: flags.skill ?? null,
         repository: flags.repo, kind: flags.kind ?? 'removal',
         reason: flags.reason, requestedBy: flags.by });
       out(r, () => console.log(`request ${r.requestId} recorded as ${r.disposition}`));
     } else if (verb === 'list') {
-      const rows = svc.history(flags.repo);
+      const rows = await svc.history(flags.repo);
       out({ requests: rows }, () => {
         for (const q of rows) console.log(`${q.request_id}  ${q.disposition.padEnd(9)} ${q.kind.padEnd(10)} ${q.repository}  ${q.reason}`);
         if (!rows.length) console.log('(no requests)');
@@ -230,7 +230,7 @@ try {
     } else if (verb === 'action') {
       // UI-002: destructive and irreversible for the bytes. Say exactly what dies.
       if (flags.confirm !== true && flags.confirm !== 'true') {
-        const q = s2.getRemovalRequest(rest[0]);
+        const q = await s2.getRemovalRequest(rest[0]);
         console.error(`This DELETES the stored content bytes for ${q?.repository ?? 'that record'}.`);
         console.error('The provenance envelope, attribution and tombstone are PRESERVED (DEC-015).');
         console.error('Re-run with --confirm.');
@@ -244,7 +244,7 @@ try {
         console.log('  preserved     provenance envelope, attribution, tombstone (DEC-015)');
       });
     } else if (verb === 'decline') {
-      const r = svc.decline({ requestId: rest[0], actor: flags.actor ?? 'operator',
+      const r = await svc.decline({ requestId: rest[0], actor: flags.actor ?? 'operator',
                               dispositionReason: flags.reason });
       out(r, () => console.log(`declined ${r.requestId}`));
     }
@@ -252,12 +252,12 @@ try {
   }
 
   else if (noun === 'raw') {
-    const s2 = open();
+    const s2 = await open();
     const { FsObjectStore } = await import('../../../packages/adapters/fs-objectstore/src/index.js');
     const { applyRetention } = await import('../../../packages/ingestion/src/index.js');
     const objects = new FsObjectStore({ root: flags['raw-root'] ?? 'data/raw' });
     if (verb === 'status') {
-      const c = s2.rawCounts();
+      const c = await s2.rawCounts();
       out(c, () => {
         console.log(`raw root      ${objects.root}`);
         console.log(`retained      ${c.retained}`);
@@ -267,7 +267,7 @@ try {
     } else if (verb === 'retention') {
       // UI-002: deletes real bytes.
       if (flags.confirm !== true && flags.confirm !== 'true') {
-        const due = s2.findExpiredRaw({ now: NOW(), limit: 10000 }).length;
+        const due = (await s2.findExpiredRaw({ now: NOW(), limit: 10000 })).length;
         console.error(`This DELETES raw bytes for ${due} expired object(s) under ${objects.root}.`);
         console.error('The raw_objects rows and provenance envelopes are PRESERVED (DEC-015).');
         console.error('Re-run with --confirm.');
@@ -280,15 +280,15 @@ try {
   }
 
   else if (noun === 'index' && verb === 'rebuild') {
-    const s2 = open();
+    const s2 = await open();
     const { rebuildSearchIndex } = await import('../../../packages/ingestion/src/index.js');
     if (flags.confirm !== true && flags.confirm !== 'true') {
-      console.error(`This DESTROYS and rebuilds the derived search index (${s2.searchIndexCount()} entries).`);
+      console.error(`This DESTROYS and rebuilds the derived search index (${await s2.searchIndexCount()} entries).`);
       console.error('Canonical data is untouched - the index is derived and rebuildable (REQ-051).');
       console.error('Re-run with --confirm.');
       process.exit(2);
     }
-    const r = rebuildSearchIndex({ store: s2, now: NOW() });
+    const r = await rebuildSearchIndex({ store: s2, now: NOW() });
     out(r, () => {
       console.log(`dropped   ${r.dropped}`);
       console.log(`scanned   ${r.scanned}`);
@@ -301,10 +301,10 @@ try {
   }
 
   else if (noun === 'reanalyse' && verb === 'plan') {
-    const s2 = open();
+    const s2 = await open();
     const { ReanalysisService } = await import('../../../packages/ingestion/src/index.js');
     const svc = new ReanalysisService({ store: s2, clock: NOW });
-    const p = svc.plan({ analyser: flags.analyser, version: flags.version,
+    const p = await svc.plan({ analyser: flags.analyser, version: flags.version,
                          limit: Number(flags.limit ?? 1000) });
     out(p, () => {
       console.log(`analyser ${p.analyser} -> ${p.targetVersion}`);

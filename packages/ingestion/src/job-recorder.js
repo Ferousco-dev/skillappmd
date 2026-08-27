@@ -29,23 +29,23 @@ export class JobRecorder {
 
   #bump(name, n = 1) { this.#counters.set(name, (this.#counters.get(name) ?? 0) + n); }
 
-  start({ jobId, skillRef, sourceId, stage, attempt = 1, contentHash = null }) {
-    this.#store.recordJob({ jobId, skillRef, sourceId, stage, attempt,
+  async start({ jobId, skillRef, sourceId, stage, attempt = 1, contentHash = null }) {
+    await this.#store.recordJob({ jobId, skillRef, sourceId, stage, attempt,
       status: JOB_STATUS.RUNNING, startedAt: this.#clock(), contentHash });
     return jobId;
   }
 
   /** startedAt is preserved by the store; callers complete a job by identity, not by restating it. */
-  #complete(job, patch) {
-    this.#store.recordJob({ startedAt: this.#clock(), contentHash: null, ...job, ...patch });
+  async #complete(job, patch) {
+    await this.#store.recordJob({ startedAt: this.#clock(), contentHash: null, ...job, ...patch });
   }
 
-  succeed(job) {
+  async succeed(job) {
     this.#complete(job, { status: JOB_STATUS.SUCCEEDED, completedAt: this.#clock(), error: null });
     this.#bump(`${job.stage.toLowerCase()}_succeeded`);
   }
 
-  fail(job, error) {
+  async fail(job, error) {
     this.#complete(job, { status: JOB_STATUS.FAILED,
       completedAt: this.#clock(), error: String(error?.message ?? error) });
     this.#bump('failed');
@@ -57,13 +57,13 @@ export class JobRecorder {
    * Confusing bad input with system failure is how DLQs fill with noise and stop
    * being read.
    */
-  parseFailed(job, reason) {
+  async parseFailed(job, reason) {
     this.#complete(job, { stage: STAGE.PARSE_FAILED, status: JOB_STATUS.PARSE_FAILED,
       completedAt: this.#clock(), error: reason });
     this.#bump('parse_failed');
   }
 
-  deadLettered(job, error) {
+  async deadLettered(job, error) {
     this.#complete(job, { stage: STAGE.DEAD_LETTER, status: JOB_STATUS.DEAD_LETTERED,
       completedAt: this.#clock(), error: String(error?.message ?? error) });
     this.#bump('dead_lettered');
@@ -73,5 +73,5 @@ export class JobRecorder {
   counters() { return Object.fromEntries([...this.#counters].sort()); }
 
   /** REQ-084: "what happened to THIS skill?" is the operator's real question. */
-  history(skillRef) { return this.#store.listJobs({ skillRef }); }
+  async history(skillRef) { return this.#store.listJobs({ skillRef }); }
 }

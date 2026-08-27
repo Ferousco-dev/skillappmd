@@ -19,11 +19,11 @@ const conn = new GitSkillsCorpusConnector({ reader });
 const repoReader = new RepoLicenceReader();
 
 /** Canonical digest: what NFR-001's "byte-identical" actually means, made checkable. */
-function canonicalDigest(store) {
+async function canonicalDigest(store) {
   const h = createHash('sha256');
   let cursor = null, n = 0;
   do {
-    const page = store.cursorScan({ cursor, limit: 100 });
+    const page = await store.cursorScan({ cursor, limit: 100 });
     for (const r of page.rows) {
       h.update([r.id, r.content_hash, r.normalised_hash, r.rights_state,
                 String(r.rights_redistributable), r.retention_policy,
@@ -38,7 +38,7 @@ function canonicalDigest(store) {
 
 async function runOnce(records, licences) {
   const store = new SqliteCanonicalStore(':memory:');
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   const t0 = performance.now();
   let ingested = 0, parseFailed = 0, noContent = 0, unknownRights = 0;
   for (const rec of records) {
@@ -50,12 +50,12 @@ async function runOnce(records, licences) {
     const canonical = normalise({ discovery: rec, parsed, rawText: raw,
                                   repoLicence: meta?.license || null, now: NOW });
     if (canonical.rights.state === 'unknown') unknownRights++;
-    resolveOccurrence({ store, discovery: rec, canonical, fingerprints: fingerprint(raw), now: NOW });
+    await resolveOccurrence({ store, discovery: rec, canonical, fingerprints: fingerprint(raw), now: NOW });
     ingested++;
   }
   const ms = performance.now() - t0;
-  const counts = store.counts();
-  const digest = canonicalDigest(store);
+  const counts = await store.counts();
+  const digest = await canonicalDigest(store);
   store.close();
   return { ms, ingested, parseFailed, noContent, unknownRights, counts, digest };
 }

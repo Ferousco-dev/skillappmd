@@ -23,11 +23,11 @@ const path = process.argv[2] ?? 'data/corpus/artifacts-10k.jsonl';
 const rungs = (process.argv[3] ?? '100,1000,10000').split(',').map(Number);
 const mb = () => process.memoryUsage().rss / 1048576;
 
-function canonicalDigest(store) {
+async function canonicalDigest(store) {
   const h = createHash('sha256');
   let cursor = null, n = 0;
   do {
-    const page = store.cursorScan({ cursor, limit: 100 });
+    const page = await store.cursorScan({ cursor, limit: 100 });
     for (const r of page.rows) {
       h.update([r.id, r.content_hash, r.normalised_hash, r.rights_state,
                 String(r.rights_redistributable), r.retention_policy,
@@ -47,7 +47,7 @@ async function runOnce(reader, limit, total) {
   // exists to prevent, reintroduced by the file's ordering. Stride instead.
   const stride = Math.max(1, Math.floor(total / limit));
   const store = new SqliteCanonicalStore(':memory:');
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   const base = mb();
   let peak = base, seen = 0, ingested = 0, noContent = 0, parseFailed = 0, unknownRights = 0;
   const strata = new Map(), shaGroups = new Map();
@@ -88,14 +88,14 @@ async function runOnce(reader, limit, total) {
     // property of this harness, not a finding about the corpus.
     const canonical = normalise({ discovery, parsed, rawText: raw, repoLicence: null, now: NOW });
     if (canonical.rights.state === 'unknown') unknownRights++;
-    resolveOccurrence({ store, discovery, canonical, fingerprints: fingerprint(raw), now: NOW });
+    await resolveOccurrence({ store, discovery, canonical, fingerprints: fingerprint(raw), now: NOW });
     ingested++;
     if (ingested % 250 === 0) peak = Math.max(peak, mb());
   }
   peak = Math.max(peak, mb());
   const ms = performance.now() - t0;
-  const counts = store.counts();
-  const digest = canonicalDigest(store);
+  const counts = await store.counts();
+  const digest = await canonicalDigest(store);
   const dupGroups = [...shaGroups.values()].filter((v) => v > 1).length;
   store.close();
   return { ms, seen, ingested, noContent, parseFailed, unknownRights, counts, digest,

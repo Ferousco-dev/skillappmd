@@ -742,3 +742,21 @@ asking a favour rather than permission.
 Both are reported as orphans by `packages/tools/src/traceability.js` on every CI run. **A declared
 gap that a tool announces is a different thing from a gap nobody knows about** — `DEF-008` was the
 second kind, and that is precisely what made it serious.
+
+## DEC-040 — a port that models I/O is asynchronous, whether or not its first adapter needs to be
+**Status:** DECIDED · `CR-008` · closes `DEF-009`
+
+Synchrony is not an implementation detail an adapter may choose. It is a constraint the port
+imposes on **every future adapter**, and it is invisible in a contract suite whose adapters all
+happen to be synchronous.
+
+**Measured price, paid deliberately:** throughput 10,442 → **2,704 rec/s** (3.9×), pipeline memory
+119 → **124 MB** against a 128 MB budget (`RSK-010`). Determinism is unchanged — byte-identical
+re-runs at 100, 1,000 and 10,000.
+
+**Bought:** D1 and PostgreSQL become writable adapters instead of aspirations, so `DEC-027`'s
+migration path is real. `skill-core/` needed no change, which is the part of `NFR-027` that held.
+
+**The general rule:** a contract suite must contain at least one adapter that the wrong
+implementation **cannot** satisfy. `DeferredMemoryCanonicalStore` exists for exactly that and is
+not on any production path.

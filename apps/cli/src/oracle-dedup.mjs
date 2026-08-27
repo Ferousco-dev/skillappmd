@@ -24,17 +24,17 @@ const g = compareGrouping(rows);
 
 // End-to-end: run the real pipeline into a real store and observe the collapse.
 const store = new SqliteCanonicalStore(':memory:');
-store.migrate({ now: NOW });
+await store.migrate({ now: NOW });
 let ingested = 0, skipped = 0;
 for (const rec of records) {
   const raw = rec.source_payload.content;
   if (typeof raw !== 'string' || raw === '') { skipped++; continue; }
   const parsed = parseSkill(raw);
   const canonical = normalise({ discovery: rec, parsed, rawText: raw, repoLicence: null, now: NOW });
-  resolveOccurrence({ store, discovery: rec, canonical, fingerprints: fingerprint(raw), now: NOW });
+  await resolveOccurrence({ store, discovery: rec, canonical, fingerprints: fingerprint(raw), now: NOW });
   ingested++;
 }
-const counts = store.counts();
+const counts = await store.counts();
 
 console.log(`
 DEDUPLICATION ORACLE VALIDATION — REQ-047 / NFR-002
@@ -95,7 +95,7 @@ const dupGroups = [...groups.entries()].filter(([, m]) =>
   m.length > 1 && m.some((r) => typeof r.source_payload.content === 'string' && r.source_payload.content));
 
 const store2 = new SqliteCanonicalStore(':memory:');
-store2.migrate({ now: NOW });
+await store2.migrate({ now: NOW });
 let members = 0, failures = 0;
 for (const [sha, m] of dupGroups) {
   const primary = m.find((r) => typeof r.source_payload.content === 'string' && r.source_payload.content);
@@ -104,13 +104,13 @@ for (const [sha, m] of dupGroups) {
   for (const rec of m) {
     const parsed = parseSkill(raw);
     const canonical = normalise({ discovery: rec, parsed, rawText: raw, repoLicence: null, now: NOW });
-    const res = resolveOccurrence({ store: store2, discovery: rec, canonical,
+    const res = await resolveOccurrence({ store: store2, discovery: rec, canonical,
                                     fingerprints: fingerprint(raw), now: NOW });
     ids.add(res.canonicalId); members++;
   }
   if (ids.size !== 1) failures++;
 }
-const c2 = store2.counts();
+const c2 = await store2.counts();
 console.log(`
 ORACLE 3 — collapse on REAL duplicate groups (the test that actually exercises dedup)
   duplicate groups found   ${dupGroups.length}   (rows sharing a file_sha)

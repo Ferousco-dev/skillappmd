@@ -9,18 +9,18 @@ const CORPUS = syntheticCorpus({ rows: 1000 });
 const conn = () => new GitSkillsCorpusConnector({ reader: new FixtureCorpusReader(CORPUS) });
 const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
 
-test('TC-054 REQ-001/REQ-007 the connector satisfies the SourceConnector contract', () => {
+test('TC-054 REQ-001/REQ-007 the connector satisfies the SourceConnector contract', async () => {
   assert.ok(assertConnectorContract(conn()));
 });
 
-test('TC-055 REQ-006 access policy declares concurrency and permitted methods', () => {
+test('TC-055 REQ-006 access policy declares concurrency and permitted methods', async () => {
   const p = GITSKILLS_ACCESS_POLICY;
   assert.equal(p.max_concurrency, 1);
   assert.ok(Array.isArray(p.permitted_methods));
   assert.ok(!p.permitted_methods.includes('html-bulk'));
 });
 
-test('TC-056 NFR-026 CC-BY-4.0 attribution travels with the access policy', () => {
+test('TC-056 NFR-026 CC-BY-4.0 attribution travels with the access policy', async () => {
   const a = GITSKILLS_ACCESS_POLICY.attribution;
   assert.equal(a.licence, 'CC-BY-4.0');
   assert.equal(a.doi, '10.5281/zenodo.21875637');
@@ -125,7 +125,7 @@ test('TC-067 REQ-032 the verbatim source payload is retained for reprocessing', 
   }
 });
 
-test('TC-068 stratifiedPlan covers the range and sums to the requested size', () => {
+test('TC-068 stratifiedPlan covers the range and sums to the requested size', async () => {
   const plan = stratifiedPlan({ total: 3_797_117, sampleSize: 100, strata: 10 });
   assert.equal(plan.reduce((a, p) => a + p.length, 0), 100);
   assert.equal(plan.length, 10);
@@ -133,7 +133,7 @@ test('TC-068 stratifiedPlan covers the range and sums to the requested size', ()
   assert.ok(plan.at(-1).offset > 3_000_000, 'the last stratum must reach the large-file end');
 });
 
-test('TC-069 stratifiedPlan handles awkward sizes without losing records', () => {
+test('TC-069 stratifiedPlan handles awkward sizes without losing records', async () => {
   for (const n of [1, 3, 7, 13, 99, 101]) {
     const plan = stratifiedPlan({ total: 1000, sampleSize: n, strata: 10 });
     assert.equal(plan.reduce((a, p) => a + p.length, 0), n, `sampleSize ${n} must be exact`);

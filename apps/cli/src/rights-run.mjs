@@ -21,7 +21,7 @@ const repoReader = new RepoLicenceReader();
 const licences = await repoReader.lookup(records.map((r) => r.repo_full_name));
 
 const store = new SqliteCanonicalStore(':memory:');
-store.migrate({ now: NOW });
+await store.migrate({ now: NOW });
 
 const stats = { ingested: 0, skipped: 0, known: 0, unknown: 0, redistributable: 0,
                 conflicts: 0, l3Only: 0, unmappedSpdx: new Map(), retention: new Map() };
@@ -37,7 +37,7 @@ for (const rec of records) {
   const parsed = parseSkill(raw);
   const canonical = normalise({ discovery: rec, parsed, rawText: raw,
                                 repoLicence: rawLic, now: NOW });
-  resolveOccurrence({ store, discovery: rec, canonical, fingerprints: fingerprint(raw), now: NOW });
+  await resolveOccurrence({ store, discovery: rec, canonical, fingerprints: fingerprint(raw), now: NOW });
 
   stats.ingested++;
   if (canonical.rights.state === RIGHTS_STATE.KNOWN) stats.known++; else stats.unknown++;
@@ -49,9 +49,9 @@ for (const rec of records) {
 }
 
 // ── NFR-006, asserted against the STORE, not against our own in-memory objects ──
-const rows = store.cursorScan({ limit: 100 }).rows;
-let all = rows, cur = store.cursorScan({ limit: 100 }).cursor.next;
-while (cur) { const p = store.cursorScan({ cursor: cur, limit: 100 }); all = all.concat(p.rows); cur = p.cursor.next; }
+const rows = (await store.cursorScan({ limit: 100 })).rows;
+let all = rows, cur = (await store.cursorScan({ limit: 100 })).cursor.next;
+while (cur) { const p = await store.cursorScan({ cursor: cur, limit: 100 }); all = all.concat(p.rows); cur = p.cursor.next; }
 const violations = all.filter((r) => {
   if (!r.rights_redistributable) return false;
   return JSON.parse(r.licence_json).l2_repository.spdx === UNKNOWN;

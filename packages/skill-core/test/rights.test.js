@@ -7,39 +7,39 @@ import {
 
 const NOW = '2026-08-27T13:45:00Z';
 
-test('TC-001 REQ-057 recognised licences normalise to SPDX', () => {
+test('TC-001 REQ-057 recognised licences normalise to SPDX', async () => {
   assert.equal(normaliseSpdx('MIT'), 'MIT');
   assert.equal(normaliseSpdx('  apache 2.0 '), 'Apache-2.0');
   assert.equal(normaliseSpdx('GPL-3.0'), 'GPL-3.0');
 });
 
-test('TC-002 REQ-057 unrecognised licence becomes UNKNOWN, never a guess', () => {
+test('TC-002 REQ-057 unrecognised licence becomes UNKNOWN, never a guess', async () => {
   for (const v of ['some custom licence', '', null, undefined, 'NOASSERTION', 'other']) {
     assert.equal(normaliseSpdx(v), UNKNOWN, `expected UNKNOWN for ${JSON.stringify(v)}`);
   }
 });
 
-test('TC-003 REQ-058 L2 present and permissive => known + redistributable', () => {
+test('TC-003 REQ-058 L2 present and permissive => known + redistributable', async () => {
   const r = computeRights({ l2: { spdx: 'MIT', evidence: 'repos.license' } }, { now: NOW });
   assert.equal(r.state, RIGHTS_STATE.KNOWN);
   assert.equal(r.redistributable, true);
   assertRightsInvariant(r);
 });
 
-test('TC-004 REQ-058 no licence at any layer => unknown, not redistributable', () => {
+test('TC-004 REQ-058 no licence at any layer => unknown, not redistributable', async () => {
   const r = computeRights({}, { now: NOW });
   assert.equal(r.state, RIGHTS_STATE.UNKNOWN);
   assert.equal(r.redistributable, false);
 });
 
-test('TC-005 DEC-018 L3 claim WITHOUT L2 backing does not establish a licence', () => {
+test('TC-005 DEC-018 L3 claim WITHOUT L2 backing does not establish a licence', async () => {
   const r = computeRights({ l3: { spdx: 'Apache-2.0', evidence: 'frontmatter.license' } }, { now: NOW });
   assert.equal(r.state, RIGHTS_STATE.UNKNOWN, 'a claim is not authority');
   assert.equal(r.redistributable, false);
   assert.match(r.basis, /claim is not authority/);
 });
 
-test('TC-006 DEC-018 unknown is an EXPLICIT state, not all-false booleans', () => {
+test('TC-006 DEC-018 unknown is an EXPLICIT state, not all-false booleans', async () => {
   const r = computeRights({}, { now: NOW });
   // The distinction that matters: indexable/linkable stay true, and `state` carries the
   // fact that the denial rests on ABSENT evidence rather than evidence of prohibition.
@@ -50,7 +50,7 @@ test('TC-006 DEC-018 unknown is an EXPLICIT state, not all-false booleans', () =
   assert.notEqual(r.state, undefined, 'unknown must be representable, not inferred from booleans');
 });
 
-test('TC-007 REQ-060 L2/L3 conflict retains both, flags it, applies the more restrictive', () => {
+test('TC-007 REQ-060 L2/L3 conflict retains both, flags it, applies the more restrictive', async () => {
   const lic = resolveLicence({
     l2: { spdx: 'GPL-3.0', evidence: 'repos.license' },
     l3: { spdx: 'MIT', evidence: 'frontmatter.license' },
@@ -61,24 +61,24 @@ test('TC-007 REQ-060 L2/L3 conflict retains both, flags it, applies the more res
   assert.equal(lic.effective, 'GPL-3.0', 'more restrictive wins');
 });
 
-test('TC-008 NFR-006 redistributable=true without L2 evidence is unrepresentable', () => {
+test('TC-008 NFR-006 redistributable=true without L2 evidence is unrepresentable', async () => {
   const forged = computeRights({}, { now: NOW });
   forged.redistributable = true;                       // simulate a defect downstream
   assert.throws(() => assertRightsInvariant(forged), /NFR-006|REQ-058/);
 });
 
-test('TC-009 LICENSING.md copyleft is not redistributable in Phase 1', () => {
+test('TC-009 LICENSING.md copyleft is not redistributable in Phase 1', async () => {
   const r = computeRights({ l2: { spdx: 'AGPL-3.0', evidence: 'repos.license' } }, { now: NOW });
   assert.equal(r.state, RIGHTS_STATE.KNOWN, 'the licence IS known');
   assert.equal(r.redistributable, false, 'but Phase 1 does not redistribute copyleft');
 });
 
-test('TC-010 REQ-098/DEC-019 retention is rights-aware and defaults non-permanent', () => {
+test('TC-010 REQ-098/DEC-019 retention is rights-aware and defaults non-permanent', async () => {
   assert.equal(retentionFor(computeRights({}, { now: NOW })), RETENTION_POLICY.PROCESS_THEN_DELETE);
   assert.equal(retentionFor(computeRights({ l2: { spdx: 'GPL-3.0' } }, { now: NOW })), RETENTION_POLICY.SHORT);
   assert.equal(retentionFor(computeRights({ l2: { spdx: 'MIT' } }, { now: NOW })), RETENTION_POLICY.STANDARD);
 });
 
-test('TC-011 NFR-038 rights computation refuses an implicit clock', () => {
+test('TC-011 NFR-038 rights computation refuses an implicit clock', async () => {
   assert.throws(() => computeRights({ l2: { spdx: 'MIT' } }), /UTC timestamp/);
 });

@@ -23,11 +23,11 @@ const replay = (key) => async () => ({
 });
 const conn = (over = {}) => new SkillsMPConnector({ fetchImpl: replay('search_pdf'), ...over });
 
-test('TC-299 REQ-001/REQ-007 SkillsMPConnector satisfies the SourceConnector contract', () => {
+test('TC-299 REQ-001/REQ-007 SkillsMPConnector satisfies the SourceConnector contract', async () => {
   assert.ok(assertConnectorContract(conn()));
 });
 
-test('TC-300 REQ-026 the connector refuses to impersonate a browser or another bot', () => {
+test('TC-300 REQ-026 the connector refuses to impersonate a browser or another bot', async () => {
   for (const bad of ['Mozilla/5.0 (Macintosh)', 'Googlebot/2.1', 'Chrome/120', 'curl/8.0']) {
     assert.throws(() => new SkillsMPConnector({ userAgent: bad }), /REQ-026 violated/,
       `"${bad}" must be refused at construction`);
@@ -89,7 +89,7 @@ test('TC-304 DEC-014 identity comes from GitHub coordinates, not the SkillsMP id
   assert.equal(/skillsmp/.test(id.repo_full_name), false);
 });
 
-test('TC-305 repoFromGithubUrl parses the real URL shapes SkillsMP returns', () => {
+test('TC-305 repoFromGithubUrl parses the real URL shapes SkillsMP returns', async () => {
   assert.deepEqual(
     repoFromGithubUrl('https://github.com/openclaw/openclaw/tree/main/skills/nano-pdf'),
     { owner: 'openclaw', repo: 'openclaw', full_name: 'openclaw/openclaw', path: 'skills/nano-pdf' });
@@ -98,7 +98,7 @@ test('TC-305 repoFromGithubUrl parses the real URL shapes SkillsMP returns', () 
   assert.equal(repoFromGithubUrl(null), null);
 });
 
-test('TC-306 DEC-002 getContent returns NotAvailable: SkillsMP hosts no content', () => {
+test('TC-306 DEC-002 getContent returns NotAvailable: SkillsMP hosts no content', async () => {
   const got = conn().getContent();
   assert.equal(got.status, 'NotAvailable');
   assert.match(got.reason, /does not host/);
@@ -127,7 +127,7 @@ test('TC-309 REQ-004 a real API error is surfaced with its own code, not a gener
   await assert.rejects(() => c.discover({ q: 'anything' }), /MISSING_QUERY/);
 });
 
-test('TC-310 REQ-025 the circuit breaker opens on repeated failure and reports its state', () => {
+test('TC-310 REQ-025 the circuit breaker opens on repeated failure and reports its state', async () => {
   let now = 0;
   const b = new CircuitBreaker({ threshold: 3, cooldownMs: 1000, clock: () => now });
   assert.equal(b.state, BREAKER_STATE.CLOSED);

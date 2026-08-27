@@ -20,7 +20,7 @@ export class ApiRouter {
   }
 
   /** @param {{method:string,path:string,query?:object,clientId?:string}} req */
-  handle(req) {
+  async handle(req) {
     const requestId = this.#ids();
     const generatedAt = this.#clock();
     const reply = (status, body, headers = {}) => ({ status, body, headers });
@@ -58,13 +58,13 @@ export class ApiRouter {
     try {
       if (path === `/api/${API_VERSION}/health`) {
         // Health reports liveness. A cached health check is a lie about the present.
-        return reply(200, { status: 'ok', schema_version: this.#store.schemaVersion(),
+        return reply(200, { status: 'ok', schema_version: await this.#store.schemaVersion(),
                             generated_at: generatedAt }, NO_STORE);
       }
 
       if (path === `/api/${API_VERSION}/skills`) {
         const limit = clampLimit(q.limit);
-        const page = this.#store.cursorScan({ cursor: q.cursor ?? null, limit });
+        const page = await this.#store.cursorScan({ cursor: q.cursor ?? null, limit });
         return cached(envelope(page.rows.map(serialiseSkill),
           { requestId, generatedAt, cursor: page.cursor }), 'collection');
       }
@@ -72,28 +72,28 @@ export class ApiRouter {
       let m = path.match(new RegExp(`^/api/${API_VERSION}/skills/([^/]+)/occurrences$`));
       if (m) {
         const canonicalId = decodeURIComponent(m[1]);
-        if (!this.#store.getCanonical(canonicalId)) return this.#notFound('skill', canonicalId, requestId);
+        if (!(await this.#store.getCanonical(canonicalId))) return this.#notFound('skill', canonicalId, requestId);
         const limit = clampLimit(q.limit);
-        const page = this.#store.listOccurrences({ canonicalId, cursor: q.cursor ?? null, limit });
+        const page = await this.#store.listOccurrences({ canonicalId, cursor: q.cursor ?? null, limit });
         const body = envelope(page.rows.map(serialiseOccurrence),
           { requestId, generatedAt, cursor: page.cursor });
         // An occurrence carries no rights block of its own. It inherits the parent
         // record's decision rather than defaulting to cacheable - a location is still a
         // fact about work whose licence we may not know.
-        const parentRights = JSON.parse(this.#store.getCanonical(canonicalId).rights_json);
+        const parentRights = JSON.parse((await this.#store.getCanonical(canonicalId)).rights_json);
         return cached(body, 'collection', parentRights?.cacheable === true);
       }
 
       m = path.match(new RegExp(`^/api/${API_VERSION}/skills/([^/]+)$`));
       if (m) {
-        const row = this.#store.getCanonical(decodeURIComponent(m[1]));
+        const row = await this.#store.getCanonical(decodeURIComponent(m[1]));
         if (!row) return this.#notFound('skill', m[1], requestId);
         return cached(envelope(serialiseSkill(row), { requestId, generatedAt }), 'detail');
       }
 
       m = path.match(new RegExp(`^/api/${API_VERSION}/sources/([^/]+)$`));
       if (m) {
-        const src = this.#store.getSource?.(decodeURIComponent(m[1]));
+        const src = await this.#store.getSource?.(decodeURIComponent(m[1]));
         if (!src) return this.#notFound('source', m[1], requestId);
         // A source record is AppMD's own configuration, not third-party work: no rights
         // block, so it cannot go through isCacheable(). It is safe to cache and short-lived.
@@ -108,7 +108,7 @@ export class ApiRouter {
           return reply(400, errorBody('MISSING_QUERY', 'Parameter "q" is required.', requestId));
         }
         const limit = clampLimit(q.limit);
-        const page = this.#store.search({ q: term, cursor: q.cursor ?? null, limit });
+        const page = await this.#store.search({ q: term, cursor: q.cursor ?? null, limit });
         return cached(envelope(page.rows.map(serialiseSkill),
           { requestId, generatedAt, cursor: page.cursor }), 'collection');
       }

@@ -29,7 +29,7 @@ const production = () => sources().filter((f) => !/[/\\](test|fixtures)[/\\]/.te
 
 // ---------------------------------------------------------------- security
 
-test('TC-275 NFR-019 no secret or key material appears anywhere in source control', () => {
+test('TC-275 NFR-019 no secret or key material appears anywhere in source control', async () => {
   const patterns = [
     [/sk_live_[A-Za-z0-9]{8,}/, 'a live API key'],
     [/ghp_[A-Za-z0-9]{20,}/, 'a GitHub token'],
@@ -47,7 +47,7 @@ test('TC-275 NFR-019 no secret or key material appears anywhere in source contro
   assert.deepEqual(offenders, [], 'source control must contain no credential material');
 });
 
-test('TC-276 NFR-020 credentials are read from the environment, never written as literals', () => {
+test('TC-276 NFR-020 credentials are read from the environment, never written as literals', async () => {
   // Every credential-shaped read goes through process.env or an injected parameter.
   const offenders = [];
   for (const f of production()) {
@@ -59,7 +59,7 @@ test('TC-276 NFR-020 credentials are read from the environment, never written as
   assert.deepEqual(offenders, []);
 });
 
-test('TC-277 NFR-019/REQ-086 no log statement can emit a raw record or a credential', () => {
+test('TC-277 NFR-019/REQ-086 no log statement can emit a raw record or a credential', async () => {
   const offenders = [];
   for (const f of production()) {
     const text = readFileSync(f, 'utf8');
@@ -80,7 +80,7 @@ test('TC-277 NFR-019/REQ-086 no log statement can emit a raw record or a credent
   assert.deepEqual(offenders, [], 'no log line interpolates raw content or a credential');
 });
 
-test('TC-278 REQ-027/NFR-024 the system contains no circumvention mechanism', () => {
+test('TC-278 REQ-027/NFR-024 the system contains no circumvention mechanism', async () => {
   const forbidden = [
     /user[-_]?agent\s*[:=]\s*['"][^'"]*(Mozilla|Chrome|Safari|Googlebot|bingbot)/i,
     /\bbypass[A-Z_]?(robots|ratelimit|rate_limit|captcha)/i,
@@ -95,7 +95,7 @@ test('TC-278 REQ-027/NFR-024 the system contains no circumvention mechanism', ()
   assert.deepEqual(offenders, [], 'no user-agent impersonation, no limit or bot-detection evasion');
 });
 
-test('TC-279 REQ-026 the fetcher identifies AppMD truthfully and contactably', () => {
+test('TC-279 REQ-026 the fetcher identifies AppMD truthfully and contactably', async () => {
   // Inspect the DEFAULT VALUES assigned to a userAgent, not every mention of a browser
   // name. SkillsMPConnector legitimately contains /Mozilla|Googlebot/ inside the regex
   // that REFUSES impersonation - a detector that flagged that would have punished the
@@ -117,7 +117,7 @@ test('TC-279 REQ-026 the fetcher identifies AppMD truthfully and contactably', (
   assert.match(connector, /REQ-026 violated/, 'a bad User-Agent is rejected, not just avoided');
 });
 
-test('TC-280 REQ-080/NFR-021 no execution path for third-party content exists', () => {
+test('TC-280 REQ-080/NFR-021 no execution path for third-party content exists', async () => {
   const dangerous = [/\beval\s*\(/, /new\s+Function\s*\(/, /child_process/, /\bexecSync\b/,
                      /\bspawnSync\b/, /vm\.runIn/];
   const offenders = [];
@@ -129,7 +129,7 @@ test('TC-280 REQ-080/NFR-021 no execution path for third-party content exists', 
     'skill content is instructions for an agent; executing it IS the attack');
 });
 
-test('TC-281 REQ-093/NFR-036 the API layer references no unnecessary personal field', () => {
+test('TC-281 REQ-093/NFR-036 the API layer references no unnecessary personal field', async () => {
   const banned = /\b(email|real_name|full_name|follower|contribution_history|phone|address)\b/;
   const offenders = [];
   for (const f of production().filter((p) => p.includes(`${join('apps', 'api')}`))) {
@@ -141,7 +141,7 @@ test('TC-281 REQ-093/NFR-036 the API layer references no unnecessary personal fi
 
 // ---------------------------------------------------------------- portability
 
-test('TC-282 NFR-027 every port has at least two adapters, one needing no cloud account', () => {
+test('TC-282 NFR-027 every port has at least two adapters, one needing no cloud account', async () => {
   const adapters = readdirSync(join(ROOT, 'packages', 'adapters'));
   const byPort = {
     CanonicalStore: adapters.filter((a) => /sqlite|memory-store|postgres/.test(a)),
@@ -159,7 +159,7 @@ test('TC-282 NFR-027 every port has at least two adapters, one needing no cloud 
   assert.ok(byPort.CanonicalStore.some((a) => /sqlite|memory/.test(a)));
 });
 
-test('TC-283 NFR-028/NFR-029 domain layers import no vendor SDK and no I/O module', () => {
+test('TC-283 NFR-028/NFR-029 domain layers import no vendor SDK and no I/O module', async () => {
   const pure = ['packages/skill-core/src', 'packages/ports/src'];
   const forbidden = /from\s+['"](node:fs|node:http|node:net|node:child_process|parquet-wasm|apache-arrow|@cloudflare)/;
   for (const layer of pure) {
@@ -180,7 +180,7 @@ test('TC-283 NFR-028/NFR-029 domain layers import no vendor SDK and no I/O modul
   } finally { rmSync(probe, { force: true }); }
 });
 
-test('TC-284 NFR-030 unit tests declare no network primitive', () => {
+test('TC-284 NFR-030 unit tests declare no network primitive', async () => {
   const netCall = /\b(fetch|XMLHttpRequest)\s*\(|from\s+['"]node:(http|https|net|dgram)['"]/;
   const offenders = [];
   for (const f of sources().filter((p) => /[/\\]test[/\\]/.test(p))) {
@@ -194,7 +194,7 @@ test('TC-284 NFR-030 unit tests declare no network primitive', () => {
   assert.deepEqual(offenders, [], 'no test performs real network I/O');
 });
 
-test('TC-285 NFR-016 no pipeline stage requires a paid cloud plan to run locally', () => {
+test('TC-285 NFR-016 no pipeline stage requires a paid cloud plan to run locally', async () => {
   // Every adapter used by the default local composition is offline-capable.
   const r2 = readFileSync(join(ROOT, 'packages/adapters/r2-objectstore/src/index.js'), 'utf8');
   assert.match(r2, /R2NotConfiguredError/, 'the cloud adapter fails loudly rather than silently');
@@ -206,7 +206,7 @@ test('TC-285 NFR-016 no pipeline stage requires a paid cloud plan to run locally
 
 // ---------------------------------------------------------------- cost and scale
 
-test('TC-286 NFR-015 Phase 1 contains no LLM or embedding call site', () => {
+test('TC-286 NFR-015 Phase 1 contains no LLM or embedding call site', async () => {
   const aiCall = /openai|anthropic\.|\.embeddings|createEmbedding|chat\.completions|@anthropic-ai|inference\.run/i;
   const offenders = [];
   for (const f of production()) {
@@ -225,7 +225,7 @@ test('TC-286 NFR-015 Phase 1 contains no LLM or embedding call site', () => {
   assert.deepEqual(offenders, [], 'zero AI spend is a property of the code, not a promise');
 });
 
-test('TC-287 NFR-018 the corpus footprint stays inside its stated cap', () => {
+test('TC-287 NFR-018 the corpus footprint stays inside its stated cap', async () => {
   const dir = join(ROOT, 'data', 'corpus');
   if (!existsSync(dir)) return;                       // nothing fetched in this environment
   let bytes = 0;
@@ -233,7 +233,7 @@ test('TC-287 NFR-018 the corpus footprint stays inside its stated cap', () => {
   assert.ok(bytes <= 1024 ** 3, `corpus is ${(bytes / 1e6).toFixed(1)} MB, cap is 1 GB`);
 });
 
-test('TC-288 NFR-034 the architecture names its next binding constraint at each milestone', () => {
+test('TC-288 NFR-034 the architecture names its next binding constraint at each milestone', async () => {
   const scaling = readFileSync(join(ROOT, 'docs/SCALING.md'), 'utf8');
   for (const milestone of ['1M', '10M', '100M', '1B']) {
     assert.ok(scaling.includes(milestone), `SCALING.md must address ${milestone}`);
@@ -245,7 +245,7 @@ test('TC-288 NFR-034 the architecture names its next binding constraint at each 
   assert.match(scaling, /operational complexity, not cost/);
 });
 
-test('TC-289 NFR-031 no production module loads a whole dataset into memory', () => {
+test('TC-289 NFR-031 no production module loads a whole dataset into memory', async () => {
   // Cursor or streaming APIs only: a readFileSync over corpus data would breach NFR-014.
   const offenders = [];
   for (const f of production()) {
@@ -257,7 +257,7 @@ test('TC-289 NFR-031 no production module loads a whole dataset into memory', ()
   assert.deepEqual(offenders, [], 'corpus access is streamed, never slurped');
 });
 
-test('TC-290 NFR-017 derived results are keyed by content hash and analyser version', () => {
+test('TC-290 NFR-017 derived results are keyed by content hash and analyser version', async () => {
   const raw = readFileSync(join(ROOT, 'packages/ingestion/src/reanalysis.js'), 'utf8');
   assert.match(raw, /analyser/, 'the analyser identity is part of the key');
   assert.match(raw, /idempotencyKey:\s*`reanalyse:\$\{analyser\}:\$\{version\}:\$\{a\.id\}`/,

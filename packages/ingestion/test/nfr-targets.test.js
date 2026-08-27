@@ -21,9 +21,9 @@ import { contentHash } from '../../skill-core/src/index.js';
 const NOW = '2026-08-27T13:45:00Z';
 const clock = () => NOW;
 
-function rig() {
+async function rig() {
   const store = new SqliteCanonicalStore(':memory:');
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   return { store, objects: new MemoryObjectStore() };
 }
 
@@ -48,7 +48,7 @@ test('TC-291 NFR-002/REQ-047 dedup agreement is MEASURED against the oracle, off
   assert.ok(theirs.size > 100, 'the sample is large enough for the number to mean something');
 });
 
-test('TC-292 NFR-003/REQ-041 parser validity is comparable to the oracle column, offline', () => {
+test('TC-292 NFR-003/REQ-041 parser validity is comparable to the oracle column, offline', async () => {
   const corpus = syntheticCorpus({ rows: 1200 });
   let tp = 0, tn = 0, fp = 0, fn = 0;
   const disagreements = [];
@@ -73,7 +73,7 @@ test('TC-292 NFR-003/REQ-041 parser validity is comparable to the oracle column,
 });
 
 test('TC-293 NFR-011 canonical processing throughput is MEASURED, not asserted', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const N = 500;
   const t0 = performance.now();
   for (let i = 0; i < N; i++) {
@@ -90,12 +90,12 @@ test('TC-293 NFR-011 canonical processing throughput is MEASURED, not asserted',
   // DEC-034's measured target: 10,000 records of canonical processing in <=10 seconds.
   assert.ok(perTenThousand <= 10_000,
     `extrapolated ${Math.round(perTenThousand)}ms per 10,000; the measured target is 10,000ms`);
-  assert.equal(store.counts().canonical, N);
+  assert.equal((await store.counts()).canonical, N);
   store.close();
 });
 
 test('TC-294 NFR-014 the pipeline stays inside its memory budget at scale', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   const base = process.memoryUsage().rss / 1048576;
   let peak = base;
   for (let i = 0; i < 2000; i++) {
@@ -114,7 +114,7 @@ test('TC-294 NFR-014 the pipeline stays inside its memory budget at scale', asyn
   store.close();
 });
 
-test('TC-295 NFR-013 fetch concurrency is configurable per source and defaults within the Workers ceiling', () => {
+test('TC-295 NFR-013 fetch concurrency is configurable per source and defaults within the Workers ceiling', async () => {
   const p = GITSKILLS_ACCESS_POLICY;
   assert.equal(typeof p.max_concurrency, 'number');
   assert.ok(p.max_concurrency >= 1 && p.max_concurrency <= 6,
@@ -124,11 +124,11 @@ test('TC-295 NFR-013 fetch concurrency is configurable per source and defaults w
   assert.notEqual(other.max_concurrency, p.max_concurrency);
 });
 
-test('TC-296 REQ-066 the list endpoint paginates by cursor and never by offset', () => {
+test('TC-296 REQ-066 the list endpoint paginates by cursor and never by offset', async () => {
   const store = new SqliteCanonicalStore(':memory:');
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   const router = new ApiRouter({ store, clock, limiter: null });
-  const r = router.handle({ method: 'GET', path: '/api/v1/skills',
+  const r = await router.handle({ method: 'GET', path: '/api/v1/skills',
                             query: { offset: 40, page: 3, limit: 10 } });
   assert.equal(r.status, 200);
   assert.ok('cursor' in r.body, 'the response is cursor-shaped');
@@ -139,13 +139,13 @@ test('TC-296 REQ-066 the list endpoint paginates by cursor and never by offset',
   store.close();
 });
 
-test('TC-297 REQ-077/REQ-078/REQ-079 a bare score is structurally unrepresentable', () => {
+test('TC-297 REQ-077/REQ-078/REQ-079 a bare score is structurally unrepresentable', async () => {
   const store = new SqliteCanonicalStore(':memory:');
-  store.migrate({ now: NOW });
+  await store.migrate({ now: NOW });
   const router = new ApiRouter({ store, clock, limiter: null });
   // ETH-001 condition 1: the API cannot emit a score without findings, because no score
   // field exists at all in Phase 1. This asserts the ABSENCE is structural, not a habit.
-  const health = router.handle({ method: 'GET', path: '/api/v1/health', query: {} });
+  const health = await router.handle({ method: 'GET', path: '/api/v1/health', query: {} });
   const serialiserSource = serialiseSkill.toString();
   assert.equal(/trust_score|risk_level|safety_score/.test(serialiserSource), false,
     'REQ-077: no score field can be serialised, so none can be emitted without evidence');
@@ -162,15 +162,15 @@ test('TC-297 REQ-077/REQ-078/REQ-079 a bare score is structurally unrepresentabl
 });
 
 test('TC-298 REQ-079 the notice on every response disclaims certification', async () => {
-  const { store, objects } = rig();
+  const { store, objects } = await rig();
   await ingestRecord({ store, objects,
     discovery: { source: 'gitskills', external_id: 'o/r:S.md', repo_full_name: 'o/r', path: 'S.md',
       author: 'o', url: 'https://github.com/o/r/blob/HEAD/S.md', discovered_at: NOW, source_payload: {} },
     rawText: '---\nname: n\ndescription: d\n---\nB', repoLicence: 'MIT', now: NOW });
-  rebuildSearchIndex({ store, now: NOW });
+  await rebuildSearchIndex({ store, now: NOW });
   const router = new ApiRouter({ store, clock, limiter: null });
   for (const path of ['/api/v1/skills', '/api/v1/search']) {
-    const r = router.handle({ method: 'GET', path, query: { q: 'n' } });
+    const r = await router.handle({ method: 'GET', path, query: { q: 'n' } });
     assert.match(r.body.notice, /does not certify or verify any skill/,
       `${path} must carry the disclaimer`);
   }

@@ -57,7 +57,7 @@ export async function storeRaw({ objects, store, discovery, rawText, rights, now
 
   const put = await objects.put(hash, rawText, meta);
 
-  store.upsertRawObject({
+  await store.upsertRawObject({
     contentHash: hash, objectKey: hash, sourceId: discovery.source,
     sourceUrl: discovery.url, sourceVersionRef: meta.source_version_ref,
     retrievedAt: meta.retrieved_at, sizeBytes: put.bytes,
@@ -75,7 +75,7 @@ export async function storeRaw({ objects, store, discovery, rawText, rights, now
  */
 export async function readRaw({ objects, store, contentHash: hash, purpose }) {
   assertRawPurpose(purpose);
-  const record = store.getRawObject(hash);
+  const record = await store.getRawObject(hash);
   const obj = await objects.get(hash);
   if (!obj) throw new RawUnavailableError(hash, record?.state);
   return { bytes: obj.bytes, text: obj.bytes.toString('utf8'), meta: obj.meta, record };
@@ -87,20 +87,20 @@ export async function readRaw({ objects, store, contentHash: hash, purpose }) {
  */
 export async function applyRetention({ objects, store, now, limit = 500, reason = 'retention expiry' }) {
   assertObjectStoreContract(objects);
-  const due = store.findExpiredRaw({ now, limit });
+  const due = await store.findExpiredRaw({ now, limit });
   let deleted = 0, alreadyGone = 0;
   for (const r of due) {
     const removed = await objects.delete(r.content_hash);
     removed ? deleted++ : alreadyGone++;
-    store.markRawDeleted({ contentHash: r.content_hash, now, reason });
+    await store.markRawDeleted({ contentHash: r.content_hash, now, reason });
   }
-  return { considered: due.length, deleted, alreadyGone, counts: store.rawCounts() };
+  return { considered: due.length, deleted, alreadyGone, counts: await store.rawCounts() };
 }
 
 /** Deletion driven by an author request rather than by the clock (REQ-063). */
 export async function deleteRawFor({ objects, store, contentHash: hash, now, reason }) {
   assertObjectStoreContract(objects);
   const removed = await objects.delete(hash);
-  store.markRawDeleted({ contentHash: hash, now, reason });
+  await store.markRawDeleted({ contentHash: hash, now, reason });
   return { deleted: removed };
 }

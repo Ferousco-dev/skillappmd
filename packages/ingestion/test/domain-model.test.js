@@ -16,7 +16,7 @@ import { occurrenceKey, resolveRelationship, contentHash, normalisedHash,
  */
 const NOW = '2026-08-27T13:45:00Z';
 
-test('TC-239 DOM-002 canonical identity is opaque and never derived from mutable data', () => {
+test('TC-239 DOM-002 canonical identity is opaque and never derived from mutable data', async () => {
   // A CanonicalSkill id must not encode name, stars, URL or any attribute that can change.
   const id = `cs_${contentHash('body').slice(7, 27)}`;
   assert.match(id, /^cs_[0-9a-f]{20}$/);
@@ -27,7 +27,7 @@ test('TC-239 DOM-002 canonical identity is opaque and never derived from mutable
   assert.equal(id, a);
 });
 
-test('TC-240 DOM-003/DEC-014 identity derives from origin coordinates, not an aggregator id', () => {
+test('TC-240 DOM-003/DEC-014 identity derives from origin coordinates, not an aggregator id', async () => {
   const key = occurrenceKey({ source: 'gitskills', repoFullName: 'owner/repo',
                               path: 'SKILL.md', contentHash: 'sha256:abc' });
   assert.ok(key.includes('owner/repo'), 'GitHub coordinates are present');
@@ -40,7 +40,7 @@ test('TC-240 DOM-003/DEC-014 identity derives from origin coordinates, not an ag
     'if SkillsMP vanished, zero canonical identities would be invalidated');
 });
 
-test('TC-241 DOM-004 EXACT_DUPLICATE iff raw content hashes are equal', () => {
+test('TC-241 DOM-004 EXACT_DUPLICATE iff raw content hashes are equal', async () => {
   const same = resolveRelationship(
     { contentHash: 'h', normalisedHash: 'n' },
     { contentHash: 'h', normalisedHash: 'n', canonicalId: 'cs_1' });
@@ -53,7 +53,7 @@ test('TC-241 DOM-004 EXACT_DUPLICATE iff raw content hashes are equal', () => {
   assert.equal(near.relationship, RELATIONSHIP.NEAR_DUPLICATE);
 });
 
-test('TC-242 DOM-005 the relationship vocabulary is closed and complete', () => {
+test('TC-242 DOM-005 the relationship vocabulary is closed and complete', async () => {
   assert.deepEqual(Object.keys(RELATIONSHIP).sort(),
     ['ALTERNATIVE', 'DUPLICATE_OF', 'EXACT_DUPLICATE', 'FORK', 'MIRROR',
      'NEAR_DUPLICATE', 'RELATED', 'UNRELATED', 'VERSION'].filter((k) => k in RELATIONSHIP).sort());
@@ -62,7 +62,7 @@ test('TC-242 DOM-005 the relationship vocabulary is closed and complete', () => 
   for (const v of Object.values(RELATIONSHIP)) assert.equal(typeof v, 'string');
 });
 
-test('TC-243 DOM-007 licence is three INDEPENDENT layers, never collapsed', () => {
+test('TC-243 DOM-007 licence is three INDEPENDENT layers, never collapsed', async () => {
   const l = resolveLicence({
     l1: { spdx: 'CC-BY-4.0', evidence: 'zenodo' },
     l2: { spdx: 'MIT', evidence: 'repos.license' },
@@ -76,7 +76,7 @@ test('TC-243 DOM-007 licence is three INDEPENDENT layers, never collapsed', () =
   assert.equal(l.conflict, true, 'L2 and L3 disagree and it is flagged');
 });
 
-test('TC-244 DOM-008 rights are COMPUTED, with unknown as an explicit state', () => {
+test('TC-244 DOM-008 rights are COMPUTED, with unknown as an explicit state', async () => {
   const known = computeRights({ l2: { spdx: 'MIT' } }, { now: NOW });
   const unknown = computeRights({}, { now: NOW });
   // Computed: a basis and a timestamp accompany every posture.
@@ -92,7 +92,7 @@ test('TC-244 DOM-008 rights are COMPUTED, with unknown as an explicit state', ()
     { i: false, l: false, r: false }, 'unknown is a STATE, not the absence of permissions');
 });
 
-test('TC-245 DOM-009 the repository is the attribution unit and attribution is mandatory', () => {
+test('TC-245 DOM-009 the repository is the attribution unit and attribution is mandatory', async () => {
   const full = { repository: 'owner/repo', owner: 'owner', canonical_source_url: 'https://x' };
   assert.ok(assertAttribution(full));
   for (const f of Object.keys(full)) {
@@ -101,7 +101,7 @@ test('TC-245 DOM-009 the repository is the attribution unit and attribution is m
   }
 });
 
-test('TC-246 DOM-010 raw is content-addressed, so identity cannot drift from content', () => {
+test('TC-246 DOM-010 raw is content-addressed, so identity cannot drift from content', async () => {
   const a = 'raw bytes';
   assert.equal(contentHash(a), contentHash(a), 'deterministic');
   assert.notEqual(contentHash(a), contentHash(a + ' '), 'one byte changes identity');
@@ -110,7 +110,7 @@ test('TC-246 DOM-010 raw is content-addressed, so identity cannot drift from con
   assert.equal(normalisedHash('a\r\nb'), normalisedHash('a\nb'));
 });
 
-test('TC-247 DOM-011 the four temporal facts are distinct and never conflated', () => {
+test('TC-247 DOM-011 the four temporal facts are distinct and never conflated', async () => {
   const temporal = { first_commit_at: '2026-01-01T00:00:00Z', last_commit_at: '2026-07-01T00:00:00Z',
                      discovered_at: '2026-08-10T00:00:00Z', last_verified_at: NOW };
   const keys = Object.keys(temporal);
@@ -120,7 +120,7 @@ test('TC-247 DOM-011 the four temporal facts are distinct and never conflated', 
   assert.ok(temporal.discovered_at < temporal.last_verified_at);
 });
 
-test('TC-248 DOM-013/REQ-092 identity resolves to three classes with different privacy weight', () => {
+test('TC-248 DOM-013/REQ-092 identity resolves to three classes with different privacy weight', async () => {
   assert.equal(classifyIdentity({ isRepository: true }), IDENTITY_CLASS.REPOSITORY);
   assert.equal(classifyIdentity({ isOrganisation: true }), IDENTITY_CLASS.ORGANISATION);
   assert.equal(classifyIdentity({}), IDENTITY_CLASS.INDIVIDUAL);
@@ -129,7 +129,7 @@ test('TC-248 DOM-013/REQ-092 identity resolves to three classes with different p
   assert.throws(() => assertPersonalFieldPurpose({ email: {} }), /REQ-092/);
 });
 
-test('TC-249 REQ-056 the three licence layers are recorded independently with evidence', () => {
+test('TC-249 REQ-056 the three licence layers are recorded independently with evidence', async () => {
   const only2 = resolveLicence({ l2: { spdx: 'MIT', evidence: 'repos.license' } });
   assert.equal(only2.l2_repository.spdx, 'MIT');
   assert.equal(only2.l3_declared.spdx, UNKNOWN, 'an absent layer is UNKNOWN, not inherited');
@@ -137,7 +137,7 @@ test('TC-249 REQ-056 the three licence layers are recorded independently with ev
   assert.equal(only2.conflict, false);
 });
 
-test('TC-250 REQ-059 rights carry indexable, linkable, redistributable and their basis', () => {
+test('TC-250 REQ-059 rights carry indexable, linkable, redistributable and their basis', async () => {
   const r = computeRights({ l2: { spdx: 'MIT', evidence: 'repos.license' } }, { now: NOW });
   for (const f of ['indexable', 'linkable', 'redistributable', 'cacheable', 'basis', 'computed_at', 'state']) {
     assert.ok(f in r, `rights must carry ${f}`);
@@ -145,7 +145,7 @@ test('TC-250 REQ-059 rights carry indexable, linkable, redistributable and their
   assert.match(r.basis, /L2 repository licence MIT/, 'the basis names the evidence that produced it');
 });
 
-test('TC-251 NFR-036 no personal field is stored without a stated provenance purpose', () => {
+test('TC-251 NFR-036 no personal field is stored without a stated provenance purpose', async () => {
   // Data minimisation as a schema rule rather than a policy document.
   assert.throws(() => assertPersonalFieldPurpose({ email: {}, real_name: {} }), /REQ-092/);
   assert.throws(() => assertPersonalFieldPurpose({ follower_graph: { purpose: '' } }), /REQ-092/);
@@ -154,7 +154,7 @@ test('TC-251 NFR-036 no personal field is stored without a stated provenance pur
     repo_full_name: { purpose: 'identity and attribution' } }));
 });
 
-test('TC-252 DOM-006 origins are classifiable, and the two kinds never overlap', () => {
+test('TC-252 DOM-006 origins are classifiable, and the two kinds never overlap', async () => {
   const fact = sourceFact('gitskills', 'frontmatter.name');
   const inf = appmdInference('rights-engine', '0.1.0');
   assert.equal(originKind(fact), ORIGIN_KIND.SOURCE_FACT);

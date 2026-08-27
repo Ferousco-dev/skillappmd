@@ -24,19 +24,19 @@ export class ReanalysisService {
   }
 
   /** Records which analyser at which version produced the current derived values. */
-  stamp(canonicalId, versions) {
-    this.#store.setAnalyserVersions(canonicalId, versions, this.#clock());
+  async stamp(canonicalId, versions) {
+    await this.#store.setAnalyserVersions(canonicalId, versions, this.#clock());
   }
 
   /**
    * Identifies affected records without enqueuing anything. `--dry-run` exists so an
    * operator can see the blast radius before paying for it (UI-002 tolerance).
    */
-  plan({ analyser, version, limit = 1000 }) {
+  async plan({ analyser, version, limit = 1000 }) {
     const affected = [];
     let cursor = null;
     do {
-      const page = this.#store.findForReanalysis({ analyser, version, cursor, limit: 500 });
+      const page = await this.#store.findForReanalysis({ analyser, version, cursor, limit: 500 });
       affected.push(...page.rows.map((r) => ({ id: r.id, contentHash: r.content_hash,
         currentVersion: JSON.parse(r.analyser_versions ?? '{}')[analyser] ?? null })));
       cursor = page.cursor.next;
@@ -51,7 +51,7 @@ export class ReanalysisService {
    */
   async enqueue({ analyser, version, trigger = REANALYSIS_TRIGGER.ANALYSER_VERSION,
                   queueName = 'reanalysis', limit = 1000, dryRun = false }) {
-    const { affected, count } = this.plan({ analyser, version, limit });
+    const { affected, count } = await this.plan({ analyser, version, limit });
     if (dryRun || !this.#queue) {
       return { enqueued: 0, planned: count, dryRun: true, trigger, affected };
     }

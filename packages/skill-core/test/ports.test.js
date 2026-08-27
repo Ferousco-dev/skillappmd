@@ -8,34 +8,34 @@ const stub = (over = {}) => {
   return Object.assign(c, over);
 };
 
-test('TC-030 REQ-001 a connector missing a contract method is rejected', () => {
+test('TC-030 REQ-001 a connector missing a contract method is rejected', async () => {
   const c = stub(); delete c.discover;
   assert.throws(() => assertConnectorContract(c), /REQ-001/);
 });
 
-test('TC-031 REQ-007 a connector with no access policy cannot register', () => {
+test('TC-031 REQ-007 a connector with no access policy cannot register', async () => {
   assert.throws(() => assertConnectorContract(stub({ accessPolicy: () => null })), /REQ-007/);
 });
 
-test('TC-032 REQ-006 access policy must declare concurrency and permitted methods', () => {
+test('TC-032 REQ-006 access policy must declare concurrency and permitted methods', async () => {
   assert.throws(() => assertConnectorContract(stub({ accessPolicy: () => ({ max_concurrency: 6 }) })), /REQ-006/);
 });
 
-test('TC-033 NFR-024 bulk HTML retrieval is not an acceptable permitted method', () => {
+test('TC-033 NFR-024 bulk HTML retrieval is not an acceptable permitted method', async () => {
   assert.throws(() => assertConnectorContract(
     stub({ accessPolicy: () => ({ max_concurrency: 6, permitted_methods: ['html-bulk'] }) })), /NFR-024/);
 });
 
-test('TC-034 DEC-025 a consumer refuses to start without a dead letter queue', () => {
+test('TC-034 DEC-025 a consumer refuses to start without a dead letter queue', async () => {
   assert.throws(() => assertQueueConfig({ maxAttempts: 3 }), /DEC-025/);
   assert.ok(assertQueueConfig({ deadLetterQueue: 'dlq', maxAttempts: 3 }));
 });
 
-test('TC-035 REQ-019 maxAttempts must be bounded and positive', () => {
+test('TC-035 REQ-019 maxAttempts must be bounded and positive', async () => {
   assert.throws(() => assertQueueConfig({ deadLetterQueue: 'dlq', maxAttempts: 0 }), /REQ-019/);
 });
 
-test('TC-036 DEC-025 the queue port declares at-least-once with no ordering guarantee', () => {
+test('TC-036 DEC-025 the queue port declares at-least-once with no ordering guarantee', async () => {
   assert.equal(Queue.guarantees.delivery, 'at-least-once');
   assert.equal(Queue.guarantees.ordering, 'none');
   assert.equal(Queue.guarantees.requiresIdempotentConsumer, true);
