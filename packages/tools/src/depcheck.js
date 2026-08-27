@@ -32,6 +32,9 @@ const RULES = [
  */
 const QUARANTINED = [
   { pkg: /^parquet-wasm(\/|$)/, allowedIn: 'packages/connectors/gitskills/src/' },
+  // apache-arrow is parquet-wasm's documented companion: parquet-wasm emits Arrow IPC
+  // bytes, not JS objects. Quarantined identically (DEC-037).
+  { pkg: /^apache-arrow(\/|$)/, allowedIn: 'packages/connectors/gitskills/src/' },
 ];
 const QUARANTINE_SCAN = ['packages', 'apps'];
 

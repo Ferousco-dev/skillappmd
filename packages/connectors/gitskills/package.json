@@ -9,7 +9,8 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "parquet-wasm": "0.7.2"
+    "parquet-wasm": "0.7.2",
+    "apache-arrow": "^18.0.0"
   },
-  "appmdNotes": "parquet-wasm is quarantined to this package (CR-005). It sits behind the CorpusReader seam and must never be imported by skill-core, ports, ingestion or apps."
+  "appmdNotes": "parquet-wasm and its documented companion apache-arrow are quarantined to this package (CR-005, DEC-037). They sit behind the CorpusReader seam and must never be imported by skill-core, ports, ingestion or apps. Enforced by packages/tools/src/depcheck.js."
 }

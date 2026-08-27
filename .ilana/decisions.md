@@ -638,3 +638,48 @@ separate AppMD inference and is not graded against it. `DEC-033` confirmed.
 Both risks were found by running against real data rather than by review. Worth noting that
 neither was a coding error: one was a **requirement that named an implementation** and the other a
 **metric that compared incomparable things**. Both would have passed any amount of code review.
+
+---
+
+## DEC-036 — `NFR-014` split: pipeline stays at 128 MB; batch extraction is exempt with its own budget
+**Status:** DECIDED · user approval 2026-08-27 · **closes `CR-006`** · evidence `docs/research/R4-PARQUET-MEMORY.md`
+
+| Component | Budget | Runtime | Worker-compatible |
+| --- | --- | --- | --- |
+| Ingestion/pipeline stages | **≤128 MB, unchanged** | either | **yes** |
+| Edge runtime (API) | **≤128 MB, unchanged** | Workers | yes |
+| **Parquet corpus extraction** | **exempt, ~1.2 GB observed** | **batch only** | **no, by architecture** |
+
+**Why the exemption is honest rather than convenient.** `DATABASE.md` §7 recorded at G2 that the
+corpus connector cannot run in a Worker. The 128 MB figure exists to keep *pipeline stages*
+Worker-compatible; applying it to a component already excluded from Workers constrained nothing and
+blocked sound work. The measurement (`R4`) made a category error in our own SRS visible.
+
+**Binding constraints on the exemption — it is a carve-out, not a licence:**
+
+1. Isolated behind the corpus connector boundary, enforced by the `parquet-wasm` quarantine lint.
+2. `parquet-wasm` only. Never `skill-core`, never `ports`, never the edge runtime.
+3. Writes an intermediate representation to `data/corpus/*.jsonl`.
+4. The downstream pipeline consumes that representation **within ≤128 MB**.
+5. Deterministic ordering and source provenance preserved end to end.
+6. **Never loads the entire extracted corpus into memory** — streaming write, streaming read.
+
+*The exemption buys exactly one thing: permission for an acquisition step to hold one shard's
+column chunk. Everything downstream of the JSONL boundary is unchanged.*
+
+---
+
+## DEC-037 — `apache-arrow` admitted as `parquet-wasm`'s decoder, quarantined identically
+**Status:** DECIDED · evidence: `parquet-wasm` `RecordBatch` exposes only `intoIPCStream()`
+
+`parquet-wasm` emits **Arrow IPC bytes, not JavaScript values**. Its documented usage is
+`arrow.tableFromIPC(batch.intoIPCStream())`, so `apache-arrow` is not a second capability — it is
+the mandated library's decoder, without which `parquet-wasm` produces nothing usable.
+
+Admitted under the **same quarantine** as `parquet-wasm`: allowed only in
+`packages/connectors/gitskills/src/`, enforced by lint, proven to fail the build when planted in
+`skill-core`. Recorded rather than absorbed silently, because "the dependency you approved needs
+another one" is exactly the kind of drift that should be visible.
+
+Footprint: `parquet-wasm` 19 MB + `apache-arrow` 12 MB = **31 MB, batch runtime only**. Zero
+dependencies remain in `skill-core`, `ports`, `ingestion`, `adapters` and both apps.

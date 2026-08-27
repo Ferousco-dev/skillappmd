@@ -354,3 +354,8 @@ Measured separately, the split is clean:
 **Also requested:** approve the two-phase extraction of `R4` §5 option B — a one-time offline
 extraction writing selected rows to `data/corpus/*.jsonl`, which the ladder then consumes within
 128 MB. This keeps the honest memory claim where it belongs and needs no rule broken.
+
+### DISPOSITION — 2026-08-27: **APPROVED (A + B)**
+
+`NFR-014` amended. Extraction classified as a batch-only acquisition step with six binding
+constraints (`DEC-036`). The pipeline budget is **unchanged at 128 MB**. **CR-006 CLOSED.**

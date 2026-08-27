@@ -374,7 +374,7 @@ requirements; the following are.
 | **NFR-011** | **MEASURED** (`DEC-034`, supersedes the provisional figure of `DEC-017`). The pipeline shall complete **canonical processing** of a 10,000-occurrence batch in **≤10 seconds** on the development machine. Observed 2026-08-27: **958 ms** (10,442 rec/s) at the corpus's measured mean body of 4,425 B. Scope excludes network fetch, which is bounded by source rate limits (`REQ-024`) and measured separately. |
 | **NFR-012** | `GET /api/v1/skills/:id` shall respond in ≤200 ms at p95 against a 10,000-skill store, measured locally. |
 | **NFR-013** | Fetch concurrency shall be configurable per source and shall default to ≤6 simultaneous outgoing connections, matching the Workers ceiling so local behaviour predicts production behaviour (R1 §6.3). |
-| **NFR-014** | Memory use per worker process shall stay ≤128 MB, matching the Workers isolate limit, so no design depends on headroom production will not have. |
+| **NFR-014** | **AMENDED** (`CR-006`, `DEC-036`). Memory use shall stay **≤128 MB for every ingestion/pipeline stage and for the edge runtime**, matching the Workers isolate limit, so no Worker-bound design depends on headroom production will not have. **Batch-only Parquet corpus extraction is exempt** and carries its own stated budget: it is architecturally excluded from Workers (`DATABASE.md` §7) and the source shards contain single very large row groups (`R4`). Observed 2026-08-27: ingestion pipeline **58 MB delta** at 10,000 records; extraction peak **~1.2 GB**. The exemption covers acquisition only and does not relax the pipeline budget. |
 
 ### 5.4 Cost
 

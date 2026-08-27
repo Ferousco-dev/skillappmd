@@ -97,3 +97,68 @@ belongs, and does not require breaking a rule approved an hour ago.
 
 **Blocked on criterion 4 only.** Per the instruction not to proceed until the exit condition is
 demonstrated with evidence, work stops here.
+
+---
+
+## 7. Post-amendment results (2026-08-27, after `CR-006` / `DEC-036`)
+
+### Extraction — batch-only, exempt
+
+| | |
+| --- | --- |
+| Rows written | **10,000** |
+| Shards touched | 0, 3, 7, 10, 13, 17, 20, 23, 27, 30 |
+| Output | `data/corpus/artifacts-10k.jsonl`, 71.6 MB |
+| **Peak RSS** | **1,887 MB** (exempt, `DEC-036`) |
+| Duration | 900 s (~90 s per shard) |
+
+Written incrementally, one shard open at a time, `free()` and `gc()` between shards. The extracted
+corpus is never held in memory at either end.
+
+### Ladder — pipeline, budget still binding
+
+| Rung | Ingested | Canonical | Collapsed | Pipeline delta | ≤128 MB | Deterministic |
+| ---: | ---: | ---: | ---: | ---: | :--- | :--- |
+| 100 | 48 | 48 | 0 | **24 MB** | YES | PASS |
+| 1,000 | 461 | 461 | 0 | **21 MB** | YES | PASS |
+| **10,000** | **4,678** | **4,665** | **13** | **85 MB** | **YES** | **PASS** |
+
+Stratification at every rung: **10 strata, equal counts** (1000 each at the 10,000 rung).
+
+### The dedup finding this rung existed to produce
+
+Across 4,678 content-bearing real records:
+
+- **4,678 distinct `content_hash` values — zero exact duplicates.**
+- **4,665 distinct `normalised_hash` values — 13 near-duplicate groups.**
+
+The corpus's own `file_sha` grouping also reports zero duplicates here. **AppMD found 13 duplicate
+pairs that byte-identical hashing — including the corpus's own oracle — could not see.**
+
+Two of them, with byte counts:
+
+```
+create-tldr-page/SKILL.md      Balkonsen/HA_AI_Gen_Workflow      6331 bytes
+                               ComeOnOliver/skillshub            6332 bytes
+shipping-and-launch/SKILL.md   Edz1k/edtaxi_frontend             9859 bytes
+                               abdtirtayasa24/myworkflows-skills 9858 bytes
+```
+
+The same skill, in two unrelated repositories, differing by **one byte** — a trailing newline or
+line ending. `content_hash` says different; `normalised_hash` says same.
+
+**This is `DEC-012`'s two-tier design validated on real data, and it is the first measured evidence
+that AppMD's deduplication is strictly better than the oracle it is graded against.** At 0.28% of
+the sample it is not a large effect — but across 3.8M occurrences it is thousands of skills that
+byte-hashing alone would have counted twice.
+
+### Two harness flaws caught before they became evidence
+
+1. **Sub-rungs sampled stratum 0 only.** The JSONL is written stratum by stratum, so taking the
+   first *n* rows reproduced the exact head-sampling error `DEC-024` exists to prevent — this time
+   introduced by the *file's* ordering rather than the corpus's. Fixed with a stride; all rungs now
+   show even stratification.
+2. **`rights unknown` read 100%**, which looks like a corpus finding and is not. The ladder passes
+   `repoLicence: null` deliberately so it runs offline and reproducibly (`NFR-030`). The output now
+   says **"100% BY CONSTRUCTION"**. Real licence resolution was measured in increment 7: 68.7%
+   unknown against actual repository licences.

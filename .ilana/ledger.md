@@ -654,3 +654,40 @@ That satisfies every criterion without breaking the CR-002 trigger approved this
 
 STOPPED, per the instruction not to proceed until the exit condition is demonstrated
 with evidence. Criterion 4 is not demonstrable as literally written.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 9b COMPLETE - 10,000 REAL RECORDS
+CR-006 approved (A+B). NFR-014 amended: 128 MB binds ingestion/pipeline stages and the edge
+runtime; batch-only Parquet extraction is exempt with its own stated budget (DEC-036).
+
+DEC-037: apache-arrow admitted as parquet-wasm's decoder. parquet-wasm emits Arrow IPC bytes,
+not JS values, so it is the mandated library's decoder rather than a second capability.
+Quarantined identically. Total footprint 31 MB, batch runtime only. Recorded rather than
+absorbed silently, because "the dependency you approved needs another one" should be visible.
+
+EXIT CONDITION - all seven criteria, with evidence:
+  1 DETERMINISM      byte-identical rerun at 100, 1,000 and 10,000. Digest at 10,000:
+                     sha256:3395ecec4fae19418462778, identical across two independent runs
+                     AND across two separate ladder invocations hours apart.
+  2 STRATIFICATION   10 strata, 1000 rows each at the 10,000 rung; shards 0,3,7,10,13,17,20,
+                     23,27,30 spanning the size-ordered range.
+  3 DEDUP + ORACLE   4,678 distinct content hashes (zero exact duplicates) but only 4,665
+                     distinct NORMALISED hashes - 13 near-duplicate groups. The corpus's own
+                     file_sha oracle also reports zero. AppMD found 13 duplicate pairs that
+                     byte-identical hashing, INCLUDING THE ORACLE, cannot see: the same skill
+                     in two unrelated repos differing by ONE BYTE (trailing newline).
+                     First measured evidence that our dedup is strictly better than its oracle.
+  4 MEMORY           pipeline delta 24 / 21 / 85 MB at the three rungs - all within 128 MB.
+                     Extraction peaked at 1,887 MB under the DEC-036 exemption.
+  5 RETRY CLASS.     TC-136/TC-137 unchanged and passing; 422 permanent, 500/504 retried.
+  6 ISOLATION        both quarantined packages proven to fail the build when planted in
+                     skill-core and ingestion respectively.
+  7 SUITE            180 / 180 tests pass.
+
+TWO HARNESS FLAWS CAUGHT BEFORE THEY BECAME EVIDENCE:
+  - Sub-rungs sampled stratum 0 only, because the JSONL is written stratum by stratum. That is
+    the head-sampling error DEC-024 exists to prevent, reintroduced by the FILE's ordering
+    rather than the corpus's. Fixed with a stride.
+  - "rights unknown 100%" looked like a corpus finding and was not: the ladder passes
+    repoLicence null so it runs offline (NFR-030). Now labelled "BY CONSTRUCTION".
+
+180 tests, 180 pass.
