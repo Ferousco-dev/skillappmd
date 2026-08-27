@@ -84,7 +84,7 @@ test('TC-335 REQ-102/REQ-103 the skill carries the rights rules and the origin-f
 });
 
 test('TC-336 REQ-105 the API base is overridable so the resolver is testable before deployment', () => {
-  assert.equal(apiBase({}), 'https://skill.appmd.dev');
+  assert.equal(apiBase({}), 'https://api.skillappmd.dev');
   assert.equal(apiBase({ APPMD_API: 'http://localhost:8787' }), 'http://localhost:8787');
 });
 

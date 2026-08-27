@@ -56,4 +56,4 @@ export function install({ home, cwd, project = false, dir = null, force = false,
 }
 
 /** The base the resolver will talk to. REQ-105: overridable so this is testable locally. */
-export const apiBase = (env = process.env) => env.APPMD_API || 'https://skill.appmd.dev';
+export const apiBase = (env = process.env) => env.APPMD_API || 'https://api.skillappmd.dev';

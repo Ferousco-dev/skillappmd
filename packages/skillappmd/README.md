@@ -23,7 +23,7 @@ agent's skills directory rather than trusting a path we guessed.
 When it is about to write a capability it does not have, it asks:
 
 ```
-GET https://skill.appmd.dev/api/v1/search?q=extract+text+from+a+scanned+pdf
+GET https://api.skillappmd.dev/api/v1/search?q=extract+text+from+a+scanned+pdf
 ```
 
 and gets back candidates with their origin repository, licence layers and rights state. It then
