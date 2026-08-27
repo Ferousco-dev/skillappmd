@@ -42,7 +42,7 @@ independent of my judgement on any given day:
 
 | Attribute | Score | Evidence |
 | --- | --- | --- |
-| **Correctness** | **STRONG** | 139/139 mandatory requirements traced to a test; 334/334 passing; oracle agreement 97.7% (parser) and 100% (dedup grouping) against a corpus we did not create; byte-identical re-runs at three rungs |
+| **Correctness** | **STRONG** | 139/139 mandatory requirements traced to a test; 344/344 executions of 318 distinct cases passing; oracle agreement 97.7% (parser) and 100% (dedup grouping) against a corpus we did not create; byte-identical re-runs at three rungs |
 | **Reliability** | **PARTIAL** | Failure injection at row *n* leaves 1..*n*−1 byte-identical; `SIGKILL` resume with no duplicates; retry/DLQ semantics proven. **But: no system has run continuously for any length of time.** MTBF is `UNVERIFIED` and will stay so until something is deployed |
 | **Efficiency** | **STRONG** | 10,442 records/s canonical processing; API p95 **0.02 ms** against a 200 ms target; pipeline memory 119 MB against a 128 MB budget; full corpus ingest costed at ~$17 once, ~$2/month |
 | **Usability** | **PARTIAL** | All five UI principles assessed against named commands; 10 system tests drive the real CLI; `--json` on every read; `--confirm` on every destructive action; typo suggestions by edit distance. **But: no real operator other than the author has used it.** Task-completion rate is `UNVERIFIED` |

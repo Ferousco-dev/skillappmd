@@ -32,3 +32,54 @@ verify the quality, safety, or functionality of any skill."*
 **Status:** folded into `DEC-006` and tracked as `RSK-004`.
 Authors did not opt in to AppMD indexing. Attribution and canonical source URL are therefore
 **mandatory fields, not optional metadata**, and any redistribution decision defaults to deny.
+
+---
+
+## Closure review — 2026-08-27, G8 criterion 9
+
+### `ETH-001` — trust and security scores about third parties' code — **DISPOSITIONED**
+
+**Raised at G0 as blocking at G2. Conditions met in design at G2, verified against the running
+implementation at G4.** All six executed against a live API response, not asserted from the design:
+
+| Condition | Verified |
+| --- | --- |
+| Score accompanied by findings and evidence | **No numeric score field exists at all** — a bare score is not representable |
+| Framed as a signal, never certification | `notice` carries *"does not certify or verify any skill"* |
+| Absence of findings ≠ "safe" | The word does not appear in any response |
+| A stated appeal route before public exposure | `RemovalService`, `REQ-063`, mandatory in Phase 1 |
+| Analyser id, version and timestamp travel with every score | `assertInference` throws without them |
+| Findings are AppMD inference, machine-readably | `appmd_inference:` in `field_origins`, on the wire |
+
+**Status: conditions met. The underlying risk (`RSK-007`) remains deferred**, because conditions
+being met is not the same as the risk being gone — it means the risk is *governed*. Phase 1
+publishes no score, so nothing has yet been tested against a real author's objection.
+
+### `ETH-002` — attribution and author control — **DISPOSITIONED**
+
+Authors did not opt in to being indexed. What was built rather than promised:
+
+- Attribution is a **write-time invariant** — a record without it cannot be stored (`NFR-004`)
+- **100%** of canonical records carry repository, owner and canonical source URL
+- Removal is **mandatory in Phase 1** (`REQ-063`), promoted from S to M at the user's direction
+  precisely because it shapes the data model
+- Removal deletes **real bytes** while the provenance envelope and attribution survive (`DEC-015`)
+- Personal data limited to provenance necessity; a person-linked field without a stated purpose is
+  **not stored** (`REQ-092`)
+
+**Status: implemented and tested.** `TC-231` proves an author removal deletes real bytes; `TC-183`
+proves attribution survives it.
+
+### The ethics finding that was not raised as one
+
+Recorded here because closure is where it belongs. **`DEC-018` and `DEC-019` — both reversed by the
+user at G1 — were ethics findings wearing engineering clothes.**
+
+Collapsing `unknown` rights into all-false booleans, and retaining unlicensed content indefinitely,
+were not merely technical errors. Each would have shaped how AppMD treats work belonging to people
+with no relationship to this project. Neither was flagged by `[ethics-officer]`; both were caught by
+a stakeholder reading the SRS.
+
+**Lesson for the next run:** the ethics register should be reviewed against the *data model*, not
+only against features that obviously look ethical. `DOM-008` was a data-shape decision with an
+ethical consequence, and no gate criterion asked that question.

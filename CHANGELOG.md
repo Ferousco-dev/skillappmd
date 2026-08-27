@@ -75,6 +75,6 @@ a traceability checker in CI that reports orphan requirements.
 
 ### Evidence
 
-334 tests · 139/139 mandatory requirements traced · 10,000 real records ingested with
+318 test cases · 139/139 mandatory requirements traced · 10,000 real records ingested with
 byte-identical re-runs · 100 records reprocessed with **0 network calls** · 13 near-duplicates found
 that the corpus's own oracle cannot see · rollback rehearsed, RTO 3 ms.

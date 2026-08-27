@@ -976,3 +976,31 @@ before execution testing.
 Criteria 2,3,4,6,8,9 PASS. Criterion 1 PARTIAL (plan not written before construction,
 not backdated). Criterion 5 WAIVED (no independent auditor exists; finding A2).
 Phase 08 Process Assessment opens.
+
+## 2026-08-27 | G8 | conductor | GATE PASS — RUN CLOSED
+Criteria 1-9 PASS (9 performed above rigour 3). Criterion 10 NOT CLAIMED (R5, out of scope).
+Criterion 8 qualified: ONBOARDING.md untested on a real newcomer.
+
+Finding C1: "334 tests" quoted since G5 was the runner's execution count reported under the
+label test cases. Counted directly: 314 declared cases (TC-001..TC-314, contiguous, no gaps),
+340 executions, the difference being contract suites running one case against several adapters.
+MET-005 corrected 334->314, MET-006 83->78/KLOC, MET-031 added for executions. Gate records
+left unedited - they are accurate as execution counts and no verdict turned on the difference.
+The TC counter was hand-maintained with no instrument checking it against assigned ids;
+requirements had a traceability checker, test-case identity did not.
+
+RSK-004 and RSK-007 deferred with owner [ethics-officer] and named triggers, not closed.
+ETH-001 and ETH-002 dispositioned; both verified against the running system.
+
+Closing number: 8 review findings before code ran, 7 defects in construction, 1 at G5,
+0 after release (proves nothing - nothing is deployed). Prevention ratio 93.8%.
+Change carried forward: subsystem-coverage.js, owner [planner], starts at G2 next run,
+target 0 unassigned subsystems.
+
+Phase 1 closed.
+
+## 2026-08-27 | G8 | conductor | POST-GATE CORRECTION
+The G8 process change shipped without a test of its own. Added TC-315..TC-318: the checker
+passes a clean plan, fails on a subsystem with no increment, fails on an increment absent
+from ROADMAP.md, and passes against this repository. Mutation-checked - removing
+process.exitCode=1 turns two of the four red. Counts resynced: 318 cases, 344 executions.

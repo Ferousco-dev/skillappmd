@@ -80,7 +80,7 @@ project did not create.
 | # | Criterion | Target | Actual |
 | --- | --- | --- | --- |
 | 1 | Test plan exists | yes | this document |
-| 2 | Unit tests pass | 100% | **334/334** |
+| 2 | Unit tests pass | 100% | **344/344 executions of 318 cases** |
 | 3 | Every `REQ`/`NFR` maps to a `TC` | no orphans | **139/139 mandatory. 2 orphans remain, both priority S and declared (`DEC-039`)** |
 | 4 | Integration covers module boundaries | every port | 14 tests, every port, 3 adapter combinations |
 | 5 | System testing against the SRS | yes | 10 tests, CLI as a child process |

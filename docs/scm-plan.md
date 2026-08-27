@@ -40,7 +40,7 @@ so it survives a second contributor arriving.
 main ────●────●────●────●────●────  every commit is a passing gate or an increment
 ```
 
-**Trunk-based.** `main` is always green: 334 tests, dependency lint clean, secret scan clean.
+**Trunk-based.** `main` is always green: 318 test cases (344 executions), dependency lint clean, secret scan clean.
 
 **When a second person joins**, and not before:
 

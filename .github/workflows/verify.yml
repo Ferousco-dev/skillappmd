@@ -61,3 +61,8 @@ jobs:
 
       - name: Traceability has no orphan requirement
         run: node packages/tools/src/traceability.js
+
+      # G8 process change: both Phase-1 gate failures were subsystems the architecture
+      # specified and the plan never assigned. Nothing compared the two documents.
+      - name: Every in-scope subsystem is assigned to an increment
+        run: node packages/tools/src/subsystem-coverage.js .

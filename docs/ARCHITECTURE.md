@@ -86,25 +86,35 @@ leaked dependency** — that is the test, and it is checkable.
 
 ## 5. Subsystem map (BRIEF §5 → this architecture)
 
-| Brief subsystem | Module | Phase 1 |
-| --- | --- | --- |
-| Source connectors | `connectors/` | ✅ 3 |
-| Discovery engine | `ingestion/discovery` | ✅ |
-| Ingestion queue / workers | `ports/Queue` + `ingestion/stages` | ✅ |
-| Raw storage | `ports/ObjectStore` | ✅ |
-| Parser / normaliser | `ingestion/parse`, `ingestion/normalise` | ✅ |
-| Fingerprint / dedup | `skill-core/identity` | ✅ |
-| Provenance | `skill-core/provenance` | ✅ |
-| Licensing | `skill-core/rights` | ✅ |
-| Security analysis | `ingestion/security` | ⚠ deterministic signals only |
-| AI understanding | — | ❌ future |
-| Capability engine | — | ❌ future |
-| Skill graph | — | ❌ future |
-| Search | `apps/api/search` | ⚠ keyword only |
-| Vector index | — | ❌ future |
-| Resolution / composition / master skills | — | ❌ future |
-| API / CLI | `apps/api`, `apps/cli` | ✅ |
-| MCP | — | ❌ future |
+**Every Phase-1 subsystem names the increment that delivers it.** This column exists because its
+absence caused both gate failures in Phase 1: `raw storage` and `SkillsMPConnector` were each
+specified here and never assigned to an increment, so both were absent while every test passed
+(`docs/retrospective.md` §2). The mapping is now checked mechanically by
+`packages/tools/src/subsystem-coverage.js`.
+
+| Brief subsystem | Module | Phase 1 | Increment |
+| --- | --- | --- | --- |
+| Source connectors | `connectors/` | ✅ | 3, 12 |
+| Discovery engine | `ingestion/discovery` | ✅ | 3 |
+| Ingestion queue / workers | `ports/Queue` + `ingestion/stages` | ✅ | 4 |
+| Raw storage | `ports/ObjectStore` | ✅ | 11 |
+| Parser / normaliser | `ingestion/parse`, `ingestion/normalise` | ✅ | 5 |
+| Fingerprint / dedup | `skill-core/identity` | ✅ | 6 |
+| Provenance | `skill-core/provenance` | ✅ | 7 |
+| Licensing | `skill-core/rights` | ✅ | 7 |
+| Canonical storage | `ports/CanonicalStore` | ✅ | 2 |
+| Derived index rebuild | `ingestion/rebuild` | ✅ | 11 |
+| Author removal | `ingestion/removal` | ✅ | 10 |
+| Re-analysis | `ingestion/reanalysis` | ✅ | 10 |
+| API / CLI | `apps/api`, `apps/cli` | ✅ | 8 |
+| Security analysis | `ingestion/security` | ⚠ | deferred — deterministic signals only |
+| AI understanding | — | ❌ | future |
+| Capability engine | — | ❌ | future |
+| Skill graph | — | ❌ | future |
+| Vector index | — | ❌ | future |
+| Search | `apps/api/search` | ⚠ | 11 — keyword only |
+| Resolution / composition / master skills | — | ❌ | future |
+| MCP | — | ❌ | future |
 
 **Every ❌ has a seat at the table and no chair pulled out.** `skill-core` carries the `inferred`
 compartment (SRS §6) so the AI subsystems write into a shape that already exists. Derived indexes

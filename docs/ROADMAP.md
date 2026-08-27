@@ -19,6 +19,12 @@ row-level oracles make that falsifiable rather than asserted.
 
 Each is independently valuable, independently testable, and ends in a demonstrable state.
 
+**Increments 11 and 12 were added in Phase 08.** They had been *built* — as remediation for the G4
+and G5 failures — but never written back into this table. `packages/tools/src/subsystem-coverage.js`
+caught the omission on its first run, which is precisely the failure mode it was written to prevent
+(`docs/retrospective.md` §4). The plan drifting behind the work is the same defect as the plan
+running ahead of it.
+
 | # | Increment | Delivers | Key requirements | Exit condition |
 | --- | --- | --- | --- | --- |
 | **1** | **Skeleton + ports** | repo layout, `ports/`, `skill-core` domain types, dependency lint | `NFR-027`, `NFR-028` | Lint **fails** on a deliberate violation |
@@ -31,6 +37,8 @@ Each is independently valuable, independently testable, and ends in a demonstrab
 | **8** | **Read API + CLI** | `/api/v1` read endpoints, cursor pagination, rate limit, CLI | `REQ-064`–`069`, `REQ-088`–`090`, `REQ-097` | p95 ≤200 ms at 10k |
 | **9** | **The ladder** | 100 → 1,000 → 10,000 stratified | `REQ-012`, `NFR-001` | Byte-identical re-run at each rung |
 | **10** | **Removal + re-analysis** | correction/removal path, tombstoning, re-analysis enqueue | `REQ-063`, `REQ-095`, `DEC-015` | Removal tombstones; envelope survives |
+| **11** | **RAW storage + real index rebuild** | ObjectStore adapters (fs, memory, R2 boundary), RAW→PARSED→CANONICAL, reprocess-from-raw, rights-aware retention over real bytes, derived `search_index` | `REQ-029`–`034`, `REQ-052`, `REQ-098` | Reprocess with the source unavailable and **0 network calls**; index destroyed and rebuilt |
+| **12** | **SkillsMP connector** | `SkillsMPConnector`, conditional re-fetch, circuit breaker, robots policy | `REQ-004`, `REQ-028`, `REQ-025`, `REQ-096` | Live discovery inside published limits; enumeration provably impossible |
 
 **Increment 1 gates everything.** If the dependency lint does not fail on a deliberate violation,
 `NFR-028` is decoration and `DEC-027`'s migration path is fiction.

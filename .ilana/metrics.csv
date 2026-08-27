@@ -3,9 +3,9 @@ MET-001,2026-08-27,defect_density,product,1.99,defects_per_kloc,".ilana/defects.
 MET-002,2026-08-27,defects_total,product,8,defects,.ilana/defects.md
 MET-003,2026-08-27,defects_high_severity,product,5,defects,.ilana/defects.md
 MET-004,2026-08-27,defects_open,product,0,defects,.ilana/defects.md
-MET-005,2026-08-27,test_cases,product,334,tests,node --test full suite
-MET-006,2026-08-27,test_density,product,83,tests_per_kloc,334 tests / 4021 SLOC
-MET-007,2026-08-27,test_pass_rate,product,1.00,ratio,334 of 334
+MET-005,2026-08-27,test_cases,product,318,tests,"distinct TC-001..TC-318 declared, no gaps"
+MET-006,2026-08-27,test_density,product,79,tests_per_kloc,318 cases / 4021 SLOC
+MET-007,2026-08-27,test_pass_rate,product,1.00,ratio,344 of 344 executions
 MET-008,2026-08-27,requirement_coverage_mandatory,product,1.00,ratio,139 of 139 (packages/tools/src/traceability.js)
 MET-009,2026-08-27,requirement_coverage_all,product,0.953,ratio,143 of 150
 MET-010,2026-08-27,gate_first_pass_rate,process,0.60,ratio,"3 of 5 gates passed on attempt 1"
@@ -29,3 +29,4 @@ MET-027,2026-08-27,api_latency_p95,product,0.02,milliseconds,"GET /skills/:id at
 MET-028,2026-08-27,rollback_rto_measured,product,3,milliseconds,"docs/rollback.md rehearsal, NFR-035 allows 4h"
 MET-029,2026-08-27,dedup_oracle_agreement,product,1.00,ratio,"vs corpus file_sha grouping, 0 unexplained"
 MET-030,2026-08-27,parser_oracle_agreement,product,0.977,ratio,"structural validity vs corpus column, n=300"
+MET-031,2026-08-27,test_executions,product,344,executions,"340 > 314 because contract suites run one case against several adapters"
