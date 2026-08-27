@@ -1,0 +1,20 @@
+# --- secrets: never commit (intake Q5) ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+.dev.vars
+.wrangler/
+# --- deps / build ---
+node_modules/
+dist/
+build/
+coverage/
+# --- large research corpora (fetched, never vendored) ---
+data/
+*.db
+*.sqlite
+*.parquet
+# --- os ---
+.DS_Store
