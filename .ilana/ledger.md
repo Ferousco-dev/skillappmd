@@ -1028,3 +1028,31 @@ Corrected while writing docs/runbook.md 3.1: I had written `appmd removal apply 
 --by` and `removal action <request-id> --confirm`.
 
 355 executions of 329 cases passing. 141/141 mandatory requirements traced.
+
+## 2026-08-27 | increment 13 | developer | RESOLVER SKILL + skillappmd PACKAGE (CR-009)
+REQ-100..REQ-105. `npx skillappmd@latest init` writes ONE file to
+~/.claude/skills/skillappmd/SKILL.md and downloads nothing. npm name verified unclaimed
+(registry 404, 2026-08-27). Only the Claude Code layout is verified against a real
+installation; other agents go through --dir rather than an invented path.
+
+TC-331..TC-338. The load-bearing one is TC-334: init must make NO network request, which
+is the product's central claim. Mutation-checked - making the installer phone home fails 2,
+overwriting silently fails 1.
+
+Defect found in my own test: TC-337 ran `init` against the REAL home directory and
+installed the skill on this machine. Removed, and `run()` now takes injectable home/cwd.
+A test that mutates the developer's machine is a defect regardless of whether it passes.
+
+End-to-end verified against the local API: install -> search -> candidate with origin URL,
+rights state and content:null. CR-007's cache policy fired correctly (no-store, because the
+result had unknown rights).
+
+Evidence for increment 15 collected in the same run - keyword search cannot serve the
+product's actual use case:
+  q="html"                            -> 1 result
+  q="extract content from a web page" -> 0 results
+  q="scrape a website"                -> 0 results
+An agent phrasing a real need gets nothing. This is the retrieval requirement ROADMAP.md
+gated semantic search on.
+
+378/378 passing. 148/148 mandatory requirements traced.

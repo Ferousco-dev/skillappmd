@@ -446,3 +446,39 @@ must run against an adapter whose timing genuinely differs, otherwise `DEF-009` 
 A deliberately deferred in-memory adapter (resolving on a later turn of the event loop) is added
 for that purpose, so the suite contains at least one adapter that **cannot** be satisfied by
 synchronous code.
+
+---
+
+## CR-009 — the resolver skill and the `skillappmd` package (increment 13)
+
+**Raised:** 2026-08-27 · **Requested by:** user · **Status:** APPROVED
+**Against:** SRS v1.2 · **Adds:** `REQ-100`..`REQ-105`. SRS → **v1.3**
+
+### Why
+
+Phase 1 built an index with no way for an agent to use it. `npx skillappmd@latest init` installs a
+**single resolver skill**; the agent consults it mid-task, asks AppMD which skill fits, and fetches
+that skill **from its origin**. This is not a change to the architecture — `REQ-062` already forbids
+serving content and the resolution flow already ends at the origin. It is the missing product
+surface.
+
+**`skillappmd` is unclaimed on npm** (registry returns 404, verified 2026-08-27).
+
+| Id | Requirement |
+| --- | --- |
+| `REQ-100` | The system shall publish an installable package exposing `init`, which writes exactly one resolver skill into the agent's skills directory. |
+| `REQ-101` | `init` shall not overwrite an existing installation without an explicit `--force`, and shall report the exact path it wrote. |
+| `REQ-102` | The resolver skill shall instruct the agent to fetch skill content **from the origin repository**, never from AppMD (`REQ-062`). |
+| `REQ-103` | The resolver skill shall carry the rights rules with it: `unknown` is not permission, and redistribution requires `redistributable: true`. |
+| `REQ-104` | The installed skill shall be a **pointer, not a corpus**. `init` shall download no skill content and no index. |
+| `REQ-105` | The API base shall be configurable (`APPMD_API`) so the resolver is testable against a local server before anything is deployed. |
+
+### The constraint that shapes it
+
+An agent decides whether to load a skill by reading its frontmatter `description`. For a resolver
+that description **is the trigger**, so it must describe the *gap* ("you need a capability you do
+not have"), not the product. A description that reads like marketing will simply never fire.
+
+### Not in this increment
+
+Semantic search (`CR-010`, requires the AI-spend amendment), MCP transport, deployment.

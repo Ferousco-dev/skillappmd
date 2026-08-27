@@ -152,3 +152,9 @@ DOM-013,"Identity in the corpus resolves to three distinct classes — repositor
 REQ-099,"Every API response shall carry explicit cache directives, rights-gated, with a strong ETag and If-None-Match support.",functional,M,DES-055,apps/api/src/cache-policy.js,TC-319;TC-320;TC-321;TC-322;TC-323;TC-324;TC-325;TC-326;TC-327;TC-328,implemented
 NFR-040,Edge cache lifetime shall not exceed the removal propagation bound (<=300s).,non-functional,M,DES-055,apps/api/src/cache-policy.js,TC-329,implemented
 NFR-027,"Ports shall be implementable by adapters of genuinely different shape, including asynchronous ones (CR-008).",non-functional,M,DES-002,packages/ports/src/index.js,TC-194;TC-207;TC-253;TC-330,implemented
+REQ-100,"Publish an installable package exposing init, writing exactly one resolver skill.",functional,M,DES-056,packages/skillappmd/src/install.js,TC-331;TC-333;TC-337;TC-338,implemented
+REQ-101,init shall not overwrite without --force and shall report the exact path written.,functional,M,DES-056,packages/skillappmd/src/install.js,TC-332;TC-337,implemented
+REQ-102,"The resolver skill instructs the agent to fetch content from the origin, never AppMD.",functional,M,DES-056,packages/skillappmd/src/install.js,TC-335,implemented
+REQ-103,The resolver skill carries the rights rules: unknown is not permission.,functional,M,DES-056,packages/skillappmd/src/install.js,TC-335,implemented
+REQ-104,"The installed skill is a pointer, not a corpus: init downloads nothing.",functional,M,DES-056,packages/skillappmd/src/install.js,TC-334,implemented
+REQ-105,The API base is configurable via APPMD_API.,functional,M,DES-056,packages/skillappmd/src/install.js,TC-336,implemented
