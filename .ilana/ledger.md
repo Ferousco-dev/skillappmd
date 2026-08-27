@@ -63,3 +63,75 @@ HANDOFF
   assumed:  DEC-004 robots.txt governs crawlers, not invited keyed API clients. UNCONFIRMED.
             DEC-007 Cloudflare runtime; canonical store deliberately undecided until G2.
   next:     elicit and specify requirements; every one testable; no code before G1.
+
+---
+
+## 2026-08-27 | phase 01 | architect | RESEARCH ADDENDUM
+Artifact: docs/research/R2-GITSKILLS-CORPUS.md.
+Method: Hugging Face datasets-server API only. Nothing downloaded.
+
+  - Parquet mirror is 13.4 GB across 78 files in 4 tables, NOT 44.4 GB (that is Zenodo SQLite).
+    artifacts 31 files/6.45 GB; artifact_siblings 45/6.96 GB; repos 1/0.02 GB; mining_runs 1.
+  - Full column schema recovered for all four tables (R2 §2).
+  - artifacts.content carries full SKILL.md text -> Phase 1 corpus path needs no GitHub fetch.
+  - artifacts.dedup_primary is a row-level dedup verdict -> precision/recall oracle, not just
+    the paper's aggregate 50.5% figure.
+  - artifacts.frontmatter_valid is a parser oracle.
+  - repos.license supplies L2 licence for all 282,200 repositories.
+  - Commit authors already anonymised, messages redacted by the dataset authors.
+
+Phase 1 subset fixed at repos (0.02 GB) + one artifacts shard (~208 MB) = ~0.5% of the SQLite
+archive. artifact_siblings not pulled in Phase 1.
+
+Decisions logged: DEC-009..DEC-014 (user decisions 1-4 + corpus strategy + identity authority).
+
+---
+
+## 2026-08-27 | phase 01 | analyst | SRS EMITTED
+Artifact: docs/SRS.md (519 lines, IEEE 830 shape). Traceability: .ilana/traceability.csv.
+
+  90 functional (REQ-001..REQ-090), of which 80 are priority M for Phase 1
+  34 non-functional (NFR-001..NFR-034)
+  12 domain (DOM-001..DOM-012)
+  136 traceability rows, generated from the SRS by script, not transcribed by hand.
+
+Also emitted: docs/correspondence/DRAFT-skillsmp-clarification.md (NOT SENT, per instruction).
+
+---
+
+## 2026-08-27 | G1 | analyst | GATE CONDITIONAL PASS
+Evidence: .ilana/gates/G1.md. Criteria 1-9 assessed (Rigour 3).
+
+  Criterion 3 FOUND A REAL DEFECT: REQ-015 contained "independently scalable", an unmeasurable
+  adjective. Rewritten to "worker concurrency is configurable per stage, such that changing one
+  stage's concurrency requires no change to any other stage's configuration or code."
+  This is the adjective test doing its job; recording it rather than quietly fixing it.
+
+  Criterion 6 PASS WITH DECLARED DEVIATION: 14 of 34 NFRs carry number+unit; 20 are binary
+  predicates with a stated verification procedure. Declared, not glossed.
+
+  Criterion 8: two genuine requirement conflicts found and dispositioned as DEC-015 (raw
+  immutability vs deletability -> tombstone: bytes deletable, provenance envelope permanent)
+  and DEC-016 (208 MB shard vs 128 MB worker ceiling -> row-group streaming).
+
+  Criterion 7 NOT MET: stakeholder has not reviewed the SRS. The analyst wrote it and cannot
+  validate it; that check would be circular. G1 does not close until the user reviews.
+
+Decision: phase 02 architecture MAY proceed. No requirement is baselined and NO construction
+begins until criterion 7 is met.
+
+HANDOFF
+  from:     analyst
+  to:       architect
+  gate:     G1 (conditional) -> attempting G2
+  produced: docs/SRS.md, .ilana/traceability.csv, .ilana/gates/G1.md,
+            docs/research/R2-GITSKILLS-CORPUS.md, docs/correspondence/DRAFT-skillsmp-clarification.md
+  ids:      REQ-001..REQ-090, NFR-001..NFR-034, DOM-001..DOM-012, DEC-009..DEC-016
+  open:     G1 criterion 7 (stakeholder review) - BLOCKS baseline
+            RSK-005 Queues DLQ UNVERIFIED - BLOCKS G2 close (REQ-020, REQ-023)
+            ETH-001 trust-score conditions - BLOCKS G2 close (REQ-076..079)
+            DEC-007 canonical store undecided - resolved by docs/DATABASE.md
+            RSK-002 SkillsMP robots/API - draft letter ready, unsent
+  assumed:  DEC-004, DEC-007, DEC-013 remain ASSUMPTION.
+  next:     ARCHITECTURE.md, DATABASE.md, SOURCE_CONNECTORS.md, INGESTION.md, DEDUPLICATION.md,
+            PROVENANCE.md, SECURITY.md, SCALING.md, API.md, ROADMAP.md; then G2.

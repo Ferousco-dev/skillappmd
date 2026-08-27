@@ -133,3 +133,140 @@ No canonical-database commitment is made before the workload analysis the brief 
 
 Deferred scope is recorded in `state.json:scope_deferred` so it reads as a deliberate deferral
 with a reason, not as a gap discovered later at audit.
+
+---
+
+## DEC-009 — Phase 1 serves metadata, attribution and canonical source URL only
+**Status:** DECIDED · user decision #1 · owner `[ethics-officer]`
+
+No third-party skill **content** is served through the AppMD API in Phase 1, **even where the
+licence appears permissive**. The public canonical model points back to the original source.
+
+Raw content retained for internal processing is **internal processing data**, and carries:
+provenance, retention rule, licence metadata, access control, and a working deletion path.
+R2 (or its local equivalent) is **not** a public distribution layer in Phase 1.
+
+*Architectural consequence, and the reason this is cheap to honour now and expensive later:*
+the content store sits behind a **rights-checking access layer from the first commit**, so
+enabling permitted hosting later is a **policy change**, not a re-architecture. If content were
+served directly in Phase 1, retrofitting rights enforcement would mean touching every read path.
+
+---
+
+## DEC-010 — Two deployment targets, one codebase: LOCAL first, Cloudflare later
+**Status:** DECIDED · user decision #2 · supersedes the deployment half of `DEC-007`
+
+Cloudflare paid is **not** active. The free tier (10 ms CPU, 50 subrequests) cannot run
+ingestion, and the user will not pay before the pipeline is proven. Correct call.
+
+| Concern | LOCAL DEVELOPMENT (Phase 1) | PRODUCTION CLOUD (later) |
+| --- | --- | --- |
+| Compute | local process / `workerd` via Wrangler dev | Workers (paid) |
+| Queue | local queue driver (durable, file/SQLite-backed) | Cloudflare Queues |
+| Object store | local filesystem under `data/objects/` | R2 |
+| Canonical DB | SQLite | decided in `DATABASE.md` before G2 |
+| Cache | in-process / SQLite table | KV |
+| Scheduler | cron / CLI invocation | Cron Triggers |
+
+**Binding rule:** every such dependency sits behind a **port interface** in `packages/`, with
+two adapters. Business logic imports the port, never the vendor SDK. This is not ceremony —
+it is what makes the local-to-cloud move a configuration change, and it is also what makes the
+pipeline unit-testable without network.
+
+**Explicitly NOT done:** architecting around Cloudflare *free-tier* limits. Free tier is a
+non-target. We design for local-now and paid-Workers-later, and skip the middle entirely.
+
+---
+
+## DEC-011 — Minimal GitSkills subset: `repos` in full + one `artifacts` shard
+**Status:** DECIDED · user decision #3 · evidence `docs/research/R2-GITSKILLS-CORPUS.md`
+
+The Hugging Face Parquet mirror is **13.4 GB across 78 files in 4 tables**, not 44.4 GB (that is
+the Zenodo SQLite). Shards are individually addressable over HTTP.
+
+Phase 1 pulls **`repos` (0.02 GB, all 282,200 rows) + one `artifacts` shard (~208 MB)** —
+about **0.5% of the SQLite archive**, ample for 100 → 1,000 → 10,000.
+`artifact_siblings` (6.96 GB) is **not** pulled in Phase 1.
+All corpus data lands in `data/`, already gitignored.
+
+---
+
+## DEC-012 — `file_sha` is an exact-duplicate key only; AppMD computes its own fingerprints
+**Status:** DECIDED · evidence R2 §4
+
+GitSkills `file_sha` is a **git blob SHA** — whitespace and line-ending sensitive. It answers
+"byte-identical?" and nothing else. AppMD therefore computes, independently:
+
+- `content_hash` — SHA-256 over raw bytes (exact tier, portable across sources)
+- `normalised_hash` — SHA-256 over normalised text (line endings, trailing whitespace,
+  frontmatter key order) → catches trivial variants `file_sha` misses
+- `semantic_fingerprint` — deferred past Phase 1, for `NEAR_DUPLICATE` (brief §13)
+
+`file_sha` is retained as a **source fact** for cross-checking, never as AppMD's identity key.
+
+---
+
+## DEC-013 — Shard sampling bias is stated, not hidden
+**Status:** ASSUMPTION · evidence R2 §4
+
+Parquet shards follow write order, so one shard is **not** a random sample. Phase 1 accepts a
+single shard for the 100/1,000 rungs and **states the bias in the ingestion report**. Before any
+statistical claim about the corpus (duplication rate, licence distribution), sampling must draw
+across shards. Article 10: no claim without an instrument, and no instrument without its bias.
+
+---
+
+## DEC-014 — GitHub is the provenance authority; SkillsMP never defines identity
+**Status:** DECIDED · user's additional decision, confirming and extending `DEC-002`
+
+Canonical skill identity derives from **origin repository coordinates** — `repo_full_name` +
+`path` + content hash — never from a SkillsMP page URL or its internal id. SkillsMP identifiers
+are stored as **one more external reference among several**, exactly like any future source.
+
+*Why this matters beyond tidiness:* if SkillsMP terminated access tomorrow (`RSK-003`,
+permitted by their ToS "without prior notice"), zero canonical identities would be invalidated.
+Identity that depends on a third party you do not control is not identity.
+
+---
+
+## DEC-015 — Raw immutability vs deletability: resolved by tombstoning, not by weakening either
+**Status:** DECIDED · raised at G1 criterion 8 (requirement conflict)
+
+`REQ-029`/`REQ-031` require raw content to be immutable. `REQ-034` requires it to be deletable
+on request. Both are correct and they conflict.
+
+**Disposition — a raw record has two parts with different lifetimes:**
+
+| Part | Lifetime |
+| --- | --- |
+| Content bytes | deletable |
+| Provenance envelope (hash, source, URL, timestamps, licence, deletion record) | permanent |
+
+Deletion removes the bytes and writes a **tombstone** carrying the reason, actor and timestamp.
+Immutability holds over the envelope; deletability holds over the bytes.
+
+*Consequence for `NFR-010` (rebuild from canonical):* an index rebuilt after a deletion is
+**equivalent minus tombstoned records**, and the rebuild report must state how many were
+tombstoned. Silently rebuilding a smaller index and calling it identical would be the kind of
+optimistic reporting Article 2 forbids.
+
+*Why not just refuse deletion:* skill authors did not opt in to being indexed (`ETH-002`). A
+system that structurally cannot honour a removal request has decided that question in advance,
+and decided it against the person with the least power in the arrangement.
+
+---
+
+## DEC-016 — Corpus reading is streamed by row group; the 128 MB ceiling is a design input
+**Status:** DECIDED · raised at G1 criterion 8 (requirement conflict)
+
+`REQ-003` reads a ~208 MB Parquet shard. `NFR-014` caps worker memory at 128 MB to match the
+Cloudflare Workers isolate limit.
+
+**Disposition:** the corpus connector reads **row group by row group**, never whole-file. Parquet
+is columnar and row-group addressable, so this is the format's intended access pattern, and it
+also means Phase 1 reads only the columns it needs (`R2 §2`) rather than every column.
+
+The memory ceiling is therefore **not** a constraint we tolerate — it is the thing that forces
+the streaming design that `NFR-031` ("no design element shall assume the dataset fits in
+memory") demands anyway. Local development inherits the production constraint on purpose;
+this is the whole point of `NFR-013`/`NFR-014`.
