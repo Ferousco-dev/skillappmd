@@ -1,151 +1,151 @@
 req_id,requirement,type,priority,design_id,module,test_ids,status
-REQ-001,"The system shall define a SourceConnector contract with operations discover(), fetch(), identify(), getMetadata(), getContent(), getVersion(). No core component shall reference a named source.",functional,M,,,,specified
-REQ-002,Every connector shall emit DiscoveryRecord objects of one normalised shape regardless of source.,functional,M,,,,specified
-REQ-003,The system shall implement GitSkillsCorpusConnector reading the CC-BY-4.0 Parquet corpus.,functional,M,,,,specified
-REQ-004,"The system shall implement SkillsMPConnector using only the documented REST and MCP endpoints, never HTML scraping of /creators/.",functional,M,,,,specified
-REQ-005,"The system shall implement GitHubConnector resolving owner/repo + path to repository metadata, licence and content via the official API. Demoted because the corpus supplies both content and L2 licence; the SourceConnector abstraction (RE...",functional,S,,,,specified
-REQ-006,"Each connector shall declare its access policy — rate limits, auth mode, permitted methods, ToS notes — as data the runtime enforces.",functional,M,,,,specified
-REQ-007,The system shall reject registration of a connector that declares no access policy.,functional,M,,,,specified
-REQ-008,"Adding a new source shall require no modification to discovery, queue, parse, normalise, fingerprint, dedup or storage code. Demonstrated by two connectors of genuinely different shape (bulk corpus vs rate-limited API).",functional,M,,,,specified
-REQ-009,"Discovery shall be separable from ingestion and independently re-runnable, answering only ""what exists?"".",functional,M,,,,specified
-REQ-010,"Discovery shall be resumable from a persisted cursor after interruption, without re-emitting completed work.",functional,M,,,,specified
-REQ-011,Re-running discovery over unchanged source state shall create no new canonical skills (idempotence).,functional,M,,,,specified
-REQ-012,"Discovery shall accept a bounded batch limit, so operators may run 100, then 1,000, then 10,000.",functional,M,,,,specified
-REQ-013,"Discovery shall record, per run: source, parameters, start/end time, count discovered, count skipped, errors.",functional,M,,,,specified
-REQ-014,The system shall poll the SkillsMP RSS feed for incremental discovery.,functional,S,,,,specified
-REQ-015,"Each pipeline stage shall be an independently queued job whose worker concurrency is configurable per stage, such that changing one stage's concurrency requires no change to any other stage's configuration or code.",functional,M,,,,specified
-REQ-016,Every job shall be idempotent: re-execution with identical input produces identical state and no duplicate records.,functional,M,,,,specified
-REQ-017,"Every job shall carry job_id, skill_ref, source, attempt, status, started_at, completed_at, error.",functional,M,,,,specified
-REQ-018,"Queue messages shall carry references (storage key, content hash, ids), never content.",functional,M,,,,specified
-REQ-019,A failed job shall retry with exponential backoff and jitter to a configured maximum attempt count.,functional,M,,,,specified
-REQ-020,"A job exceeding maximum attempts shall move to a dead letter queue, never retry indefinitely.",functional,M,,,,specified
-REQ-021,"Dead-lettered jobs shall be listable, inspectable, and manually re-submittable.",functional,M,,,,specified
-REQ-022,"Failure of one job shall not halt, restart or re-run the pipeline for any other job.",functional,M,,,,specified
-REQ-023,The queue shall be provided through a port interface with a local adapter and a Cloudflare Queues adapter.,functional,M,,,,specified
-REQ-024,"The fetcher shall enforce per-source rate limits, concurrency caps, backoff, jitter and Retry-After.",functional,M,,,,specified
-REQ-025,The fetcher shall open a circuit breaker on repeated source failure and report it. The abstraction is defined in Phase 1 and retained for future network-based connectors; only the local-corpus path may omit an implementation.,functional,S,,,,specified
-REQ-026,"The fetcher shall send a truthful, contactable User-Agent identifying AppMD, and shall never impersonate a browser or another bot.",functional,M,,,,specified
-REQ-027,"The system shall contain no mechanism for evading rate limits, bot detection, authentication or access controls.",functional,M,,,,specified
-REQ-028,The fetcher shall skip re-fetch when the source reports content unchanged (ETag / lastmod / commit sha).,functional,M,,,,specified
-REQ-029,"Raw content shall be stored immutably, addressed by content hash, before any parsing. Immutability governs the provenance envelope; content bytes are subject to the retention lifecycle of REQ-098 (DEC-015, DEC-019).",functional,M,,,,specified
-REQ-030,"Each raw record shall retain: original bytes, source, source URL, retrieval timestamp, source version, content hash.",functional,M,,,,specified
-REQ-031,Normalisation shall never mutate or delete raw records; RAW → PARSED → CANONICAL are distinct layers.,functional,M,,,,specified
-REQ-032,The system shall reprocess stored raw content into canonical records without re-contacting the source.,functional,M,,,,specified
-REQ-033,"Raw content shall be treated as internal processing data, behind an access-control layer, and shall not be served publicly in Phase 1.",functional,M,,,,specified
-REQ-034,"Every raw record shall carry a retention rule derived from its rights posture, and shall be deletable both on request and on retention expiry, the deletion recorded as a tombstone that survives the bytes.",functional,M,,,,specified
-REQ-035,The parser shall extract YAML frontmatter and Markdown body from SKILL.md.,functional,M,,,,specified
-REQ-036,"The parser shall treat only name and description as required, and shall preserve unrecognised frontmatter keys rather than rejecting or discarding them.",functional,M,,,,specified
-REQ-037,"The parser shall handle malformed YAML, absent frontmatter, empty files and non-UTF-8 bytes by recording a parse failure with reason — never by crashing and never by silently emitting an empty record.",functional,M,,,,specified
-REQ-038,"The parser shall record frontmatter_valid per the spec's stated constraints (name ≤64 chars [a-z0-9-], description non-empty ≤1024, no XML tags, reserved words).",functional,M,,,,specified
-REQ-039,"Normalisation shall produce a canonical record carrying mandatory attribution: repository, owner, canonical source URL. A record shall not be storable without them.",functional,M,,,,specified
-REQ-040,"Normalisation shall record every field as source fact or AppMD inference, with provenance, and shall never merge the two into one field.",functional,M,,,,specified
-REQ-041,"The parser's frontmatter_valid verdict shall be comparable against the corpus's own column, and disagreements shall be reportable.",functional,M,,,,specified
-REQ-042,The system shall compute content_hash (SHA-256 over raw bytes) for every occurrence.,functional,M,,,,specified
-REQ-043,"The system shall compute normalised_hash (SHA-256 over normalised text: line endings, trailing whitespace, frontmatter key order).",functional,M,,,,specified
-REQ-044,Occurrences with equal content_hash shall resolve to one CanonicalSkill as EXACT_DUPLICATE.,functional,M,,,,specified
-REQ-045,Deduplication shall never use name equality alone as evidence of duplication.,functional,M,,,,specified
-REQ-046,"Every occurrence shall remain individually retrievable after deduplication, with its repository and path. Dedup collapses identity, never evidence.",functional,M,,,,specified
-REQ-047,"Deduplication results shall be measurable against the corpus's published verdict, reporting precision, recall and a disagreement list.",functional,M,,,,specified
-REQ-048,The system shall record MIRROR and FORK relationships using repository fork metadata as a distinct signal from content equality.,functional,S,,,,specified
-REQ-049,Near-duplicate detection via semantic fingerprinting.,functional,F,,,,specified
-REQ-050,"The canonical store shall hold CanonicalSkill, SkillOccurrence, Repository, Source, ProvenanceRecord, RightsPosture.",functional,M,,,,specified
-REQ-051,"The canonical store shall be the single source of truth. Search, vector and graph indexes shall be derived and rebuildable from it.",functional,M,,,,specified
-REQ-052,"The system shall rebuild every derived index from canonical data with no source contact, demonstrated by a test that destroys and rebuilds an index.",functional,M,,,,specified
-REQ-053,The canonical schema shall be extensible: new fields shall not require rewriting existing records.,functional,M,,,,specified
-REQ-054,The store shall be provided through a port interface with a local adapter; the production adapter is chosen in DATABASE.md at G2.,functional,M,,,,specified
-REQ-055,Historical versions shall never be silently overwritten; a content change creates a new version linked to its predecessor.,functional,M,,,,specified
-REQ-056,"The system shall record L1, L2 and L3 licence layers independently, each with its evidence.",functional,M,,,,specified
-REQ-057,"The system shall normalise licence identifiers to SPDX where recognised, and to UNKNOWN otherwise — never to a guess.",functional,M,,,,specified
-REQ-058,"Absent, unparseable or conflicting licence shall yield redistributable = false.",functional,M,,,,specified
-REQ-059,"The system shall compute and store indexable, linkable, cacheable, redistributable, each with the layer and evidence that produced it.",functional,M,,,,specified
-REQ-060,"Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the more restrictive applied for redistribution.",functional,M,,,,specified
-REQ-061,Every publicly exposed record shall carry attribution and canonical source URL. The API shall be incapable of emitting a record without them.,functional,M,,,,specified
-REQ-062,The Phase 1 API shall not serve third-party skill content under any licence condition.,functional,M,,,,specified
-REQ-063,"The system shall provide an author-initiated correction/removal path, recording the request, the actor, the disposition and the timestamp. The path exists in Phase 1 even though Phase 1 exposes no content, because removal touches the can...",functional,M,,,,specified
-REQ-064,The system shall expose a versioned HTTP API under /api/v1/.,functional,M,,,,specified
-REQ-065,"GET /api/v1/skills/:id shall return one canonical skill with provenance, rights posture and attribution.",functional,M,,,,specified
-REQ-066,GET /api/v1/skills shall list skills with cursor-based pagination. Offset pagination shall not be used.,functional,M,,,,specified
-REQ-067,"GET /api/v1/skills/:id/occurrences shall return the occurrences resolving to that canonical skill, cursor-paginated per NFR-039.",functional,M,,,,specified
-REQ-068,GET /api/v1/sources/:id shall return source metadata and its declared access policy.,functional,M,,,,specified
-REQ-069,GET /api/v1/search shall provide keyword search over canonical metadata.,functional,M,,,,specified
-REQ-070,"API responses shall distinguish source facts from AppMD inferences in their structure, not in prose.",functional,M,,,,specified
-REQ-071,"The API shall never emit secrets, credentials, internal storage keys or raw content.",functional,M,,,,specified
-REQ-072,A CLI shall consume the same API surface as any future frontend.,functional,S,,,,specified
-REQ-073,MCP tool exposure.,functional,F,,,,specified
-REQ-074,"Semantic/hybrid search, capability, graph, resolution and composition endpoints.",functional,F,,,,specified
-REQ-075,"The system shall record deterministic security signals available in Phase 1 without executing content: presence of scripts, allowed-tools declarations, and detectable credential/network/shell patterns.",functional,S,,,,specified
-REQ-076,"Security findings shall be stored as AppMD inference, with analyser id, version and timestamp, never as source fact.",functional,M,,,,specified
-REQ-077,Any published score shall be accompanied by its findings and their evidence. A bare score shall not be emitable.,functional,M,,,,specified
-REQ-078,"Absence of findings shall be reported as absence of findings, never as ""safe"".",functional,M,,,,specified
-REQ-079,The system shall never represent analysis as certification or a guarantee of safety.,functional,M,,,,specified
-REQ-080,"Content shall never be executed, at any stage, for any purpose.",functional,M,,,,specified
-REQ-081,Behavioural diffing between versions to detect malicious change.,functional,F,,,,specified
-REQ-082,"The system shall emit counters for: discovered, fetched, failed, parsed, duplicated, stored, dead-lettered.",functional,M,,,,specified
-REQ-083,"The system shall report queue depth, processing latency per stage, and per-source error rates.",functional,M,,,,specified
-REQ-084,Every job's lifecycle shall be queryable by job_id and by skill_ref.,functional,M,,,,specified
-REQ-085,"An ingestion run shall produce a report stating counts, failures, and any sampling bias or truncation applied (DEC-013).",functional,M,,,,specified
-REQ-086,"Logs shall never contain secrets, credentials or tokens.",functional,M,,,,specified
-REQ-087,AI processing cost accounting.,functional,F,,,,specified
-REQ-088,"An operator shall trigger discovery, ingestion, reprocessing and index rebuild via CLI without a frontend.",functional,M,,,,specified
-REQ-089,"An operator shall inspect any skill, occurrence, job or dead-letter entry via CLI.",functional,M,,,,specified
-REQ-090,An operator shall re-run the pipeline over stored raw content without source contact.,functional,M,,,,specified
-REQ-091,"The system shall provide operator commands to back up the canonical store, restore it to a target location, and verify a restore by comparing record count and content-hash digest against the snapshot. Backup and restore shall function wi...",functional,M,,,,specified
-REQ-092,"The system shall classify every retained identity as repository, organisation, or individual author (DOM-013), and shall record, per person-linked field, the provenance purpose that justifies retaining it. A person-linked field with no s...",functional,M,,,,specified
-REQ-093,The API shall not expose personal information beyond what attribution requires — the public account identifier and the canonical source URL. Fields classified as individual-author identity (REQ-092) shall be omitted from public responses...,functional,M,,,,specified
-REQ-094,"Every canonical record shall carry a schema version. The system shall provide a forward migration path that transforms records from an older schema version to the current one without destroying data: migrations shall be re-runnable, shal...",functional,M,,,,specified
-REQ-095,"The system shall support re-analysis: given a change of analyser version, analysis rules, model, or security rules, it shall identify every affected canonical record and enqueue it for reprocessing, without re-contacting any source (REQ-...",functional,M,,,,specified
-REQ-096,"Every web-based connector shall retrieve the source's robots policy where one applies, cache it with a stated freshness, and evaluate each request against it before issuing it. A request that a directive disallows shall not be issued. Co...",functional,M,,,,specified
-REQ-097,"The API shall apply configurable rate limiting through a port interface, so limits are policy rather than code. Phase 1 requires a simple configurable abstraction with a working in-process implementation and nothing more (DEC-021); distr...",functional,M,,,,specified
-REQ-098,"Raw content retention shall be rights-aware and default to non-permanent (DEC-019). The system shall not indefinitely retain full third-party content by default. Where content is required only for processing, the system shall process it,...",functional,M,,,,specified
-NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,,,,specified
-NFR-002,"Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's dedup_primary on exact-content grouping over a ≥10,000-row sample. This is a quality target, not an automatic gate failure (DEC-023): a shortfall is a finding to ...",non-functional,M,,,,specified
-NFR-003,"Parser frontmatter_valid shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other.",non-functional,M,,,,specified
-NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,,,,specified
-NFR-005,100% of canonical field values shall be classifiable as source fact or AppMD inference.,non-functional,M,,,,specified
-NFR-006,0 canonical records shall carry redistributable = true without a recorded L2 licence evidencing it.,non-functional,M,,,,specified
-NFR-007,"No single job failure shall cause reprocessing of already-completed work. Verified by injecting failure at row *n* of 10,000 and asserting rows 1..*n*−1 are untouched.",non-functional,M,,,,specified
-NFR-008,The pipeline shall resume from its persisted cursor after abrupt termination (SIGKILL) with no duplicate canonical records and no lost jobs.,non-functional,M,,,,specified
-NFR-009,Every stage shall be idempotent: executing the same job 10 times shall produce the state of executing it once.,non-functional,M,,,,specified
-NFR-010,"Canonical data shall be recoverable such that deleting every derived index and rebuilding produces an equivalent index, with no source contact. Where records have been tombstoned (DEC-015), the rebuild is equivalent minus tombstoned reco...",non-functional,M,,,,specified
-NFR-011,"PROVISIONAL TARGET, NOT AN ACCEPTANCE CRITERION (DEC-017). Working figure: a 10,000-occurrence batch end-to-end in ≤30 minutes on the development machine. This number was invented by the analyst with no benchmark behind it. It shall not ...",non-functional,M,,,,specified
-NFR-012,"GET /api/v1/skills/:id shall respond in ≤200 ms at p95 against a 10,000-skill store, measured locally.",non-functional,M,,,,specified
-NFR-013,"Fetch concurrency shall be configurable per source and shall default to ≤6 simultaneous outgoing connections, matching the Workers ceiling so local behaviour predicts production behaviour (R1 §6.3).",non-functional,M,,,,specified
-NFR-014,"Memory use per worker process shall stay ≤128 MB, matching the Workers isolate limit, so no design depends on headroom production will not have.",non-functional,M,,,,specified
-NFR-015,Phase 1 shall complete with zero LLM or embedding API spend. Deterministic processing only.,non-functional,M,,,,specified
-NFR-016,No pipeline stage shall require a paid cloud plan to run locally (DEC-010).,non-functional,M,,,,specified
-NFR-017,Every future AI-derived result shall be cached keyed by content hash and analyser version; unchanged content shall never be reprocessed (BRIEF §16).,non-functional,M,,,,specified
-NFR-018,Corpus disk use in Phase 1 shall not exceed 1 GB (DEC-011: repos + one artifacts shard).,non-functional,M,,,,specified
-NFR-019,"No secret shall appear in source control, logs, raw records, canonical records or API responses. Verified by a secret-scan in CI over the working tree and by assertion tests over log and API output.",non-functional,M,,,,specified
-NFR-020,"All credentials shall be supplied by environment/secret store, never by literal.",non-functional,M,,,,specified
-NFR-021,"Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it.",non-functional,M,,,,specified
-NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason.",non-functional,M,,,,specified
-NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,,,,specified
-NFR-024,"The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50).",non-functional,M,,,,specified
-NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,,,,specified
-NFR-026,GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus.,non-functional,M,,,,specified
-NFR-027,"Every infrastructure dependency (queue, object store, canonical store, cache, scheduler) shall sit behind a port interface with at least two adapters, one of which requires no cloud account.",non-functional,M,,,,specified
-NFR-028,"Business logic shall not import a vendor SDK. Verified by a dependency-direction lint rule, not by review discipline.",non-functional,M,,,,specified
-NFR-029,"Moving from local to Cloudflare shall require configuration and adapter selection only, with no change to pipeline logic.",non-functional,M,,,,specified
-NFR-030,Unit tests shall run with no network access.,non-functional,M,,,,specified
-NFR-031,No design element shall assume the full dataset fits in memory or in one process.,non-functional,M,,,,specified
-NFR-032,All traversal shall be cursor-based; no offset pagination anywhere.,non-functional,M,,,,specified
-NFR-033,Canonical identity shall be partitionable by content hash prefix without schema change.,non-functional,M,,,,specified
-NFR-034,"The architecture shall document its next binding constraint at 1M, 10M and 100M skills, with the evidence for each (BRIEF §51).",non-functional,M,,,,specified
-NFR-035,"The canonical store shall be recoverable independently of every derived index and of every external source. Phase 1 targets: RPO ≤ 24 hours (at most one day of ingestion replayable), RTO ≤ 4 hours (restore and verify on the development m...",non-functional,M,,,,specified
-NFR-036,"Personal information shall be limited to what provenance and attribution require (DOM-013). The system shall not collect email addresses, real names beyond the public account identifier, follower graphs, contribution histories, or any fi...",non-functional,M,,,,specified
-NFR-037,"Every web-based connector shall fetch and honour the source's robots policy where one applies, together with Crawl-delay and Retry-After, and shall never bypass a restriction. Where a source explicitly authorises API access, the connecto...",non-functional,M,,,,specified
-NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,,,,specified
-NFR-039,"Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size. This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be adda...",non-functional,M,,,,specified
-DOM-001,"A SkillOccurrence is uniquely keyed by (source_id, repo_full_name, path, content_hash). It is an observation, never an identity.",domain,M,,,,specified
-DOM-002,"A CanonicalSkill is an AppMD-assigned identity to which one or more occurrences resolve. Its id is stable, opaque, and never derived from a mutable attribute (name, URL, star count).",domain,M,,,,specified
-DOM-003,"Canonical identity derives from origin repository coordinates plus content, never from an aggregator's identifier.",domain,M,,,,specified
-DOM-004,Two occurrences are EXACT_DUPLICATE iff their raw content hashes are equal.,domain,M,,,,specified
-DOM-005,"Occurrence relationships are drawn from a closed vocabulary: EXACT_DUPLICATE, NEAR_DUPLICATE, FORK, MIRROR, VERSION, RELATED, ALTERNATIVE, UNRELATED. Name equality alone never establishes any of them.",domain,M,,,,specified
-DOM-006,"Every field value in a CanonicalSkill is either a source fact (with its source) or an AppMD inference (with producer, version and confidence). There is no third kind and the two are never merged into one field.",domain,M,,,,specified
-DOM-007,"Licence is three independent layers: L1 dataset/aggregator, L2 repository, L3 frontmatter claim. L3 is a claim, not an authority. Conflicts are recorded, never silently resolved.",domain,M,,,,specified
-DOM-008,"Rights posture is computed, never stored as a single inherited flag. It carries the brief's four concepts: indexable, linkable, redistributable, and unknown as an explicit state in its own right — never silently collapsed into all-false ...",domain,M,,,,specified
-DOM-009,A Repository is the attribution unit and the L2 licence holder. Attribution is mandatory on every canonical record.,domain,M,,,,specified
-DOM-010,Raw content is immutable once stored and addressed by its content hash. Normalisation never mutates raw.,domain,M,,,,specified
-DOM-011,"A skill's temporal state (first_commit_at, last_commit_at, discovered_at, last_verified_at) is a first-class attribute; freshness is derived from it, never assumed.",domain,M,,,,specified
-DOM-012,"A Source has an access policy — rate limits, permitted methods, ToS constraints — that is data, not code, and is enforced by the runtime.",domain,M,,,,specified
-DOM-013,"Identity in the corpus resolves to three distinct classes — repository identity, organisation identity, and individual author identity — which carry different privacy weight and shall not be conflated. Only personal information necessary...",domain,M,,,,specified
+REQ-001,"The system shall define a SourceConnector contract with operations discover(), fetch(), identify(), getMetadata(), getContent(), getVersion(). No core component shall reference a named source.",functional,M,DES-001,,,designed
+REQ-002,Every connector shall emit DiscoveryRecord objects of one normalised shape regardless of source.,functional,M,DES-001;DES-003,,,designed
+REQ-003,The system shall implement GitSkillsCorpusConnector reading the CC-BY-4.0 Parquet corpus.,functional,M,DES-004;DES-060,,,designed
+REQ-004,"The system shall implement SkillsMPConnector using only the documented REST and MCP endpoints, never HTML scraping of /creators/.",functional,M,DES-005,,,designed
+REQ-005,"The system shall implement GitHubConnector resolving owner/repo + path to repository metadata, licence and content via the official API. Demoted because the corpus supplies both content and L2 licence; the SourceConnector abstraction (RE...",functional,S,DES-006,,,designed
+REQ-006,"Each connector shall declare its access policy — rate limits, auth mode, permitted methods, ToS notes — as data the runtime enforces.",functional,M,DES-002,,,designed
+REQ-007,The system shall reject registration of a connector that declares no access policy.,functional,M,DES-002,,,designed
+REQ-008,"Adding a new source shall require no modification to discovery, queue, parse, normalise, fingerprint, dedup or storage code. Demonstrated by two connectors of genuinely different shape (bulk corpus vs rate-limited API).",functional,M,DES-001,,,designed
+REQ-009,"Discovery shall be separable from ingestion and independently re-runnable, answering only ""what exists?"".",functional,M,DES-008,,,designed
+REQ-010,"Discovery shall be resumable from a persisted cursor after interruption, without re-emitting completed work.",functional,M,DES-008,,,designed
+REQ-011,Re-running discovery over unchanged source state shall create no new canonical skills (idempotence).,functional,M,DES-008,,,designed
+REQ-012,"Discovery shall accept a bounded batch limit, so operators may run 100, then 1,000, then 10,000.",functional,M,DES-008;DES-067,,,designed
+REQ-013,"Discovery shall record, per run: source, parameters, start/end time, count discovered, count skipped, errors.",functional,M,DES-008;DES-048,,,designed
+REQ-014,The system shall poll the SkillsMP RSS feed for incremental discovery.,functional,S,DES-005,,,designed
+REQ-015,"Each pipeline stage shall be an independently queued job whose worker concurrency is configurable per stage, such that changing one stage's concurrency requires no change to any other stage's configuration or code.",functional,M,DES-009,,,designed
+REQ-016,Every job shall be idempotent: re-execution with identical input produces identical state and no duplicate records.,functional,M,DES-064,,,designed
+REQ-017,"Every job shall carry job_id, skill_ref, source, attempt, status, started_at, completed_at, error.",functional,M,DES-012,,,designed
+REQ-018,"Queue messages shall carry references (storage key, content hash, ids), never content.",functional,M,DES-069,,,designed
+REQ-019,A failed job shall retry with exponential backoff and jitter to a configured maximum attempt count.,functional,M,DES-014,,,designed
+REQ-020,"A job exceeding maximum attempts shall move to a dead letter queue, never retry indefinitely.",functional,M,DES-013,,,designed
+REQ-021,"Dead-lettered jobs shall be listable, inspectable, and manually re-submittable.",functional,M,DES-013,,,designed
+REQ-022,"Failure of one job shall not halt, restart or re-run the pipeline for any other job.",functional,M,DES-014,,,designed
+REQ-023,The queue shall be provided through a port interface with a local adapter and a Cloudflare Queues adapter.,functional,M,DES-009;DES-010;DES-011,,,designed
+REQ-024,"The fetcher shall enforce per-source rate limits, concurrency caps, backoff, jitter and Retry-After.",functional,M,DES-015,,,designed
+REQ-025,The fetcher shall open a circuit breaker on repeated source failure and report it. The abstraction is defined in Phase 1 and retained for future network-based connectors; only the local-corpus path may omit an implementation.,functional,S,DES-016,,,designed
+REQ-026,"The fetcher shall send a truthful, contactable User-Agent identifying AppMD, and shall never impersonate a browser or another bot.",functional,M,DES-015,,,designed
+REQ-027,"The system shall contain no mechanism for evading rate limits, bot detection, authentication or access controls.",functional,M,DES-007,,,designed
+REQ-028,The fetcher shall skip re-fetch when the source reports content unchanged (ETag / lastmod / commit sha).,functional,M,DES-015,,,designed
+REQ-029,"Raw content shall be stored immutably, addressed by content hash, before any parsing. Immutability governs the provenance envelope; content bytes are subject to the retention lifecycle of REQ-098 (DEC-015, DEC-019).",functional,M,DES-017;DES-018;DES-019,,,designed
+REQ-030,"Each raw record shall retain: original bytes, source, source URL, retrieval timestamp, source version, content hash.",functional,M,DES-020,,,designed
+REQ-031,Normalisation shall never mutate or delete raw records; RAW → PARSED → CANONICAL are distinct layers.,functional,M,DES-020,,,designed
+REQ-032,The system shall reprocess stored raw content into canonical records without re-contacting the source.,functional,M,DES-020,,,designed
+REQ-033,"Raw content shall be treated as internal processing data, behind an access-control layer, and shall not be served publicly in Phase 1.",functional,M,DES-020,,,designed
+REQ-034,"Every raw record shall carry a retention rule derived from its rights posture, and shall be deletable both on request and on retention expiry, the deletion recorded as a tombstone that survives the bytes.",functional,M,DES-021;DES-022,,,designed
+REQ-035,The parser shall extract YAML frontmatter and Markdown body from SKILL.md.,functional,M,DES-023,,,designed
+REQ-036,"The parser shall treat only name and description as required, and shall preserve unrecognised frontmatter keys rather than rejecting or discarding them.",functional,M,DES-023,,,designed
+REQ-037,"The parser shall handle malformed YAML, absent frontmatter, empty files and non-UTF-8 bytes by recording a parse failure with reason — never by crashing and never by silently emitting an empty record.",functional,M,DES-024,,,designed
+REQ-038,"The parser shall record frontmatter_valid per the spec's stated constraints (name ≤64 chars [a-z0-9-], description non-empty ≤1024, no XML tags, reserved words).",functional,M,DES-023,,,designed
+REQ-039,"Normalisation shall produce a canonical record carrying mandatory attribution: repository, owner, canonical source URL. A record shall not be storable without them.",functional,M,DES-025;DES-041,,,designed
+REQ-040,"Normalisation shall record every field as source fact or AppMD inference, with provenance, and shall never merge the two into one field.",functional,M,DES-025;DES-036,,,designed
+REQ-041,"The parser's frontmatter_valid verdict shall be comparable against the corpus's own column, and disagreements shall be reportable.",functional,M,DES-023;DES-070,,,designed
+REQ-042,The system shall compute content_hash (SHA-256 over raw bytes) for every occurrence.,functional,M,DES-026,,,designed
+REQ-043,"The system shall compute normalised_hash (SHA-256 over normalised text: line endings, trailing whitespace, frontmatter key order).",functional,M,DES-026,,,designed
+REQ-044,Occurrences with equal content_hash shall resolve to one CanonicalSkill as EXACT_DUPLICATE.,functional,M,DES-027,,,designed
+REQ-045,Deduplication shall never use name equality alone as evidence of duplication.,functional,M,DES-027,,,designed
+REQ-046,"Every occurrence shall remain individually retrievable after deduplication, with its repository and path. Dedup collapses identity, never evidence.",functional,M,DES-027,,,designed
+REQ-047,"Deduplication results shall be measurable against the corpus's published verdict, reporting precision, recall and a disagreement list.",functional,M,DES-070,,,designed
+REQ-048,The system shall record MIRROR and FORK relationships using repository fork metadata as a distinct signal from content equality.,functional,S,DES-028,,,designed
+REQ-049,Near-duplicate detection via semantic fingerprinting.,functional,F,DES-028,,,designed
+REQ-050,"The canonical store shall hold CanonicalSkill, SkillOccurrence, Repository, Source, ProvenanceRecord, RightsPosture.",functional,M,DES-029,,,designed
+REQ-051,"The canonical store shall be the single source of truth. Search, vector and graph indexes shall be derived and rebuildable from it.",functional,M,DES-057;DES-062,,,designed
+REQ-052,"The system shall rebuild every derived index from canonical data with no source contact, demonstrated by a test that destroys and rebuilds an index.",functional,M,DES-057,,,designed
+REQ-053,The canonical schema shall be extensible: new fields shall not require rewriting existing records.,functional,M,DES-033,,,designed
+REQ-054,The store shall be provided through a port interface with a local adapter; the production adapter is chosen in DATABASE.md at G2.,functional,M,DES-029;DES-030;DES-031;DES-032,,,designed
+REQ-055,Historical versions shall never be silently overwritten; a content change creates a new version linked to its predecessor.,functional,M,DES-033,,,designed
+REQ-056,"The system shall record L1, L2 and L3 licence layers independently, each with its evidence.",functional,M,DES-038,,,designed
+REQ-057,"The system shall normalise licence identifiers to SPDX where recognised, and to UNKNOWN otherwise — never to a guess.",functional,M,DES-040,,,designed
+REQ-058,"Absent, unparseable or conflicting licence shall yield redistributable = false.",functional,M,DES-039,,,designed
+REQ-059,"The system shall compute and store indexable, linkable, cacheable, redistributable, each with the layer and evidence that produced it.",functional,M,DES-039,,,designed
+REQ-060,"Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the more restrictive applied for redistribution.",functional,M,DES-038,,,designed
+REQ-061,Every publicly exposed record shall carry attribution and canonical source URL. The API shall be incapable of emitting a record without them.,functional,M,DES-041;DES-051,,,designed
+REQ-062,The Phase 1 API shall not serve third-party skill content under any licence condition.,functional,M,DES-039,,,designed
+REQ-063,"The system shall provide an author-initiated correction/removal path, recording the request, the actor, the disposition and the timestamp. The path exists in Phase 1 even though Phase 1 exposes no content, because removal touches the can...",functional,M,DES-022;DES-042,,,designed
+REQ-064,The system shall expose a versioned HTTP API under /api/v1/.,functional,M,DES-050;DES-061,,,designed
+REQ-065,"GET /api/v1/skills/:id shall return one canonical skill with provenance, rights posture and attribution.",functional,M,DES-050,,,designed
+REQ-066,GET /api/v1/skills shall list skills with cursor-based pagination. Offset pagination shall not be used.,functional,M,DES-050;DES-052,,,designed
+REQ-067,"GET /api/v1/skills/:id/occurrences shall return the occurrences resolving to that canonical skill, cursor-paginated per NFR-039.",functional,M,DES-050;DES-052,,,designed
+REQ-068,GET /api/v1/sources/:id shall return source metadata and its declared access policy.,functional,M,DES-050,,,designed
+REQ-069,GET /api/v1/search shall provide keyword search over canonical metadata.,functional,M,DES-050;DES-062,,,designed
+REQ-070,"API responses shall distinguish source facts from AppMD inferences in their structure, not in prose.",functional,M,DES-051,,,designed
+REQ-071,"The API shall never emit secrets, credentials, internal storage keys or raw content.",functional,M,DES-046;DES-054,,,designed
+REQ-072,A CLI shall consume the same API surface as any future frontend.,functional,S,DES-055,,,designed
+REQ-073,MCP tool exposure.,functional,F,DES-050,,,designed
+REQ-074,"Semantic/hybrid search, capability, graph, resolution and composition endpoints.",functional,F,DES-050,,,designed
+REQ-075,"The system shall record deterministic security signals available in Phase 1 without executing content: presence of scripts, allowed-tools declarations, and detectable credential/network/shell patterns.",functional,S,DES-043,,,designed
+REQ-076,"Security findings shall be stored as AppMD inference, with analyser id, version and timestamp, never as source fact.",functional,M,DES-043,,,designed
+REQ-077,Any published score shall be accompanied by its findings and their evidence. A bare score shall not be emitable.,functional,M,DES-044,,,designed
+REQ-078,"Absence of findings shall be reported as absence of findings, never as ""safe"".",functional,M,DES-044,,,designed
+REQ-079,The system shall never represent analysis as certification or a guarantee of safety.,functional,M,DES-044,,,designed
+REQ-080,"Content shall never be executed, at any stage, for any purpose.",functional,M,DES-045,,,designed
+REQ-081,Behavioural diffing between versions to detect malicious change.,functional,F,DES-044,,,designed
+REQ-082,"The system shall emit counters for: discovered, fetched, failed, parsed, duplicated, stored, dead-lettered.",functional,M,DES-047,,,designed
+REQ-083,"The system shall report queue depth, processing latency per stage, and per-source error rates.",functional,M,DES-047,,,designed
+REQ-084,Every job's lifecycle shall be queryable by job_id and by skill_ref.,functional,M,DES-012,,,designed
+REQ-085,"An ingestion run shall produce a report stating counts, failures, and any sampling bias or truncation applied (DEC-013).",functional,M,DES-048,,,designed
+REQ-086,"Logs shall never contain secrets, credentials or tokens.",functional,M,DES-046;DES-049,,,designed
+REQ-087,AI processing cost accounting.,functional,F,DES-047,,,designed
+REQ-088,"An operator shall trigger discovery, ingestion, reprocessing and index rebuild via CLI without a frontend.",functional,M,DES-055,,,designed
+REQ-089,"An operator shall inspect any skill, occurrence, job or dead-letter entry via CLI.",functional,M,DES-055,,,designed
+REQ-090,An operator shall re-run the pipeline over stored raw content without source contact.,functional,M,DES-055,,,designed
+REQ-091,"The system shall provide operator commands to back up the canonical store, restore it to a target location, and verify a restore by comparing record count and content-hash digest against the snapshot. Backup and restore shall function wi...",functional,M,DES-035,,,designed
+REQ-092,"The system shall classify every retained identity as repository, organisation, or individual author (DOM-013), and shall record, per person-linked field, the provenance purpose that justifies retaining it. A person-linked field with no s...",functional,M,DES-037,,,designed
+REQ-093,The API shall not expose personal information beyond what attribution requires — the public account identifier and the canonical source URL. Fields classified as individual-author identity (REQ-092) shall be omitted from public responses...,functional,M,DES-037,,,designed
+REQ-094,"Every canonical record shall carry a schema version. The system shall provide a forward migration path that transforms records from an older schema version to the current one without destroying data: migrations shall be re-runnable, shal...",functional,M,DES-033;DES-034,,,designed
+REQ-095,"The system shall support re-analysis: given a change of analyser version, analysis rules, model, or security rules, it shall identify every affected canonical record and enqueue it for reprocessing, without re-contacting any source (REQ-...",functional,M,DES-056,,,designed
+REQ-096,"Every web-based connector shall retrieve the source's robots policy where one applies, cache it with a stated freshness, and evaluate each request against it before issuing it. A request that a directive disallows shall not be issued. Co...",functional,M,DES-007,,,designed
+REQ-097,"The API shall apply configurable rate limiting through a port interface, so limits are policy rather than code. Phase 1 requires a simple configurable abstraction with a working in-process implementation and nothing more (DEC-021); distr...",functional,M,DES-053,,,designed
+REQ-098,"Raw content retention shall be rights-aware and default to non-permanent (DEC-019). The system shall not indefinitely retain full third-party content by default. Where content is required only for processing, the system shall process it,...",functional,M,DES-021,,,designed
+NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,DES-064,,,designed
+NFR-002,"Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's dedup_primary on exact-content grouping over a ≥10,000-row sample. This is a quality target, not an automatic gate failure (DEC-023): a shortfall is a finding to ...",non-functional,M,DES-067;DES-070,,,designed
+NFR-003,"Parser frontmatter_valid shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other.",non-functional,M,DES-067;DES-070,,,designed
+NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,DES-041,,,designed
+NFR-005,100% of canonical field values shall be classifiable as source fact or AppMD inference.,non-functional,M,DES-036,,,designed
+NFR-006,0 canonical records shall carry redistributable = true without a recorded L2 licence evidencing it.,non-functional,M,DES-039,,,designed
+NFR-007,"No single job failure shall cause reprocessing of already-completed work. Verified by injecting failure at row *n* of 10,000 and asserting rows 1..*n*−1 are untouched.",non-functional,M,DES-014,,,designed
+NFR-008,The pipeline shall resume from its persisted cursor after abrupt termination (SIGKILL) with no duplicate canonical records and no lost jobs.,non-functional,M,DES-064,,,designed
+NFR-009,Every stage shall be idempotent: executing the same job 10 times shall produce the state of executing it once.,non-functional,M,DES-064,,,designed
+NFR-010,"Canonical data shall be recoverable such that deleting every derived index and rebuilding produces an equivalent index, with no source contact. Where records have been tombstoned (DEC-015), the rebuild is equivalent minus tombstoned reco...",non-functional,M,DES-022;DES-057,,,designed
+NFR-011,"PROVISIONAL TARGET, NOT AN ACCEPTANCE CRITERION (DEC-017). Working figure: a 10,000-occurrence batch end-to-end in ≤30 minutes on the development machine. This number was invented by the analyst with no benchmark behind it. It shall not ...",non-functional,M,DES-067,,,designed
+NFR-012,"GET /api/v1/skills/:id shall respond in ≤200 ms at p95 against a 10,000-skill store, measured locally.",non-functional,M,DES-051;DES-063,,,designed
+NFR-013,"Fetch concurrency shall be configurable per source and shall default to ≤6 simultaneous outgoing connections, matching the Workers ceiling so local behaviour predicts production behaviour (R1 §6.3).",non-functional,M,DES-015;DES-061,,,designed
+NFR-014,"Memory use per worker process shall stay ≤128 MB, matching the Workers isolate limit, so no design depends on headroom production will not have.",non-functional,M,DES-060,,,designed
+NFR-015,Phase 1 shall complete with zero LLM or embedding API spend. Deterministic processing only.,non-functional,M,DES-068,,,designed
+NFR-016,No pipeline stage shall require a paid cloud plan to run locally (DEC-010).,non-functional,M,DES-010;DES-018;DES-030,,,designed
+NFR-017,Every future AI-derived result shall be cached keyed by content hash and analyser version; unchanged content shall never be reprocessed (BRIEF §16).,non-functional,M,DES-056,,,designed
+NFR-018,Corpus disk use in Phase 1 shall not exceed 1 GB (DEC-011: repos + one artifacts shard).,non-functional,M,DES-004,,,designed
+NFR-019,"No secret shall appear in source control, logs, raw records, canonical records or API responses. Verified by a secret-scan in CI over the working tree and by assertion tests over log and API output.",non-functional,M,DES-046,,,designed
+NFR-020,"All credentials shall be supplied by environment/secret store, never by literal.",non-functional,M,DES-046,,,designed
+NFR-021,"Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it.",non-functional,M,DES-045,,,designed
+NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason.",non-functional,M,DES-024;DES-045,,,designed
+NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,DES-002;DES-015,,,designed
+NFR-024,"The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50).",non-functional,M,DES-007,,,designed
+NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,DES-041,,,designed
+NFR-026,GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus.,non-functional,M,DES-004,,,designed
+NFR-027,"Every infrastructure dependency (queue, object store, canonical store, cache, scheduler) shall sit behind a port interface with at least two adapters, one of which requires no cloud account.",non-functional,M,DES-010;DES-017;DES-029;DES-059;DES-063,,,designed
+NFR-028,"Business logic shall not import a vendor SDK. Verified by a dependency-direction lint rule, not by review discipline.",non-functional,M,DES-029;DES-059,,,designed
+NFR-029,"Moving from local to Cloudflare shall require configuration and adapter selection only, with no change to pipeline logic.",non-functional,M,DES-011;DES-019;DES-031;DES-059,,,designed
+NFR-030,Unit tests shall run with no network access.,non-functional,M,DES-071,,,designed
+NFR-031,No design element shall assume the full dataset fits in memory or in one process.,non-functional,M,DES-060;DES-065,,,designed
+NFR-032,All traversal shall be cursor-based; no offset pagination anywhere.,non-functional,M,DES-052,,,designed
+NFR-033,Canonical identity shall be partitionable by content hash prefix without schema change.,non-functional,M,DES-065,,,designed
+NFR-034,"The architecture shall document its next binding constraint at 1M, 10M and 100M skills, with the evidence for each (BRIEF §51).",non-functional,M,DES-032;DES-066,,,designed
+NFR-035,"The canonical store shall be recoverable independently of every derived index and of every external source. Phase 1 targets: RPO ≤ 24 hours (at most one day of ingestion replayable), RTO ≤ 4 hours (restore and verify on the development m...",non-functional,M,DES-035,,,designed
+NFR-036,"Personal information shall be limited to what provenance and attribution require (DOM-013). The system shall not collect email addresses, real names beyond the public account identifier, follower graphs, contribution histories, or any fi...",non-functional,M,DES-037,,,designed
+NFR-037,"Every web-based connector shall fetch and honour the source's robots policy where one applies, together with Crawl-delay and Retry-After, and shall never bypass a restriction. Where a source explicitly authorises API access, the connecto...",non-functional,M,DES-007,,,designed
+NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,,designed
+NFR-039,"Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size. This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be adda...",non-functional,M,DES-052,,,designed
+DOM-001,"A SkillOccurrence is uniquely keyed by (source_id, repo_full_name, path, content_hash). It is an observation, never an identity.",domain,M,DES-027;DES-064,,,designed
+DOM-002,"A CanonicalSkill is an AppMD-assigned identity to which one or more occurrences resolve. Its id is stable, opaque, and never derived from a mutable attribute (name, URL, star count).",domain,M,DES-027;DES-033,,,designed
+DOM-003,"Canonical identity derives from origin repository coordinates plus content, never from an aggregator's identifier.",domain,M,DES-003,,,designed
+DOM-004,Two occurrences are EXACT_DUPLICATE iff their raw content hashes are equal.,domain,M,DES-027,,,designed
+DOM-005,"Occurrence relationships are drawn from a closed vocabulary: EXACT_DUPLICATE, NEAR_DUPLICATE, FORK, MIRROR, VERSION, RELATED, ALTERNATIVE, UNRELATED. Name equality alone never establishes any of them.",domain,M,DES-028,,,designed
+DOM-006,"Every field value in a CanonicalSkill is either a source fact (with its source) or an AppMD inference (with producer, version and confidence). There is no third kind and the two are never merged into one field.",domain,M,DES-036,,,designed
+DOM-007,"Licence is three independent layers: L1 dataset/aggregator, L2 repository, L3 frontmatter claim. L3 is a claim, not an authority. Conflicts are recorded, never silently resolved.",domain,M,DES-038,,,designed
+DOM-008,"Rights posture is computed, never stored as a single inherited flag. It carries the brief's four concepts: indexable, linkable, redistributable, and unknown as an explicit state in its own right — never silently collapsed into all-false ...",domain,M,DES-039,,,designed
+DOM-009,A Repository is the attribution unit and the L2 licence holder. Attribution is mandatory on every canonical record.,domain,M,DES-041,,,designed
+DOM-010,Raw content is immutable once stored and addressed by its content hash. Normalisation never mutates raw.,domain,M,DES-020,,,designed
+DOM-011,"A skill's temporal state (first_commit_at, last_commit_at, discovered_at, last_verified_at) is a first-class attribute; freshness is derived from it, never assumed.",domain,M,DES-058,,,designed
+DOM-012,"A Source has an access policy — rate limits, permitted methods, ToS constraints — that is data, not code, and is enforced by the runtime.",domain,M,DES-002,,,designed
+DOM-013,"Identity in the corpus resolves to three distinct classes — repository identity, organisation identity, and individual author identity — which carry different privacy weight and shall not be conflated. Only personal information necessary...",domain,M,DES-037,,,designed

@@ -187,7 +187,7 @@ the Zenodo SQLite). Shards are individually addressable over HTTP.
 Phase 1 pulls **`repos` (0.02 GB, all 282,200 rows) + one `artifacts` shard (~208 MB)** —
 about **0.5% of the SQLite archive**, ample for 100 → 1,000 → 10,000.
 `artifact_siblings` (6.96 GB) is **not** pulled in Phase 1.
-All corpus data lands in `data/`, already gitignored.
+All corpus data lands in **`data/corpus/`** (path revised by `DEC-028`), gitignored.
 
 ---
 
@@ -471,3 +471,18 @@ burden, for capacity Phase 1 will not use for years. Cheap, understandable, repl
 SQL driver, `DEC-027` is a trap rather than a plan. The falsifiable test — write the Postgres
 adapter and pass the full suite **without editing `skill-core/` or `ingestion/`** — becomes a G4
 criterion.
+
+---
+
+## DEC-028 — Corpus path moves to `data/corpus/`
+**Status:** DECIDED · **supersedes the path in `DEC-011`** · raised by `CR-001`
+
+A parallel front-end session placed tracked source at `data/mock-data.ts`. The backend had
+reserved and gitignored `data/` for the GitSkills corpus.
+
+Corpus data now lives at **`data/corpus/`**, and only that path is ignored, so the front-end's
+tracked file stays visible to git. Verified by `git check-ignore` in both directions.
+
+*Small change, recorded because silently re-ignoring `data/` would have made another session's
+work vanish from version control without anyone being told — the kind of failure that is
+invisible until it costs someone a day.*

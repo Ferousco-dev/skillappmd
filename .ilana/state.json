@@ -11,20 +11,21 @@
     "RSK-002",
     "RSK-004",
     "RSK-007",
-    "ETH-001"
+    "ETH-001",
+    "CR-001"
   ],
   "overrides": [],
   "counters": {
     "REQ": 98,
     "NFR": 39,
     "DOM": 13,
-    "DES": 0,
+    "DES": 71,
     "UI": 0,
     "TC": 0,
     "DEF": 0,
-    "CR": 0,
+    "CR": 1,
     "RSK": 8,
-    "DEC": 27,
+    "DEC": 28,
     "MET": 0,
     "ETH": 1
   },

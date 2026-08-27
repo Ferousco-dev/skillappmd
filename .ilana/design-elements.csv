@@ -1,0 +1,72 @@
+des_id,element,document,satisfies
+DES-001,SourceConnector port,SOURCE_CONNECTORS.md#1,REQ-001;REQ-002;REQ-008
+DES-002,AccessPolicy data model,SOURCE_CONNECTORS.md#1,REQ-006;REQ-007;DOM-012;NFR-023
+DES-003,Normalised DiscoveryRecord,SOURCE_CONNECTORS.md#2,REQ-002;DOM-003;DEC-014
+DES-004,GitSkillsCorpusConnector,SOURCE_CONNECTORS.md#3,REQ-003;NFR-018;NFR-026
+DES-005,SkillsMPConnector (MCP/REST/RSS),SOURCE_CONNECTORS.md#4,REQ-004;REQ-014
+DES-006,GitHubConnector,SOURCE_CONNECTORS.md#5,REQ-005
+DES-007,RobotsPolicy port,SOURCE_CONNECTORS.md#6,REQ-096;NFR-037;NFR-024;REQ-027
+DES-008,Discovery engine + persisted cursor,INGESTION.md#3,REQ-009;REQ-010;REQ-011;REQ-012;REQ-013
+DES-009,Queue port,QUEUE_MODEL.md#6,REQ-015;REQ-023
+DES-010,local-queue adapter (SQLite),QUEUE_MODEL.md#6,REQ-023;NFR-027;NFR-016
+DES-011,cf-queue adapter,QUEUE_MODEL.md#6,REQ-023;NFR-029
+DES-012,Job record + lifecycle query,QUEUE_MODEL.md#2,REQ-017;REQ-084
+DES-013,DLQ + startup guard,QUEUE_MODEL.md#5,REQ-020;REQ-021
+DES-014,Retry/backoff/jitter policy,QUEUE_MODEL.md#5,REQ-019;REQ-022;NFR-007
+DES-015,Fetcher + per-source rate limiter,SOURCE_CONNECTORS.md#1,REQ-024;REQ-026;REQ-028;NFR-013;NFR-023
+DES-016,Circuit breaker,INGESTION.md#7,REQ-025
+DES-017,ObjectStore port,DATABASE.md#1,REQ-029;NFR-027
+DES-018,fs adapter,DATABASE.md#8,REQ-029;NFR-016
+DES-019,r2 adapter,DATABASE.md#8,REQ-029;NFR-029
+DES-020,Raw record + provenance envelope,INGESTION.md#5,REQ-030;REQ-031;REQ-032;REQ-033;DOM-010
+DES-021,Rights-aware retention engine,LICENSING.md#5,REQ-034;REQ-098
+DES-022,Tombstone,LICENSING.md#7,REQ-034;REQ-063;NFR-010
+DES-023,SKILL.md parser,INGESTION.md#1,REQ-035;REQ-036;REQ-038;REQ-041
+DES-024,Parse failure taxonomy,INGESTION.md#7,REQ-037;NFR-022
+DES-025,Normaliser,DEDUPLICATION.md#2,REQ-039;REQ-040
+DES-026,Fingerprints: content_hash + normalised_hash,DEDUPLICATION.md#2,REQ-042;REQ-043
+DES-027,Dedup resolver,DEDUPLICATION.md#3,REQ-044;REQ-045;REQ-046;DOM-001;DOM-002;DOM-004
+DES-028,Relationship vocabulary + lineage signals,DEDUPLICATION.md#3,REQ-048;REQ-049;DOM-005
+DES-029,CanonicalStore port,DATABASE.md#8,REQ-050;REQ-054;NFR-027;NFR-028
+DES-030,sqlite adapter,DATABASE.md#6,REQ-054;NFR-016
+DES-031,d1 adapter,DATABASE.md#6,REQ-054;NFR-029
+DES-032,postgres adapter (migration target),DATABASE.md#6,REQ-054;NFR-034
+DES-033,Canonical schema + schema_version,DATABASE.md#10,REQ-053;REQ-055;REQ-094;DOM-002
+DES-034,Migration engine,DATABASE.md#10,REQ-094
+DES-035,Backup / restore / verify,DATABASE.md#10,REQ-091;NFR-035
+DES-036,Provenance model (field_origins JSON),PROVENANCE.md#2,REQ-040;DOM-006;NFR-005
+DES-037,Identity classification + purpose register,PROVENANCE.md#4,REQ-092;REQ-093;DOM-013;NFR-036
+DES-038,Licence resolver L1/L2/L3,LICENSING.md#1,REQ-056;REQ-060;DOM-007
+DES-039,"Rights engine (4 concepts, explicit unknown)",LICENSING.md#2,REQ-058;REQ-059;REQ-062;DOM-008;NFR-006
+DES-040,SPDX normaliser,LICENSING.md#3,REQ-057
+DES-041,Attribution write-time invariant,PROVENANCE.md#3,REQ-039;REQ-061;DOM-009;NFR-004;NFR-025
+DES-042,Author correction/removal path,LICENSING.md#7,REQ-063
+DES-043,Deterministic security signal extractor,SECURITY.md#3,REQ-075;REQ-076
+DES-044,Findings-projection score model,SECURITY.md#4,REQ-077;REQ-078;REQ-079;REQ-081
+DES-045,"Input hardening (size, YAML, UTF-8)",SECURITY.md#2,REQ-080;NFR-021;NFR-022
+DES-046,Secret management + output assertions,SECURITY.md#2,REQ-071;REQ-086;NFR-019;NFR-020
+DES-047,Observability counters,OBSERVABILITY.md#1,REQ-082;REQ-083;REQ-087
+DES-048,Run report with sampling-bias disclosure,OBSERVABILITY.md#4,REQ-085;REQ-013
+DES-049,Structured logging (UTC),OBSERVABILITY.md#5,REQ-086;NFR-038
+DES-050,API router /api/v1,API.md#1,REQ-064;REQ-065;REQ-066;REQ-067;REQ-068;REQ-069;REQ-073;REQ-074
+DES-051,Response envelope + attribution + fact/inference split,API.md#2,REQ-070;REQ-061;NFR-012
+DES-052,Cursor pagination,API.md#4,REQ-066;REQ-067;NFR-032;NFR-039
+DES-053,RateLimiter port,API.md#6,REQ-097
+DES-054,Error taxonomy,API.md#7,REQ-071
+DES-055,Operator CLI,ROADMAP.md#2,REQ-088;REQ-089;REQ-090;REQ-072
+DES-056,Re-analysis engine,INGESTION.md#6,REQ-095;NFR-017
+DES-057,Derived index rebuild,DATABASE.md#10,REQ-051;REQ-052;NFR-010
+DES-058,Clock port (UTC RFC3339),PROVENANCE.md#5,NFR-038;DOM-011
+DES-059,Dependency-direction lint,ARCHITECTURE.md#3,NFR-027;NFR-028;NFR-029
+DES-060,Batch runtime host,DATABASE.md#7,REQ-003;NFR-014;NFR-031;DEC-016
+DES-061,Edge runtime host,DATABASE.md#7,REQ-064;NFR-013
+DES-062,Keyword search index (derived),API.md#1,REQ-069;REQ-051
+DES-063,Cache port,DATABASE.md#1,NFR-027;NFR-012
+DES-064,Idempotency key scheme,INGESTION.md#2,REQ-016;NFR-001;NFR-008;NFR-009;DOM-001
+DES-065,Hash-prefix partitionability,SCALING.md#1,NFR-033;NFR-031
+DES-066,Scaling constraint register,SCALING.md#2,NFR-034
+DES-067,Batch ladder harness,INGESTION.md#4,REQ-012;NFR-011;NFR-002;NFR-003
+DES-068,Zero-AI-spend guard,ARCHITECTURE.md#5,NFR-015
+DES-069,"Reference-only message payload (storage key + hash, never content)",QUEUE_MODEL.md#3,REQ-018
+DES-070,"Oracle validation harness (dedup_primary / frontmatter_valid, stratified)",TEST_STRATEGY.md#2,REQ-047;REQ-041;NFR-002;NFR-003
+DES-071,Offline test harness + recorded connector fixtures,TEST_STRATEGY.md#1,NFR-030

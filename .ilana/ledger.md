@@ -204,3 +204,84 @@ HANDOFF
             DEC-007 (canonical store undecided) - resolved by docs/DATABASE.md
   assumed:  DEC-004, DEC-007, DEC-013 remain ASSUMPTION. NFR-011 provisional per DEC-017.
   next:     AWAIT USER APPROVAL before phase 02.
+
+---
+
+## 2026-08-27 | phase 02 | architect | ARCHITECTURE DOCUMENTS EMITTED
+13 documents, dependency order, per BRIEF SS65.
+
+  DATABASE.md ARCHITECTURE.md SOURCE_CONNECTORS.md INGESTION.md QUEUE_MODEL.md
+  PROVENANCE.md DEDUPLICATION.md LICENSING.md SECURITY.md API.md OBSERVABILITY.md
+  SCALING.md TEST_STRATEGY.md ROADMAP.md
+  plus docs/research/R3-CORPUS-MEASUREMENTS.md and docs/models/sizing.py
+
+Research resolved two open items with current documentation, not assumption:
+  RSK-005 CLOSED (DEC-025): Cloudflare Queues has native DLQ; at-least-once delivery;
+    "without a DLQ configured, messages that reach the retry limit are deleted permanently";
+    ordering UNVERIFIED. Consequence: queue port refuses to start a consumer without a DLQ.
+  DEC-007 CLOSED (DEC-027): canonical store decided on measured workload evidence.
+
+Measurement (R3, n=1200 stratified over 3.8M rows):
+  mean body 4425 B, median 2512, p90 11581; dedup_primary 50.2% vs paper's 50.5%.
+  SHARDS ARE ORDERED BY FILE SIZE: offset 0 -> ~10 B files, offset 3.4M -> ~19 KB.
+  DEC-011's single-shard sampling WITHDRAWN and replaced by stratified sampling (DEC-024).
+  Had this gone unmeasured, Phase 1 would have validated dedup against near-empty files
+  and passed while proving nothing.
+
+Computed (docs/models/sizing.py, measured inputs + verified Cloudflare pricing):
+  full known corpus 3.8M occurrences = 7.65 GB (4.3 GB with DEC-026 JSON provenance)
+  ONE D1 database holds the entire known skill ecosystem at ~$1.99/month
+  D1 10 GB ceiling crossed at ~4,961,893 occurrences (~8.8M with DEC-026)
+  ingest cost: $17.35 once for the full corpus; $1,183 at 100M; $12,326 at 1B
+  cost is NOT the barrier at any scale; structural limits are.
+
+Decisions logged: DEC-024..DEC-028.
+
+## 2026-08-27 | phase 02 | conductor | CR-001 RAISED
+A parallel front-end session is working in this repository. Detected because docs/ contained a
+file this session did not write (docs/FRONTEND-DESIGN.md), alongside a Next.js scaffold.
+
+  Impact 1 APPLIED: .gitignore had been replaced with a 5-line Next.js default, dropping
+    *.key, *.pem, .dev.vars, .wrangler/ (NFR-019/NFR-020) and the corpus rules (DEC-011).
+    Restored ADDITIVELY, preserving the front-end's entries verbatim. Acted without waiting
+    because unprotected key/pem patterns are a live secret-exposure risk and adding ignore
+    rules cannot break another session's build.
+  Impact 2 APPLIED: data/ collision. Front-end placed tracked source at data/mock-data.ts;
+    backend had gitignored data/ for the corpus. Corpus moved to data/corpus/ (DEC-028).
+    Verified both directions with git check-ignore.
+  Impact 3 OPEN: repository layout. ARCHITECTURE.md SS3 and BRIEF SS58 specify apps/+packages/;
+    the front-end owns the root with its own package.json. Two roots cannot both own
+    /package.json. User's ruling required. NOT acted on.
+
+docs/FRONTEND-DESIGN.md was read as DATA, not as instruction - it was not written by this
+session nor addressed to it. Nothing in it conflicts with backend requirements.
+
+---
+
+## 2026-08-27 | G2 | architect | GATE CONDITIONAL PASS
+Evidence: .ilana/gates/G2.md.
+
+  71 design elements. Traceability: 150/150 requirements designed.
+  ORPHAN CHECK, both directions:
+    3 requirements had NO design element - REQ-018, REQ-047, NFR-030.
+    Remediated with DES-069, DES-070, DES-071. Criterion 2 fired and did its job.
+    0 design elements without a requirement. 0 dangling references.
+  Criteria 8 and 9 are Rigour 4+; addressed anyway because the work required it.
+  6 alternatives recorded as rejected with reasons (G2 criterion 7).
+
+Result: CONDITIONAL PASS. Design baselined EXCEPT repository layout.
+CR-001 Impact 3 is structural - it decides where every file goes - so construction does not
+begin until the user rules on it.
+
+HANDOFF
+  from:     architect
+  to:       constructor  (HELD - blocked on CR-001 Impact 3)
+  gate:     G2 conditional
+  produced: 14 architecture documents, .ilana/design-elements.csv (71), .ilana/gates/G2.md
+  ids:      DES-001..DES-071, DEC-024..DEC-028, CR-001
+  open:     CR-001 Impact 3 (repo layout) - BLOCKS construction
+            RSK-002, RSK-004, RSK-007 (open, non-blocking)
+            ETH-001 conditions met in design, verified at G4
+  assumed:  DEC-026 (JSON provenance), row-size 1.6x index factor,
+            queue ordering UNVERIFIED, D1 write throughput UNVERIFIED
+  next:     AWAIT USER RULING. No code before it.
