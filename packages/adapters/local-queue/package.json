@@ -1,0 +1,9 @@
+{
+  "name": "@appmd/adapter-local-queue",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Durable SQLite-backed Queue adapter. Deliberately reproduces Cloudflare Queues semantics (DEC-025).",
+  "main": "src/index.js",
+  "scripts": { "test": "node --test test/*.test.js" }
+}

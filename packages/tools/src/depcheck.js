@@ -9,7 +9,7 @@
  * imports a SQL driver, that decision is a trap rather than a plan.
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, resolve, dirname } from 'node:path';
 
 const ROOT = process.argv[2] ?? process.cwd();
 
@@ -38,15 +38,42 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * Layers a given layer may NOT reach into via a RELATIVE path.
+ * Without this the lint had a hole: it only inspected bare specifiers, so
+ * `../../adapters/sqlite/src/index.js` would have passed silently. A lint with a
+ * hole is worse than no lint, because it is trusted.
+ */
+const RELATIVE_FORBID = {
+  'packages/skill-core': ['packages/adapters', 'packages/ingestion', 'packages/connectors', 'apps'],
+  'packages/ports':      ['packages/adapters', 'packages/ingestion', 'packages/connectors', 'apps'],
+  'packages/ingestion':  ['packages/adapters', 'apps'],
+  'packages/connectors': ['packages/adapters', 'apps'],
+};
+
 const violations = [];
 for (const rule of RULES) {
   for (const file of walk(join(ROOT, rule.layer))) {
+    // Test files may reach for adapters to assemble a rig; production source may not.
+    const isTest = /[\\/](test|fixtures)[\\/]/.test(file) || /\.test\.(js|mjs|ts)$/.test(file);
+    // Tests and fixtures legitimately assemble a rig from concrete adapters; that is
+    // what a contract test IS. The rule constrains PRODUCTION source only.
+    if (isTest) continue;
     const src = readFileSync(file, 'utf8');
     for (const m of src.matchAll(IMPORT_RE)) {
       const spec = m[1];
       for (const bad of rule.forbid) {
         if (bad.test(spec)) {
           violations.push({ file: relative(ROOT, file), spec, layer: rule.layer, why: rule.why });
+        }
+      }
+      if (spec.startsWith('.')) {
+        const target = relative(ROOT, resolve(dirname(file), spec)).replace(/\\/g, '/');
+        for (const forbidden of RELATIVE_FORBID[rule.layer] ?? []) {
+          if (target.startsWith(forbidden)) {
+            violations.push({ file: relative(ROOT, file), spec, layer: rule.layer,
+              why: `relative import escapes into ${forbidden}: ${rule.why}` });
+          }
         }
       }
     }
@@ -61,4 +88,5 @@ if (violations.length) {
   console.error(`  ${violations.length} violation(s). Build fails.\n`);
   process.exit(1);
 }
-console.log('  NFR-028 ok: dependency direction clean across', RULES.length, 'layers');
+console.log('  NFR-028 ok: dependency direction clean across', RULES.length,
+  'layers (bare specifiers and relative paths)');

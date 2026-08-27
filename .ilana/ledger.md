@@ -399,3 +399,39 @@ Remediated: git rm --cached on all 37 (index only, nothing deleted from disk),
 .gitignore rewritten to exclude them by explicit path, verified 0 tracked and all
 still present on disk. DEC-032 prohibits `git add -A` while the tree is shared, and
 adds the companion rule that a remediation is not done until committed AND verified.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 4 COMPLETE
+Queue, DLQ, job records, retry.
+
+EXIT CONDITION MET (two parts, both demonstrated):
+  1. TC-071: a consumer REFUSES TO START without a dead letter queue, and the message
+     is left untouched. Cloudflare deletes exhausted messages permanently when no DLQ
+     is configured (DEC-025), so this is silent data loss turned into a startup failure.
+  2. TC-076/TC-077: the local adapter deliberately injects duplicate delivery.
+     TC-076 proves an idempotent consumer absorbs every duplicate.
+     TC-077 proves a NON-idempotent consumer runs >40 times for 40 messages - the
+     production bug, reproduced locally, which is the whole point of NFR-027's
+     two-adapter rule. Testing against the easier adapter is not testing.
+
+REQ-018 enforced executably: assertReferenceOnly rejects payloads whose fields look
+like raw content, names the offending field path, and caps field size. TC-073/TC-074.
+
+DEF-001 FOUND AND CLOSED. Five tests failed on a SQLite bind error. The surface cause
+was an undefined startedAt. The actual defect was that the upsert would have
+overwritten started_at on every completion - had any value been supplied, the crash
+would have vanished and a job's duration would have become permanently unmeasurable,
+silently undermining REQ-083 and NFR-011. Fixed at both layers. TC-091, TC-092.
+The crash was a gift: a bind error is loud, a silently-reset timestamp is not.
+
+DEPCHECK HOLE FOUND AND CLOSED. The NFR-028 lint only inspected bare specifiers, so a
+relative import such as ../../adapters/sqlite/src/index.js would have passed silently.
+A lint with a hole is worse than no lint, because it is trusted. Now resolves relative
+paths against a forbidden-layer map and exempts test/fixture files, which legitimately
+assemble a rig from concrete adapters - that is what a contract test IS.
+Proved by planting a relative escape and watching the build fail.
+
+Also rewrote TC-082, which passed without checking its own claim. A test that implies
+coverage it does not provide is a liability. It now measures the actual deferral band,
+and TC-084 was added to assert jitter genuinely spreads retries.
+
+92 tests, 92 pass. Zero runtime dependencies.

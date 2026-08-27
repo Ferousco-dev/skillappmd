@@ -13,14 +13,14 @@ REQ-011,Re-running discovery over unchanged source state shall create no new can
 REQ-012,"Discovery shall accept a bounded batch limit, so operators may run 100, then 1,000, then 10,000.",functional,M,DES-008;DES-067,,TC-057,implemented
 REQ-013,"Discovery shall record, per run: source, parameters, start/end time, count discovered, count skipped, errors.",functional,M,DES-008;DES-048;UI-004,,,designed
 REQ-014,The system shall poll the SkillsMP RSS feed for incremental discovery.,functional,S,DES-005,,,designed
-REQ-015,"Each pipeline stage shall be an independently queued job whose worker concurrency is configurable per stage, such that changing one stage's concurrency requires no change to any other stage's configuration or code.",functional,M,DES-009,,,designed
-REQ-016,Every job shall be idempotent: re-execution with identical input produces identical state and no duplicate records.,functional,M,DES-064,,TC-019;TC-040,implemented
-REQ-017,"Every job shall carry job_id, skill_ref, source, attempt, status, started_at, completed_at, error.",functional,M,DES-012,,,designed
-REQ-018,"Queue messages shall carry references (storage key, content hash, ids), never content.",functional,M,DES-069,,,designed
-REQ-019,A failed job shall retry with exponential backoff and jitter to a configured maximum attempt count.,functional,M,DES-014,,TC-035,implemented
-REQ-020,"A job exceeding maximum attempts shall move to a dead letter queue, never retry indefinitely.",functional,M,DES-013,,,designed
-REQ-021,"Dead-lettered jobs shall be listable, inspectable, and manually re-submittable.",functional,M,DES-013,,,designed
-REQ-022,"Failure of one job shall not halt, restart or re-run the pipeline for any other job.",functional,M,DES-014,,,designed
+REQ-015,"Each pipeline stage shall be an independently queued job whose worker concurrency is configurable per stage, such that changing one stage's concurrency requires no change to any other stage's configuration or code.",functional,M,DES-009,,TC-075,implemented
+REQ-016,Every job shall be idempotent: re-execution with identical input produces identical state and no duplicate records.,functional,M,DES-064,,TC-019;TC-040;TC-076;TC-077,implemented
+REQ-017,"Every job shall carry job_id, skill_ref, source, attempt, status, started_at, completed_at, error.",functional,M,DES-012,,TC-085;TC-089,implemented
+REQ-018,"Queue messages shall carry references (storage key, content hash, ids), never content.",functional,M,DES-069,,TC-073;TC-074,implemented
+REQ-019,A failed job shall retry with exponential backoff and jitter to a configured maximum attempt count.,functional,M,DES-014,,TC-035;TC-072;TC-078;TC-082;TC-084,implemented
+REQ-020,"A job exceeding maximum attempts shall move to a dead letter queue, never retry indefinitely.",functional,M,DES-013,,TC-078,implemented
+REQ-021,"Dead-lettered jobs shall be listable, inspectable, and manually re-submittable.",functional,M,DES-013,,TC-080;TC-081,implemented
+REQ-022,"Failure of one job shall not halt, restart or re-run the pipeline for any other job.",functional,M,DES-014,,TC-075;TC-079,implemented
 REQ-023,The queue shall be provided through a port interface with a local adapter and a Cloudflare Queues adapter.,functional,M,DES-009;DES-010;DES-011,,,designed
 REQ-024,"The fetcher shall enforce per-source rate limits, concurrency caps, backoff, jitter and Retry-After.",functional,M,DES-015,,,designed
 REQ-025,The fetcher shall open a circuit breaker on repeated source failure and report it. The abstraction is defined in Phase 1 and retained for future network-based connectors; only the local-corpus path may omit an implementation.,functional,S,DES-016,,,designed
@@ -80,9 +80,9 @@ REQ-078,"Absence of findings shall be reported as absence of findings, never as 
 REQ-079,The system shall never represent analysis as certification or a guarantee of safety.,functional,M,DES-044;UI-007,,,designed
 REQ-080,"Content shall never be executed, at any stage, for any purpose.",functional,M,DES-045,,,designed
 REQ-081,Behavioural diffing between versions to detect malicious change.,functional,F,DES-044,,,designed
-REQ-082,"The system shall emit counters for: discovered, fetched, failed, parsed, duplicated, stored, dead-lettered.",functional,M,DES-047,,,designed
+REQ-082,"The system shall emit counters for: discovered, fetched, failed, parsed, duplicated, stored, dead-lettered.",functional,M,DES-047,,TC-088,implemented
 REQ-083,"The system shall report queue depth, processing latency per stage, and per-source error rates.",functional,M,DES-047;UI-005,,,designed
-REQ-084,Every job's lifecycle shall be queryable by job_id and by skill_ref.,functional,M,DES-012,,TC-048,implemented
+REQ-084,Every job's lifecycle shall be queryable by job_id and by skill_ref.,functional,M,DES-012,,TC-048;TC-086,implemented
 REQ-085,"An ingestion run shall produce a report stating counts, failures, and any sampling bias or truncation applied (DEC-013).",functional,M,DES-048;UI-004,,TC-062,implemented
 REQ-086,"Logs shall never contain secrets, credentials or tokens.",functional,M,DES-046;DES-049,,,designed
 REQ-087,AI processing cost accounting.,functional,F,DES-047,,,designed
@@ -124,7 +124,7 @@ NFR-024,"The system shall contain no access-control, rate-limit or bot-detection
 NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,DES-041,,,designed
 NFR-026,GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus.,non-functional,M,DES-004,,TC-056,implemented
 NFR-027,"Every infrastructure dependency (queue, object store, canonical store, cache, scheduler) shall sit behind a port interface with at least two adapters, one of which requires no cloud account.",non-functional,M,DES-010;DES-017;DES-029;DES-059;DES-063,,,designed
-NFR-028,"Business logic shall not import a vendor SDK. Verified by a dependency-direction lint rule, not by review discipline.",non-functional,M,DES-029;DES-059,,,designed
+NFR-028,"Business logic shall not import a vendor SDK. Verified by a dependency-direction lint rule, not by review discipline.",non-functional,M,DES-029;DES-059,,TC-090,implemented
 NFR-029,"Moving from local to Cloudflare shall require configuration and adapter selection only, with no change to pipeline logic.",non-functional,M,DES-011;DES-019;DES-031;DES-059,,,designed
 NFR-030,Unit tests shall run with no network access.,non-functional,M,DES-071,,,designed
 NFR-031,No design element shall assume the full dataset fits in memory or in one process.,non-functional,M,DES-060;DES-065,,,designed
@@ -134,7 +134,7 @@ NFR-034,"The architecture shall document its next binding constraint at 1M, 10M 
 NFR-035,"The canonical store shall be recoverable independently of every derived index and of every external source. Phase 1 targets: RPO ≤ 24 hours (at most one day of ingestion replayable), RTO ≤ 4 hours (restore and verify on the development m...",non-functional,M,DES-035,,TC-050;TC-051,implemented
 NFR-036,"Personal information shall be limited to what provenance and attribution require (DOM-013). The system shall not collect email addresses, real names beyond the public account identifier, follower graphs, contribution histories, or any fi...",non-functional,M,DES-037,,,designed
 NFR-037,"Every web-based connector shall fetch and honour the source's robots policy where one applies, together with Crawl-delay and Retry-After, and shall never bypass a restriction. Where a source explicitly authorises API access, the connecto...",non-functional,M,DES-007,,,designed
-NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,TC-011;TC-038,implemented
+NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,TC-011;TC-038;TC-083,implemented
 NFR-039,"Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size. This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be adda...",non-functional,M,DES-052,,TC-046,implemented
 DOM-001,"A SkillOccurrence is uniquely keyed by (source_id, repo_full_name, path, content_hash). It is an observation, never an identity.",domain,M,DES-027;DES-064,,TC-018,implemented
 DOM-002,"A CanonicalSkill is an AppMD-assigned identity to which one or more occurrences resolve. Its id is stable, opaque, and never derived from a mutable attribute (name, URL, star count).",domain,M,DES-027;DES-033,,,designed

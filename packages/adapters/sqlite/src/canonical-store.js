@@ -191,7 +191,10 @@ export class SqliteCanonicalStore {
       `INSERT INTO jobs (job_id, skill_ref, source_id, stage, attempt, status, started_at, completed_at, error, content_hash)
        VALUES (?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(job_id) DO UPDATE SET status=excluded.status,
-         completed_at=excluded.completed_at, error=excluded.error, attempt=excluded.attempt`
+         stage=excluded.stage, completed_at=excluded.completed_at,
+         error=excluded.error, attempt=excluded.attempt`
+      // started_at is deliberately NOT updated: starting a job sets it, completing
+      // one must not move it, or duration becomes unmeasurable.
     ).run(j.jobId, j.skillRef, j.sourceId, j.stage, j.attempt, j.status,
           j.startedAt, j.completedAt ?? null, j.error ?? null, j.contentHash ?? null);
   }
