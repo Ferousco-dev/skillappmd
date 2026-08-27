@@ -139,5 +139,5 @@ test('TC-329 NFR-040 the detail lifetime is bounded by the removal propagation w
   // max-age. If this constant grows, removal silently gets slower - so the bound is a test.
   assert.ok(MAX_AGE_DETAIL <= 300, 'REQ-063 removal must propagate within 300s');
   assert.ok(MAX_AGE_COLLECTION <= MAX_AGE_DETAIL);
-  assert.equal(typeof etagOf({ data: null }), 'string');
+  assert.equal(typeof (await etagOf({ data: null })), 'string');
 });

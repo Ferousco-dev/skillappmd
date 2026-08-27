@@ -181,7 +181,14 @@ test('TC-283 NFR-028/NFR-029 domain layers import no vendor SDK and no I/O modul
 });
 
 test('TC-284 NFR-030 unit tests declare no network primitive', async () => {
-  const netCall = /\b(fetch|XMLHttpRequest)\s*\(|from\s+['"]node:(http|https|net|dgram)['"]/;
+  // A Worker handler is invoked as `worker.<name>(request, env)` with a Request object -
+  // no socket is opened - so matching every member call flagged it. The pattern now
+  // requires an unqualified call or an explicit global receiver. Narrowed for precision,
+  // not to make the suite green: TC-352 plants violations and proves it still fires.
+  //
+  // This scan reads its own source, so nothing here may contain the literal pattern -
+  // including prose. That is why this comment is phrased the way it is.
+  const netCall = /(?<![.\w])(fetch|XMLHttpRequest)\s*\(|\b(globalThis|window)\.fetch\s*\(|from\s+['"]node:(http|https|net|dgram)['"]/;
   const offenders = [];
   for (const f of sources().filter((p) => /[/\\]test[/\\]/.test(p))) {
     const text = readFileSync(f, 'utf8');
@@ -262,4 +269,31 @@ test('TC-290 NFR-017 derived results are keyed by content hash and analyser vers
   assert.match(raw, /analyser/, 'the analyser identity is part of the key');
   assert.match(raw, /idempotencyKey:\s*`reanalyse:\$\{analyser\}:\$\{version\}:\$\{a\.id\}`/,
     'the re-analysis key includes analyser AND version, so unchanged content is not reprocessed');
+});
+
+test('TC-352 NFR-030 the network detector FIRES on a planted violation', () => {
+  // A detector nobody has tried to fool is a detector nobody should trust. TC-284 was
+  // narrowed after a false positive; this proves the narrowing left it working.
+  const netCall = /(?<![.\w])(fetch|XMLHttpRequest)\s*\(|\b(globalThis|window)\.fetch\s*\(|from\s+['"]node:(http|https|net|dgram)['"]/;
+
+  // Assembled at runtime, never written literally: TC-284 scans THIS file too, and a
+  // literal violation here would make the detector flag its own fixtures. Exempting the
+  // file would have been the easy fix and would have created a blind spot.
+  const F = 'fetch', X = 'XMLHttpRequest';
+  for (const violation of [
+    `const r = await ${F}('https://example.com');`,
+    `await globalThis.${F}('https://example.com');`,
+    `import { get } from 'node:${'https'}';`,
+    `new ${X}();`,
+  ]) {
+    assert.ok(netCall.test(violation), `must flag: ${violation}`);
+  }
+
+  for (const allowed of [
+    `const res = await worker.${F}(request, env);`,
+    `const r = await conn.${F}({ id });`,
+    `globalThis.${F} = () => { throw new Error(); };`,
+  ]) {
+    assert.equal(netCall.test(allowed), false, `must not flag: ${allowed}`);
+  }
 });

@@ -366,3 +366,25 @@ D1 adapter to write until the port's shape is settled.
 added so the contract suite contains an adapter synchronous code cannot satisfy (`TC-330`). It runs
 the full contract suite AND the whole ingestion pipeline (`TC-253 [deferred+memory]`). 370/370
 passing; ladder byte-identical at every rung.
+
+---
+
+## `DEF-010` — an unreachable database reported itself healthy
+
+**Found:** 2026-08-27, increment 14, by a test that expected 500 and got 200 · **Severity:** HIGH
+**Status:** CLOSED
+
+`SqlCanonicalStore.schemaVersion()` wrapped its query in `try { … } catch { return 0; }`. The catch
+existed for one legitimate case — before the first migration `schema_meta` does not exist — but it
+swallowed **every** error, including an unreachable database. `/api/v1/health` therefore answered
+**200 OK** with `schema_version: 0` while D1 was failing on every call.
+
+**A health check that cannot detect an unhealthy database is worse than none**, because monitoring
+believes it. This would not have caused an incident; it would have hidden one.
+
+**Fix:** only `no such table` / `does not exist` returns 0. Everything else propagates and surfaces
+as a 500 (`TC-349`).
+
+**Why nothing caught it earlier:** every existing test ran against a healthy store, so the catch was
+never exercised with a real failure. It took writing a Worker test that deliberately broke the
+binding — an edge-only concern — to reach the path at all. The bug was three increments old.

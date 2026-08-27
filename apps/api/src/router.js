@@ -27,8 +27,8 @@ export class ApiRouter {
 
     // REQ-099 / CR-007. Every 200 goes through here so a new endpoint cannot be added
     // without a cache decision - omitting the call is a missing header, not a default.
-    const cached = (body, kind, cacheableOverride) => {
-      const headers = cacheHeaders(body, kind, cacheableOverride);
+    const cached = async (body, kind, cacheableOverride) => {
+      const headers = await cacheHeaders(body, kind, cacheableOverride);
       if (matchesIfNoneMatch(req.headers?.['if-none-match'], headers.ETag)) {
         // 304 carries no body. Cache-Control must ride along or an intermediary may
         // re-derive freshness from nothing.
@@ -65,7 +65,7 @@ export class ApiRouter {
       if (path === `/api/${API_VERSION}/skills`) {
         const limit = clampLimit(q.limit);
         const page = await this.#store.cursorScan({ cursor: q.cursor ?? null, limit });
-        return cached(envelope(page.rows.map(serialiseSkill),
+        return await cached(envelope(page.rows.map(serialiseSkill),
           { requestId, generatedAt, cursor: page.cursor }), 'collection');
       }
 
@@ -81,14 +81,14 @@ export class ApiRouter {
         // record's decision rather than defaulting to cacheable - a location is still a
         // fact about work whose licence we may not know.
         const parentRights = JSON.parse((await this.#store.getCanonical(canonicalId)).rights_json);
-        return cached(body, 'collection', parentRights?.cacheable === true);
+        return await cached(body, 'collection', parentRights?.cacheable === true);
       }
 
       m = path.match(new RegExp(`^/api/${API_VERSION}/skills/([^/]+)$`));
       if (m) {
         const row = await this.#store.getCanonical(decodeURIComponent(m[1]));
         if (!row) return this.#notFound('skill', m[1], requestId);
-        return cached(envelope(serialiseSkill(row), { requestId, generatedAt }), 'detail');
+        return await cached(envelope(serialiseSkill(row), { requestId, generatedAt }), 'detail');
       }
 
       m = path.match(new RegExp(`^/api/${API_VERSION}/sources/([^/]+)$`));
@@ -109,7 +109,7 @@ export class ApiRouter {
         }
         const limit = clampLimit(q.limit);
         const page = await this.#store.search({ q: term, cursor: q.cursor ?? null, limit });
-        return cached(envelope(page.rows.map(serialiseSkill),
+        return await cached(envelope(page.rows.map(serialiseSkill),
           { requestId, generatedAt, cursor: page.cursor }), 'collection');
       }
 

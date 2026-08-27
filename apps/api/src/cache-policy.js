@@ -11,7 +11,6 @@
  *     delete by up to max-age, so max-age IS the removal propagation bound (NFR-040).
  *     That is why the TTL is small and deliberate rather than "an hour, why not".
  */
-import { createHash } from 'node:crypto';
 
 /** NFR-040: the removal propagation bound. Raising this weakens REQ-063. */
 export const MAX_AGE_DETAIL = 300;
@@ -39,9 +38,14 @@ export function isCacheable(payload) {
  * that never hits. The validator therefore covers data, cursor and notice, and CR-007
  * records the consequence: a 304 lets a client keep the meta block it already had.
  */
-export function etagOf(body) {
+export async function etagOf(body) {
   const stable = { data: body?.data ?? null, cursor: body?.cursor ?? null, notice: body?.notice ?? null };
-  return `"${createHash('sha256').update(JSON.stringify(stable)).digest('hex').slice(0, 32)}"`;
+  // Web Crypto, not node:crypto: this file runs on Workers, where node:crypto only
+  // exists behind a compatibility flag. Async is the price and the router already is.
+  const bytes = new TextEncoder().encode(JSON.stringify(stable));
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  const hex = [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `"${hex.slice(0, 32)}"`;
 }
 
 /**
@@ -51,8 +55,8 @@ export function etagOf(body) {
  *   own (occurrences) and must inherit the parent record's decision.
  * @returns {object} headers
  */
-export function cacheHeaders(body, kind, cacheableOverride) {
-  const etag = etagOf(body);
+export async function cacheHeaders(body, kind, cacheableOverride) {
+  const etag = await etagOf(body);
   const cacheable = cacheableOverride === undefined ? isCacheable(body?.data) : cacheableOverride === true;
   if (!cacheable) {
     // Still return the validator: a client may revalidate even what an edge must not keep.

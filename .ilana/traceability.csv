@@ -158,3 +158,7 @@ REQ-102,"The resolver skill instructs the agent to fetch content from the origin
 REQ-103,The resolver skill carries the rights rules: unknown is not permission.,functional,M,DES-056,packages/skillappmd/src/install.js,TC-335,implemented
 REQ-104,"The installed skill is a pointer, not a corpus: init downloads nothing.",functional,M,DES-056,packages/skillappmd/src/install.js,TC-334,implemented
 REQ-105,The API base is configurable via APPMD_API.,functional,M,DES-056,packages/skillappmd/src/install.js,TC-336,implemented
+REQ-106,The canonical store shall be implementable on Cloudflare D1 without changing store logic.,functional,M,DES-057,apps/worker/src/index.js,TC-194;TC-207;TC-344,implemented
+REQ-107,The edge runtime bundle shall import nothing from node:.,functional,M,DES-057,apps/worker/src/index.js,TC-345;TC-350,implemented
+REQ-108,The Worker shall allow-list CORS origins and never emit a wildcard.,functional,M,DES-057,apps/worker/src/index.js,TC-347,implemented
+REQ-109,"A missing or failing database binding shall be reported, never masked as healthy.",functional,M,DES-057,apps/worker/src/index.js,TC-346;TC-349,implemented

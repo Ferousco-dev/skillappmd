@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SqliteCanonicalStore } from '../../sqlite/src/index.js';
 import { DeferredMemoryCanonicalStore } from '../../deferred-store/src/index.js';
+import { createD1CanonicalStore } from '../../d1/src/index.js';
+import { FakeD1Database } from '../../d1/src/fake-d1.js';
 import { MemoryCanonicalStore } from '../src/index.js';
 import { parseSkill, normalise, fingerprint, resolveOccurrence,
          RemovalService, ReanalysisService, rebuildSearchIndex } from '../../../ingestion/src/index.js';
@@ -29,6 +31,11 @@ const ADAPTERS = [
   // it, this suite would go on proving that three synchronous stores agree with each
   // other, which is what let the port ship with a synchrony assumption in the first place.
   ['deferred', async () => { const s = new DeferredMemoryCanonicalStore(); await s.migrate({ now: NOW }); return s; }],
+  // CR-011: the SAME store logic driven through D1's call shape - .bind() binding,
+  // .first()/.all() returning Promises, .all() wrapping rows in { results }. Backed by
+  // real SQLite, so every test below runs against it unchanged. This proves the ADAPTATION,
+  // not D1 itself: no network, no row limits, no query timeouts (RSK-011).
+  ['d1', async () => { const s = createD1CanonicalStore(new FakeD1Database()); await s.migrate({ now: NOW }); return s; }],
 ];
 
 const disco = (repo, path = 'S.md', i = 0) => ({

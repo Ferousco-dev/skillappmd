@@ -1,0 +1,34 @@
+# Cloudflare deployment. CR-011, increment 14.
+#
+# NO SECRETS IN THIS FILE. It is committed. The Gemini key (CR-010) and anything else
+# sensitive are Workers secrets, set by the operator with `wrangler secret put` and never
+# written here, never logged, and never returned by the API.
+
+name = "skillappmd-api"
+main = "apps/worker/src/index.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+
+# The landing page's search calls this API from the browser, so its origin must be
+# named. A wildcard would let any site spend this account's request budget.
+[vars]
+ALLOWED_ORIGINS = "https://skill.appmd.dev,http://localhost:3000,http://localhost:3001"
+
+# D1 holds the canonical store. DATABASE.md computed the full known corpus at 7.65 GB
+# against a 10 GB ceiling, so one database is enough until roughly 5M occurrences.
+# `database_id` is filled in by `wrangler d1 create` - it is an account-scoped
+# identifier, not a secret, and is committed so a redeploy is reproducible.
+[[d1_databases]]
+binding = "DB"
+database_name = "skillappmd-canonical"
+database_id = "PLACEHOLDER — run: wrangler d1 create skillappmd-canonical"
+
+# R2 holds RAW bytes under the rights-aware retention of REQ-098/DEC-019.
+# Commented out until the bucket exists: a binding to a missing bucket fails at deploy,
+# and the read API does not need it.
+# [[r2_buckets]]
+# binding = "RAW"
+# bucket_name = "skillappmd-raw"
+
+[observability]
+enabled = true

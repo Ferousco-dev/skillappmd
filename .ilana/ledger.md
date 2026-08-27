@@ -1056,3 +1056,29 @@ An agent phrasing a real need gets nothing. This is the retrieval requirement RO
 gated semantic search on.
 
 378/378 passing. 148/148 mandatory requirements traced.
+
+## 2026-08-27 | increment 14 | developer | CLOUDFLARE DEPLOYMENT PATH (CR-011)
+One store, swappable driver: adapters/sql-store is runtime-neutral (zero node: imports),
+adapters/sqlite is the Node subclass (file open, WAL, backup/restore), adapters/d1 is a
+10-line composition. The contract suite now runs through FOUR adapters including D1's
+call shape, and TC-207 proves all four produce an identical canonical digest.
+
+Three failures that no test on Node could have produced:
+  1 node:sqlite in the edge bundle - would have failed to START, caught by --dry-run
+  2 `export { API_VERSION }` stopped the Worker booting - --dry-run says nothing
+  3 SQL comments truncated migrations under D1's line-oriented exec
+
+DEF-010 (HIGH, closed): schemaVersion() swallowed every error and returned 0, so an
+unreachable database reported 200 OK on /health. Three increments old. Found only because
+a Worker test deliberately broke the binding.
+
+TC-284's network detector was narrowed after a false positive on worker.fetch(); TC-352
+now plants violations to prove the narrowing left it working. Its fixtures are assembled
+at runtime because the scan reads its own source.
+
+Verified on wrangler dev against real D1: health 200/schema 3, search returns full records,
+MIT record public max-age=300 + ETag, If-None-Match -> 304 with no body, unknown-rights
+record no-store, CORS echoes a listed origin and omits an unlisted one.
+
+NOT deployed: database_id is a placeholder and wrangler login is interactive.
+405/405 passing. 152/152 mandatory requirements traced.

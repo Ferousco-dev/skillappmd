@@ -482,3 +482,140 @@ not have"), not the product. A description that reads like marketing will simply
 ### Not in this increment
 
 Semantic search (`CR-010`, requires the AI-spend amendment), MCP transport, deployment.
+
+---
+
+## CR-010 — semantic resolution: amend `NFR-015` (zero AI spend)
+
+**Raised:** 2026-08-27 · **Status:** AWAITING APPROVAL — no AI code exists and nothing is spent
+**Against:** SRS v1.3 · **Amends:** `NFR-015` · **Enables:** increment 15
+
+### The requirement this answers, measured not assumed
+
+`ROADMAP.md` §6 gates semantic search on *"a real retrieval requirement"*. Measured against the
+running API during increment 13, with a record whose description reads *"Parse HTML content and
+extract structured data"* present in the index:
+
+| Query an agent would actually send | Results |
+| --- | ---: |
+| `html` | 1 |
+| `extract content from a web page` | **0** |
+| `scrape a website` | **0** |
+| `ocr a scan` | **0** |
+
+SQLite FTS matches words. The product's entire premise is matching a *task* to a *capability*. The
+gate is satisfied, not skipped.
+
+### Cost, computed against the real corpus
+
+**1,906,153 canonical records** (not 3.8M — duplicates collapse, and content lives only on
+primaries). Prices verified 2026-08-27.
+
+**One-time embedding** — Gemini `gemini-embedding-001`, batch $0.075/1M tokens:
+
+| Text embedded per record | Tokens | Batch | Standard |
+| --- | ---: | ---: | ---: |
+| name + description (~50 tok) | 95M | **$7.15** | $14.30 |
+| name + description + body head (~250 tok) | 477M | **$35.74** | $71.48 |
+
+**Vectorize storage**, $0.05 per 100M stored dimensions beyond 10M included:
+
+| Dimensions | Stored | Monthly | **Free tier holds** |
+| ---: | ---: | ---: | ---: |
+| 768 | 1.46B | **$0.73** | 6,510 vectors |
+| 1536 | 2.93B | $1.46 | 3,255 vectors |
+| 3072 | 5.86B | $2.92 | 1,627 vectors |
+
+### The finding that matters more than the prices
+
+**The free tier cannot hold this index.** 5M stored dimensions is **6,510 vectors out of 1.9M —
+0.34%**. Semantic search forces the Workers Paid plan ($5/mo). That is not a Vectorize problem; at
+any dimension count the free allowance is three orders of magnitude short.
+
+**Realistic total: ~$5/mo (Workers Paid) + ~$1/mo (Vectorize at 768 dims) + ~$7–36 once.**
+Still inside "cheap by construction" — but it is no longer zero, which is why `NFR-015` must be
+amended rather than quietly ignored.
+
+### Amendment
+
+`NFR-015` currently forbids AI spend outright. Proposed:
+
+> **`NFR-015` (amended).** AI spend shall be **zero on the ingestion path**. Embedding is a
+> **batch acquisition step** with a declared budget, run deliberately and never as a side effect of
+> ingesting a record. Per-query embedding is permitted on the resolution path only, with a measured
+> ceiling. Any run whose projected cost exceeds its declared budget shall **refuse to start**.
+
+Same shape as `CR-006`, which classified Parquet extraction as batch-only rather than relaxing the
+memory budget everywhere.
+
+### Secret handling — binding
+
+The Gemini key is a **Workers secret**, supplied by the user. It shall not appear in source control,
+`wrangler.toml`, logs, error messages, or any API response. **I will not handle, enter, or store the
+key**; the user sets it themselves via their own tooling. No default and no fallback: a missing key
+is a startup failure, never a silent degradation to keyword search.
+
+### Open, to verify before building
+
+Which output dimensions `gemini-embedding-001` actually supports — 768 versus 3072 is a 4× storage
+difference, and I have not verified that truncation is available rather than assumed it.
+
+---
+
+## CR-011 — Cloudflare deployment: driver seam, D1 adapter, Worker entry (increment 14)
+
+**Raised:** 2026-08-27 · **Status:** APPROVED, IMPLEMENTED · **Adds:** `REQ-106`..`REQ-109`
+
+### What made it possible
+
+`CR-008` made the store port asynchronous. This is the increment that cashes that in.
+
+### Shape
+
+**One store, swappable driver** — not two stores. D1 speaks SQLite's dialect, so every query
+and migration was already valid; only the call shape differed. Copying 488 lines to change that
+would have created two implementations of one schema that can silently disagree.
+
+- `adapters/sql-store` — runtime-neutral. Imports **nothing** from `node:`.
+- `adapters/sqlite` — the Node subclass: file open, WAL checkpoint, backup, restore.
+- `adapters/d1` — a composition, ~10 lines.
+
+The whole contract suite (40+ tests, including `TC-207`'s cross-adapter digest equality) now runs
+through **four** adapters: sqlite, memory, deferred, and D1's call shape.
+
+### Three failures that only appeared outside the test suite
+
+1. **`node:sqlite` in the edge bundle.** `wrangler deploy --dry-run` showed the Worker importing
+   `node:sqlite` and `node:fs`. `node:sqlite` does not exist on Workers, so the deploy would have
+   produced a Worker that **fails to start**. No test in this repository could have found it —
+   every test runs on Node. This forced the `sql-store` split.
+2. **A stray export stopped the Worker booting.** `export { API_VERSION }` — workerd treats every
+   module export as an entrypoint and rejects a non-handler value. `--dry-run` bundles it happily
+   and says nothing. Only running the runtime surfaced it (`TC-350`).
+3. **SQL comments truncated the migrations.** D1's `exec()` is line-oriented, so the DDL must be
+   flattened — and flattening before stripping `-- NFR-033` comments swallows the rest of each
+   table. D1 reports only "incomplete input" (`TC-339`).
+
+### `DEF-010`, found by a test that expected a 500 and got a 200
+
+`schemaVersion()` caught **every** error and returned 0, so an unreachable database reported
+"schema version 0" and `/api/v1/health` answered **200 OK**. A health check that cannot detect an
+unhealthy database is worse than none, because monitoring believes it. Now only "no such table" —
+the legitimate pre-migration case — is swallowed.
+
+### Verified against the real runtime, not a mock
+
+`wrangler dev --local` on real D1 (miniflare), seeded through the real ingestion pipeline:
+
+| Check | Result |
+| --- | --- |
+| `/api/v1/health` after migration | `200`, `schema_version: 3` |
+| `/api/v1/search?q=pdf` | `200`, full record with provenance and rights |
+| MIT record | `Cache-Control: public, max-age=300` + `ETag` |
+| `If-None-Match` replay | **`304`**, no body, directive preserved |
+| unknown-rights record | **`no-store`** — `CR-007` firing unprompted |
+| CORS, listed origin | echoed |
+| CORS, unlisted origin | **absent** |
+
+**Not yet done:** no cloud deploy. `database_id` is a placeholder and `wrangler login` is an
+interactive OAuth flow the operator must run themselves.
