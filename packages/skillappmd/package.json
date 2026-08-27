@@ -1,12 +1,40 @@
 {
   "name": "skillappmd",
   "version": "0.1.0",
-  "description": "Install the AppMD skill resolver into your coding agent. One file, no index.",
-  "type": "module",
-  "bin": { "skillappmd": "src/cli.js" },
-  "files": ["src", "skill", "README.md"],
-  "engines": { "node": ">=18" },
+  "description": "Install the SkillAppMD resolver into your coding agent. One file, no index.",
+  "keywords": [
+    "skill",
+    "skills",
+    "agent",
+    "claude",
+    "resolver",
+    "SKILL.md"
+  ],
+  "homepage": "https://github.com/Ferousco-dev/skillappmd#readme",
+  "bugs": {
+    "url": "https://github.com/Ferousco-dev/skillappmd/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ferousco-dev/skillappmd.git",
+    "directory": "packages/skillappmd"
+  },
   "license": "MIT",
-  "keywords": ["skill", "skills", "agent", "claude", "resolver", "SKILL.md"],
-  "scripts": { "test": "node --test test/*.test.js" }
+  "author": "Ferousco-dev",
+  "type": "module",
+  "bin": {
+    "skillappmd": "src/cli.js"
+  },
+  "files": [
+    "src",
+    "skill",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
 }

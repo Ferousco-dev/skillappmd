@@ -8,9 +8,10 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync, existsSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
 import { install, resolveTarget, apiBase, SOURCE_SKILL } from '../src/install.js';
 import { run } from '../src/cli.js';
 
@@ -84,7 +85,7 @@ test('TC-335 REQ-102/REQ-103 the skill carries the rights rules and the origin-f
 });
 
 test('TC-336 REQ-105 the API base is overridable so the resolver is testable before deployment', () => {
-  assert.equal(apiBase({}), 'https://api.skillappmd.dev');
+  assert.equal(apiBase({}), 'https://skill.appmd.dev');
   assert.equal(apiBase({ APPMD_API: 'http://localhost:8787' }), 'http://localhost:8787');
 });
 
@@ -116,4 +117,22 @@ test('TC-338 REQ-100 the installer refuses a skill whose frontmatter name has dr
   const home = tmp(), src = join(tmp(), 'SKILL.md');
   writeFileSync(src, '---\nname: something-else\ndescription: x\n---\nbody\n');
   assert.throws(() => install({ home, source: src }), /name: skillappmd/);
+});
+
+test('TC-353 REQ-100 the CLI runs when invoked through a bin SYMLINK, as npm installs it', async () => {
+  // THE DEFECT THIS EXISTS FOR. The guard was `process.argv[1].endsWith('cli.js')`, which
+  // is true from source and FALSE once installed: npm links the bin as
+  // node_modules/.bin/skillappmd, so argv[1] is the symlink path. The package installed
+  // cleanly and the binary did nothing at all. Every test passed the whole time, because
+  // every test ran from source.
+  const dir = tmp();
+  const link = join(dir, 'skillappmd');
+  symlinkSync(resolve(import.meta.dirname, '../src/cli.js'), link);
+
+  const r = spawnSync(process.execPath, [link, 'init', '--dry-run'],
+                      { encoding: 'utf8', env: { ...process.env, HOME: tmp() } });
+
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /would install to .*skillappmd[/\\]SKILL\.md/,
+    'invoked through a symlink the CLI must still run — this is how npm installs it');
 });

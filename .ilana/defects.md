@@ -388,3 +388,29 @@ as a 500 (`TC-349`).
 **Why nothing caught it earlier:** every existing test ran against a healthy store, so the catch was
 never exercised with a real failure. It took writing a Worker test that deliberately broke the
 binding — an edge-only concern — to reach the path at all. The bug was three increments old.
+
+---
+
+## `DEF-011` — the published binary did nothing when installed
+
+**Found:** 2026-08-27, testing the tarball before publishing · **Severity:** HIGH · **Status:** CLOSED
+
+`cli.js` self-executed only when `process.argv[1].endsWith('cli.js')`. That is true from source
+and **false once installed**: npm links the bin as `node_modules/.bin/skillappmd`, so `argv[1]` is
+the symlink path. `npm install` succeeded, `npx skillappmd --help` printed **nothing**, and the
+exit code was 0.
+
+**The entire product is the installed binary.** A package that installs cleanly and then does
+nothing is worse than one that fails, because nothing signals the failure.
+
+**Why every test passed:** all nine ran the module from source, where the check happens to hold.
+The defect lived exactly in the gap between "works in the repo" and "works when installed", and
+nothing in the suite crossed it. It was found by packing the tarball, installing it into a scratch
+project and running the binary — the first time the real path was exercised.
+
+**Fix:** resolve the symlink before comparing (`realpathSync` + `pathToFileURL` against
+`import.meta.url`). **`TC-353`** invokes the CLI through a real symlink; mutation-checked by
+restoring the original guard, which fails it.
+
+**Carried lesson:** for anything distributed, the artefact must be exercised as a *consumer*
+receives it, not as the repository holds it.

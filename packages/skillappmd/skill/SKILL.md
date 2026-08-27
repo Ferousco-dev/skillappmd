@@ -25,7 +25,7 @@ knows their domain.
 
 ## The protocol
 
-The API base is `https://api.skillappmd.dev`, or the value of `APPMD_API` if set.
+The API base is `https://skill.appmd.dev`, or the value of `APPMD_API` if set.
 
 ```
 GET {base}/api/v1/search?q=<task+description>&limit=10

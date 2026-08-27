@@ -12,7 +12,7 @@ workers_dev = true
 # The landing page's search calls this API from the browser, so its origin must be
 # named. A wildcard would let any site spend this account's request budget.
 [vars]
-ALLOWED_ORIGINS = "https://skillappmd.dev,https://www.skillappmd.dev,http://localhost:3000,http://localhost:3001"
+ALLOWED_ORIGINS = "https://skill.appmd.dev,http://localhost:3000,http://localhost:3001"
 
 # D1 holds the canonical store. DATABASE.md computed the full known corpus at 7.65 GB
 # against a 10 GB ceiling, so one database is enough until roughly 5M occurrences.

@@ -6,9 +6,11 @@
  * agent does the work afterwards; the installer's only job is to put one file in the
  * right place and say where it went.
  */
+import { realpathSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { install, resolveTarget, apiBase, SKILL_NAME } from './install.js';
 
-const USAGE = `skillappmd — install the AppMD skill resolver into your coding agent
+const USAGE = `skillappmd — install the SkillAppMD resolver into your coding agent
 
   npx skillappmd@latest init [options]
 
@@ -78,10 +80,27 @@ export function run(argv = process.argv.slice(2),
   log(`scope      ${r.scope}`);
   log(`api        ${apiBase()}`);
   log('');
-  log('One file, no index. Restart your agent and it will consult AppMD when it needs');
-  log('a capability it does not have.');
+  log('One file, no index. Restart your agent and it will consult SkillAppMD when it');
+  log('needs a capability it does not have.');
   return 0;
 }
 
-// Only self-execute as a binary, so the module stays importable by tests.
-if (process.argv[1] && process.argv[1].endsWith('cli.js')) process.exitCode = run();
+/**
+ * Run only when this file IS the entry point, so the module stays importable by tests.
+ *
+ * The obvious check — `process.argv[1].endsWith('cli.js')` — is wrong once the package is
+ * installed. npm links the bin as `node_modules/.bin/skillappmd`, so argv[1] is the
+ * SYMLINK path and the check never matches: the binary installs fine and then does
+ * nothing at all. It worked from source the whole time. Resolving the symlink first is
+ * what makes the two cases agree.
+ */
+function isEntryPoint() {
+  if (!process.argv[1]) return false;
+  try {
+    return pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url;
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) process.exitCode = run();
