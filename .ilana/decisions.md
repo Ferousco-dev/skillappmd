@@ -554,3 +554,18 @@ second adapter written by someone who has not read `PROVENANCE.md`.
 
 An invariant that only holds when the code remembers to check it is a convention, not an invariant.
 `TC-041` and `TC-042` prove the database refuses the write even when domain assertions are bypassed.
+
+---
+
+## DEC-032 — `git add -A` is prohibited while the working tree is shared
+**Status:** DECIDED · raised by `CR-003`
+
+Commits stage **explicit backend paths only**: `.ilana/ docs/ packages/ apps/ .gitignore`.
+
+`git add -A` in a shared tree tracked 37 front-end files, including binary webpack artefacts, into
+the backend repository. The blast radius of a convenience flag scales with how many people share
+the directory.
+
+**Companion rule:** a remediation is not complete until it is **committed and verified**. `CR-001`'s
+`.gitignore` fix was applied to the working tree, reported as done, and then silently lost. Article
+12 applies to fixes, not only to decisions.

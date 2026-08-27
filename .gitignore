@@ -1,4 +1,11 @@
-# --- secrets: never commit (intake Q5) ---
+# ============================================================
+# BACKEND repository (.ilana / docs / packages / apps).
+# The front-end lives in a SEPARATE repository (CR-001, option B).
+# Any front-end files still present in this working tree are being
+# relocated by their owner and are ignored here, never tracked.
+# ============================================================
+
+# --- secrets: never commit (intake Q5, NFR-019, NFR-020) ---
 .env
 .env.*
 !.env.example
@@ -6,15 +13,36 @@
 *.pem
 .dev.vars
 .wrangler/
+
 # --- deps / build ---
 node_modules/
 dist/
 build/
 coverage/
-# --- large research corpora (fetched, never vendored) ---
-data/
+.next/
+out/
+*.tsbuildinfo
+
+# --- backend corpus: fetched, never vendored (DEC-011, DEC-028, NFR-018) ---
+data/corpus/
 *.db
 *.sqlite
 *.parquet
+
+# --- front-end artefacts in transit (CR-001). Not ours to track. ---
+/app/
+/components/
+/pages/
+/lib/
+/types/
+/package.json
+/package-lock.json
+/next-env.d.ts
+/next.config.mjs
+/postcss.config.js
+/postcss.config.mjs
+/tailwind.config.ts
+/tsconfig.json
+
 # --- os ---
 .DS_Store

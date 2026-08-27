@@ -91,3 +91,107 @@ It is recorded so the boundary it describes is visible in this session's ledger 
   Their relocation belongs to their owner, not to this session.
 
 **CR-001 CLOSED.** Consequence recorded as `DEC-029`.
+
+---
+
+## CR-002 — Phase 1 reads the corpus through the datasets-server row API, not Parquet files
+**Raised:** 2026-08-27 · `[architect]` · **Status: OPEN — user's ruling requested**
+**Affects:** `REQ-003` (baselined at G1, so Article 11 applies)
+
+### The requirement as written
+
+> `REQ-003` — The system shall implement `GitSkillsCorpusConnector` reading the CC-BY-4.0
+> **Parquet** corpus.
+
+### Why the mechanism is being questioned
+
+Reading Parquet in Node requires a third-party library (DuckDB, `parquetjs`, or Arrow). That
+means a dependency install, which means network — and it is the *only* thing in Phase 1 that
+would need one. `DEC-030` deliberately kept the whole build dependency-free.
+
+The Hugging Face **datasets-server row API** serves the same CC-BY-4.0 dataset as JSON, addressed
+by `offset` and `length` — which happens to be **exactly the access pattern `DEC-024` stratified
+sampling needs**. Fetching 100 rows across 10 strata transfers a few hundred KB rather than
+208 MB, and it satisfies the user's instruction to *"fetch only the minimum real data required."*
+
+### What is unchanged
+
+- Same dataset, same DOI, same CC-BY-4.0 licence, same attribution obligation (`NFR-026`).
+- Same columns (`REQUIRED_COLUMNS`), same oracles (`dedup_primary`, `frontmatter_valid`).
+- Same `CorpusReader` seam, so **a Parquet reader is a drop-in third implementation**
+  (`FixtureCorpusReader`, `HfRowsCorpusReader`, and later `ParquetCorpusReader`).
+- `DEC-016` row-group streaming remains the design for the Parquet path when bulk ingestion
+  needs it; nothing here forecloses it.
+
+### What genuinely changes
+
+| | Parquet | datasets-server rows |
+| --- | --- | --- |
+| Dependency | DuckDB / Arrow | none |
+| Bytes for a 100-row stratified sample | ~208 MB (whole shard) | a few hundred KB |
+| Suitable for full-corpus ingestion | **yes** | **no** — an HTTP API, rate-limited, page ≤100 |
+| Availability | local file, offline forever | third-party service |
+
+**The honest limitation:** this reader is right for *sampling and validation*, and wrong for
+*bulk ingestion*. It is a Phase 1 instrument, not the corpus path at scale.
+
+### Recommendation
+
+Amend `REQ-003` to name the **corpus**, not the file format, and record two readers with a stated
+trigger: datasets-server for sampling and validation now; Parquet for bulk ingestion when a run
+exceeds the row cap (proposed: >2,000 rows, or any full-corpus pass).
+
+**Requested:** approve the amendment, or direct that Parquet be implemented now with the
+dependency install that entails.
+
+---
+
+## CR-003 — Backend commits tracked front-end files; caused by `git add -A` in a shared tree
+**Raised:** 2026-08-27 · `[configuration-engineer]` · **Status: CLOSED, remediated same day**
+**Severity: MEDIUM.** Self-inflicted. Recorded because Article 2 requires reporting our own faults
+as plainly as anyone else's.
+
+### What happened
+
+Commit `dd57d47` (G2) used `git add -A` in a working tree shared with the front-end session. That
+swept **37 files this session does not own** into the backend repository's index:
+
+```
+28  .next/**            build artefacts, including binary webpack .pack files
+ 2  app/**
+ 7  next-env.d.ts, package.json, package-lock.json, postcss.config.mjs,
+    tailwind.config.ts, tsconfig.json, tsconfig.tsbuildinfo
+```
+
+The `.gitignore` merge written during `CR-001` — which would have prevented most of this — was
+**never committed**; `git log -- .gitignore` shows only the original `c90eef7` version was ever
+recorded. The working file later reverted to that original, and the regression went unnoticed
+until a `git check-ignore` during increment 3 reported `data/` as the matching rule instead of the
+expected `data/corpus/`.
+
+**Two failures, not one:**
+1. Using `git add -A` in a tree containing another session's files.
+2. Not verifying that the `CR-001` remediation was actually committed. It was applied to the
+   working tree and reported as done. It was not durable. *"Write it down or it did not happen"*
+   applies to fixes as much as to decisions.
+
+### Remediation (applied)
+
+- `git rm -r --cached` on all 37 files. **Index only — nothing deleted from disk**, honouring the
+  user's instruction not to modify, move or delete front-end files.
+- `.gitignore` rewritten to ignore `.next/`, `node_modules/`, `*.tsbuildinfo` and the front-end's
+  root config files by explicit path, so recurrence is prevented rather than watched for.
+- Verified: **0** front-end files tracked; all still present on disk; corpus and secrets ignored.
+
+### Standing rule (`DEC-032`)
+
+**`git add -A` is prohibited in this repository while any other session shares the working tree.**
+Commits stage explicit backend paths only.
+
+### Note on files no longer on disk
+
+`components/`, `pages/`, `lib/`, `types/` and `data/mock-data.ts` are gone from the working tree.
+**This session did not delete them** — it never issued a delete against any front-end path, and a
+commit cannot remove working files. Their removal is consistent with the front-end session
+relocating to its own repository under the user's option B ruling. Recorded so the absence is not
+later attributed here.

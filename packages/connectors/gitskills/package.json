@@ -1,0 +1,9 @@
+{
+  "name": "@appmd/connector-gitskills",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GitSkillsCorpusConnector. REQ-003. Batch runtime only (DATABASE.md §7).",
+  "main": "src/index.js",
+  "scripts": { "test": "node --test test/*.test.js" }
+}
