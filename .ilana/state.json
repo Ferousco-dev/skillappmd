@@ -2,9 +2,9 @@
   "ilana_version": "1.0.3",
   "project": "appmd-skill-cloud",
   "mode": "FLEET",
-  "phase": "07",
-  "gate": "G6",
-  "agent": "quality-auditor",
+  "phase": "08",
+  "gate": "G7",
+  "agent": "metrologist",
   "process_style": "hybrid",
   "rigour": 3,
   "open": [
@@ -23,7 +23,7 @@
     "CR": 6,
     "RSK": 8,
     "DEC": 39,
-    "MET": 0,
+    "MET": 30,
     "ETH": 1
   },
   "attempts": {
@@ -31,7 +31,9 @@
     "G2": 1,
     "G3": 1,
     "G4": 2,
-    "G5": 1
+    "G5": 1,
+    "G6": 1,
+    "G7": 1
   },
   "scope_deferred": [
     "frontend",

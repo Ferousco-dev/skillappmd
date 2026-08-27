@@ -936,3 +936,43 @@ the team that built the thing, and it was not: every other gate in this project 
 assessed by a role this session adopted, and this one was not.
 
 G5 PASSES on all ten criteria. Gates now: G0-G6 all pass. Phase 07 Quality Assurance opens.
+
+## 2026-08-27 | phase 07 | quality-auditor | QUALITY ASSURANCE
+Artifacts: docs/quality-plan.md, docs/audit-report.md, .ilana/metrics.csv (30 metrics
+across product, process and project).
+
+CRITERION 1 IS PARTIAL AND SAID SO. The quality plan requires writing BEFORE construction.
+It was written today, after G6. It is not backdated, and the disclosure is the first
+section of the document rather than a footnote. The mechanisms a plan would have mandated
+were in force from G0; the document naming them was not.
+
+DEFECT CAUSE ANALYSIS - the two findings that matter:
+
+1. FIXTURES WERE THE DOMINANT DEFECT SOURCE. 3 of 8 defects (DEF-002, DEF-003, DEF-005),
+   all HIGH or MEDIUM. In every case the test data was written in the shape the code had
+   been written, so tests and code agreed and were wrong TOGETHER. Each passed a full unit
+   suite. The control that worked was grading against a corpus THIS PROJECT DID NOT
+   CREATE. 4 of 8 defects (50%) were found by real data no fixture would have exposed.
+
+2. PLANNING OMISSION CAUSED BOTH GATE FAILURES. Neither G4 nor G5 failed on code quality.
+   ARCHITECTURE.md SS5 listed raw storage as a Phase 1 subsystem; SOURCE_CONNECTORS.md SS4
+   specified SkillsMPConnector in detail. Both were absent. THE DESIGN WAS RIGHT BOTH
+   TIMES AND THE PLAN LOST IT. The remedy is now mechanical rather than attentional:
+   traceability.js runs in CI and reports any requirement without a test.
+
+INDEPENDENCE, stated plainly rather than softened: three criteria across three gates have
+now been waived for the same reason (G4/9 peer review, G5/11 independent test team,
+G7/5 independent audit). This project's largest process weakness is that every check but
+one was performed by whoever did the work. The exception - the G1 stakeholder review -
+reversed DEC-018 and DEC-019, two decisions no test could have caught because both were
+consistent implementations of a wrong idea. One independent review outperformed everything
+automated on exactly the class of problem automation cannot see.
+
+Metrics: defect density 1.99/KLOC, test density 83/KLOC, mandatory coverage 100%,
+gate first-pass rate 60%, mean defect escape 2.9 increments, review yield 8 findings
+before execution testing.
+
+## 2026-08-27 | G7 | quality-auditor | GATE CONDITIONAL PASS
+Criteria 2,3,4,6,8,9 PASS. Criterion 1 PARTIAL (plan not written before construction,
+not backdated). Criterion 5 WAIVED (no independent auditor exists; finding A2).
+Phase 08 Process Assessment opens.
