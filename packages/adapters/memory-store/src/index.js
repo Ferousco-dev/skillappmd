@@ -26,6 +26,8 @@ export class MemoryCanonicalStore {
   #cursors = new Map();
   #tombstones = new Map();
   #removals = new Map();
+  #raw = new Map();
+  #index = new Map();
   #migrationLog = [];
 
   schemaVersion() { return this.#version; }
@@ -34,7 +36,7 @@ export class MemoryCanonicalStore {
     if (typeof now !== 'string') throw new TypeError('migrate requires an explicit UTC timestamp (NFR-038)');
     const from = this.#version;
     const applied = [];
-    for (const v of [1, 2]) {
+    for (const v of [1, 2, 3]) {
       if (v <= from) continue;
       this.#version = v; applied.push(v);
       this.#migrationLog.push({ version: v, name: `memory-v${v}`, applied_at: now, rows_touched: 0 });
@@ -137,16 +139,19 @@ export class MemoryCanonicalStore {
     return { rows, cursor: { next: rows.length === n ? encode(rows.at(-1).occurrence_key) : null, limit: n } };
   }
 
+  /** Reads the DERIVED INDEX, matching the SQL adapter's semantics exactly. */
   search({ q, cursor = null, limit = 50 }) {
     const term = String(q).toLowerCase();
     const n = Math.min(Math.max(1, limit), 100);
     const after = cursor === null ? null : decode(cursor);
-    const all = [...this.#canonical.values()]
-      .filter((r) => `${r.declared_name ?? ''} ${r.declared_description ?? ''}`.toLowerCase().includes(term))
-      .sort((a, b) => (a.created_at + a.id).localeCompare(b.created_at + b.id));
-    const start = after === null ? 0 : all.findIndex((r) => (r.created_at + r.id) > after);
-    const rows = start < 0 ? [] : all.slice(start, start + n).map(clone);
-    return { rows, cursor: { next: rows.length === n ? encode(rows.at(-1).created_at + rows.at(-1).id) : null, limit: n } };
+    const hits = [...this.#index.values()]
+      .filter((e) => e.haystack.includes(term))
+      .sort((a, b) => (a.created_at + a.canonical_id).localeCompare(b.created_at + b.canonical_id));
+    const start = after === null ? 0 : hits.findIndex((e) => (e.created_at + e.canonical_id) > after);
+    const page = start < 0 ? [] : hits.slice(start, start + n);
+    const rows = page.map((e) => clone(this.#canonical.get(e.canonical_id))).filter(Boolean);
+    const last = page.at(-1);
+    return { rows, cursor: { next: page.length === n ? encode(last.created_at + last.canonical_id) : null, limit: n } };
   }
 
   counts() {
@@ -212,6 +217,52 @@ export class MemoryCanonicalStore {
     const start = after === null ? 0 : all.findIndex((r) => (r.created_at + r.id) > after);
     const rows = start < 0 ? [] : all.slice(start, start + n).map(clone);
     return { rows, cursor: { next: rows.length === n ? encode(rows.at(-1).created_at + rows.at(-1).id) : null, limit: n } };
+  }
+
+  // ---- raw objects + derived index parity (increment 11) -------------------
+
+  upsertRawObject(r) {
+    const prev = this.#raw.get(r.contentHash);
+    this.#raw.set(r.contentHash, { ...prev,
+      content_hash: r.contentHash, object_key: r.objectKey, source_id: r.sourceId,
+      source_url: r.sourceUrl ?? null, source_version_ref: r.sourceVersionRef ?? null,
+      retrieved_at: r.retrievedAt, size_bytes: r.sizeBytes, rights_state: r.rightsState,
+      retention_policy: r.retentionPolicy, expires_at: r.expiresAt ?? null,
+      state: r.state ?? prev?.state ?? 'retained',
+      deleted_at: r.deletedAt ?? prev?.deleted_at ?? null,
+      deleted_reason: r.deletedReason ?? prev?.deleted_reason ?? null });
+    return r.contentHash;
+  }
+  getRawObject(h) { const r = this.#raw.get(h); return r ? clone(r) : null; }
+  findExpiredRaw({ now, limit = 500 }) {
+    return [...this.#raw.values()]
+      .filter((r) => r.state === 'retained' && r.expires_at && r.expires_at <= now)
+      .sort((a, b) => a.expires_at.localeCompare(b.expires_at)).slice(0, limit).map(clone);
+  }
+  markRawDeleted({ contentHash, now, reason }) {
+    const r = this.#raw.get(contentHash);
+    if (r) { r.state = 'deleted'; r.deleted_at = now; r.deleted_reason = reason; }
+  }
+  rawCounts() {
+    const c = (st) => [...this.#raw.values()].filter((r) => r.state === st).length;
+    return { retained: c('retained'), expired: c('expired'), deleted: c('deleted'), total: this.#raw.size };
+  }
+
+  clearSearchIndex() { const n = this.#index.size; this.#index.clear(); return n; }
+  indexCanonical({ canonicalId, haystack, declaredName, createdAt, now }) {
+    this.#index.set(canonicalId, { canonical_id: canonicalId, haystack,
+      declared_name: declaredName ?? null, created_at: createdAt, indexed_at: now });
+  }
+  searchIndexCount() { return this.#index.size; }
+  canonicalForIndexing({ cursor = null, limit = 500 } = {}) {
+    const after = cursor === null ? null : decode(cursor);
+    const all = [...this.#canonical.values()]
+      .sort((a, b) => (a.created_at + a.id).localeCompare(b.created_at + b.id));
+    const start = after === null ? 0 : all.findIndex((r) => (r.created_at + r.id) > after);
+    const rows = (start < 0 ? [] : all.slice(start, start + limit)).map((r) => ({
+      id: r.id, declared_name: r.declared_name, declared_description: r.declared_description,
+      created_at: r.created_at, tombstoned_at: r.tombstoned_at }));
+    return { rows, cursor: { next: rows.length === limit ? encode(rows.at(-1).created_at + rows.at(-1).id) : null, limit } };
   }
 
   digest() {

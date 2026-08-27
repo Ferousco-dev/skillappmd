@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { SqliteCanonicalStore } from '../../sqlite/src/index.js';
 import { MemoryCanonicalStore } from '../src/index.js';
 import { parseSkill, normalise, fingerprint, resolveOccurrence,
-         RemovalService, ReanalysisService } from '../../../ingestion/src/index.js';
+         RemovalService, ReanalysisService, rebuildSearchIndex } from '../../../ingestion/src/index.js';
 
 /**
  * THE PORTABILITY PROOF (DEC-027, DATABASE.md SS8, G4).
@@ -120,9 +120,12 @@ for (const [name, make] of ADAPTERS) {
     s.close();
   });
 
-  test(`TC-202 [${name}] REQ-069 search returns the same matches`, () => {
+  test(`TC-202 [${name}] REQ-069 search returns the same matches after a rebuild`, () => {
     const s = make();
     for (let i = 0; i < 5; i++) ingest(s, `o/r${i}`, skill(i), { i });
+    // DATABASE.md SS46: the index is built after canonical, not as a side effect of it.
+    assert.equal(s.searchIndexCount(), 0, 'nothing is indexed by the canonical write');
+    rebuildSearchIndex({ store: s, now: NOW });
     const r = s.search({ q: 's-3', limit: 10 });
     assert.equal(r.rows.length, 1);
     assert.equal(r.rows[0].declared_name, 's-3');

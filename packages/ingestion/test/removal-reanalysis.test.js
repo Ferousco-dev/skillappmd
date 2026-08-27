@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { RemovalService, REQUEST_KIND, DISPOSITION,
          ReanalysisService, REANALYSIS_TRIGGER,
          parseSkill, normalise, fingerprint, resolveOccurrence } from '../src/index.js';
-import { SqliteCanonicalStore } from '../../adapters/sqlite/src/index.js';
+import { SqliteCanonicalStore, SCHEMA_VERSION } from '../../adapters/sqlite/src/index.js';
 import { LocalQueue } from '../../adapters/local-queue/src/index.js';
 
 const NOW = '2026-08-27T13:45:00Z';
@@ -186,13 +186,14 @@ test('TC-191 REQ-095 messages carry references only, and name their trigger', as
   queue.close(); store.close();
 });
 
-test('TC-192 REQ-094 the v2 migration upgrades an existing store without losing data', () => {
+test('TC-192 REQ-094 migrations upgrade an existing store without losing data', () => {
   const { store, ids } = rig();
   const before = store.counts().canonical;
   // Re-running migrate on an already-migrated store is a no-op and loses nothing.
   const r = store.migrate({ now: NOW });
   assert.deepEqual(r.applied, []);
-  assert.equal(store.schemaVersion(), 2);
+  assert.equal(store.schemaVersion(), SCHEMA_VERSION,
+    'asserted against the constant, so the NEXT migration does not break this test');
   assert.equal(store.counts().canonical, before);
   assert.ok(store.getCanonical(ids[0]), 'existing records survive');
   store.close();

@@ -207,3 +207,37 @@ design — a repeated trigger is the expected case for `REQ-095`, not an edge ca
 **Regression test:** `TC-193` asserts the handler runs once **and** that both messages are settled
 **and** that `consume()` terminates, with a 4-second race guard so a recurrence fails loudly
 instead of hanging the suite.
+
+---
+
+## DEF-007 — Incremental indexing on the canonical write path breached `NFR-014`
+**Found:** 2026-08-27 during increment 11 verification · **Severity: MEDIUM** · **Status: CLOSED**
+**Requirement:** `NFR-014` · **Component:** `packages/ingestion/src/deduplicator.js`
+
+**Symptom.** After wiring the derived index, the 10,000-record ladder reported **128 MB delta —
+over budget**, against 85 MB before the increment.
+
+**Found by re-running existing evidence, not by review.** The unit tests all passed; only the
+ladder — an artefact from increment 9b that nothing forced me to re-run — showed it.
+
+**Two causes, one real.**
+1. `resolveOccurrence` re-read each row with `getCanonical()` immediately after writing it,
+   allocating a full row object per record. Removed; **it was not the main driver** (128 → 131 MB,
+   which is noise). Recorded because assuming it was the cause and stopping there would have left
+   the real problem in place.
+2. **The real cause: indexing on the canonical write path at all.** `DATABASE.md` §46 already says
+   *"Skill imported → Database updated → Search index updated later."* I had coupled them.
+
+**Fix.** Indexing moved off the ingest path entirely; `rebuildSearchIndex()` is the single way the
+index is built, which is also the recovery path — one mechanism rather than two that can disagree.
+`ingestRecord` takes an opt-in `indexOnWrite` for callers that need immediate search correctness.
+
+**Result: 119 MB, within budget.** Headroom is genuinely smaller than the pre-increment 85 MB; the
+difference is the `raw_objects` rows, which are the point of the increment and are recorded here
+rather than glossed.
+
+**Also caught, in my own verification script rather than in shipped code:** a check reading the
+first 150 rows of the extracted corpus concluded "search works: false". Those rows are stratum 0 —
+the ~10-byte files with no frontmatter — so every haystack was empty and zero hits was correct.
+**The head-sampling error `DEC-024` exists to prevent, walked into again in an ad-hoc script.**
+Re-run with a stride: 240 records, 79 with declared names, search returns hits.

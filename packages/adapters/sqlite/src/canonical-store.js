@@ -199,27 +199,38 @@ export class SqliteCanonicalStore {
    * SQLite LIKE is adequate at Phase 1 scale; SCALING.md ~10M names FTS as the
    * point where this must be replaced by a derived index (REQ-051).
    */
+  /**
+   * REQ-069 keyword search over the DERIVED INDEX (REQ-051), not over canonical.
+   * Before increment 11 this queried canonical_skills directly, which meant there was
+   * no derived index and therefore nothing for REQ-052 to rebuild.
+   */
   search({ q, cursor = null, limit = 50 }) {
     const n = Math.min(Math.max(1, limit), 100);
-    const like = `%${String(q).replace(/[%_]/g, (c) => '\\' + c)}%`;
+    const like = `%${String(q).toLowerCase().replace(/[%_]/g, (c) => '\\' + c)}%`;
     const rows = cursor
       ? this.#db.prepare(
-          `SELECT * FROM canonical_skills
-           WHERE (declared_name LIKE ? ESCAPE '\\' OR declared_description LIKE ? ESCAPE '\\')
-             AND (created_at, id) > (?, ?)
-           ORDER BY created_at, id LIMIT ?`).all(like, like, ...decodeCursor(cursor), n)
+          `SELECT c.* FROM search_index s JOIN canonical_skills c ON c.id = s.canonical_id
+           WHERE s.haystack LIKE ? ESCAPE '\\' AND (s.created_at, s.canonical_id) > (?, ?)
+           ORDER BY s.created_at, s.canonical_id LIMIT ?`).all(like, ...decodeCursor(cursor), n)
       : this.#db.prepare(
-          `SELECT * FROM canonical_skills
-           WHERE declared_name LIKE ? ESCAPE '\\' OR declared_description LIKE ? ESCAPE '\\'
-           ORDER BY created_at, id LIMIT ?`).all(like, like, n);
+          `SELECT c.* FROM search_index s JOIN canonical_skills c ON c.id = s.canonical_id
+           WHERE s.haystack LIKE ? ESCAPE '\\'
+           ORDER BY s.created_at, s.canonical_id LIMIT ?`).all(like, n);
     const next = rows.length === n ? encodeCursor(rows.at(-1).created_at, rows.at(-1).id) : null;
     return { rows, cursor: { next, limit: n } };
   }
 
   counts() {
-    const one = (t) => this.#db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n;
-    return { canonical: one('canonical_skills'), occurrences: one('occurrences'),
-             repositories: one('repositories'), jobs: one('jobs'), tombstones: one('tombstones') };
+    // DEF-004's rule generalised: no identifier is interpolated into SQL, even one that
+    // is currently a local literal. A future edit that made `t` a parameter would turn
+    // this into an injection site silently, and the fixed form costs nothing.
+    return {
+      canonical: this.#db.prepare('SELECT COUNT(*) AS n FROM canonical_skills').get().n,
+      occurrences: this.#db.prepare('SELECT COUNT(*) AS n FROM occurrences').get().n,
+      repositories: this.#db.prepare('SELECT COUNT(*) AS n FROM repositories').get().n,
+      jobs: this.#db.prepare('SELECT COUNT(*) AS n FROM jobs').get().n,
+      tombstones: this.#db.prepare('SELECT COUNT(*) AS n FROM tombstones').get().n,
+    };
   }
 
   // ---- jobs and cursors ----------------------------------------------------
@@ -251,6 +262,85 @@ export class SqliteCanonicalStore {
       'INSERT INTO cursors (id, source_id, position, updated_at) VALUES (?,?,?,?) ' +
       'ON CONFLICT(id) DO UPDATE SET position=excluded.position, updated_at=excluded.updated_at'
     ).run(id, sourceId, position, now);
+  }
+
+  // ---- raw objects (REQ-030, REQ-034) -------------------------------------
+
+  upsertRawObject(r) {
+    this.#db.prepare(
+      `INSERT INTO raw_objects (content_hash, object_key, source_id, source_url,
+         source_version_ref, retrieved_at, size_bytes, rights_state, retention_policy,
+         expires_at, state, deleted_at, deleted_reason)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(content_hash) DO UPDATE SET
+         state=excluded.state, expires_at=excluded.expires_at,
+         deleted_at=excluded.deleted_at, deleted_reason=excluded.deleted_reason`
+    ).run(r.contentHash, r.objectKey, r.sourceId, r.sourceUrl ?? null,
+          r.sourceVersionRef ?? null, r.retrievedAt, r.sizeBytes, r.rightsState,
+          r.retentionPolicy, r.expiresAt ?? null, r.state ?? 'retained',
+          r.deletedAt ?? null, r.deletedReason ?? null);
+    return r.contentHash;
+  }
+
+  getRawObject(contentHash) {
+    return this.#db.prepare('SELECT * FROM raw_objects WHERE content_hash = ?').get(contentHash) ?? null;
+  }
+
+  /** REQ-034: retention is a QUERY over recorded expiry, not a background guess. */
+  findExpiredRaw({ now, limit = 500 }) {
+    return this.#db.prepare(
+      `SELECT * FROM raw_objects WHERE state = 'retained' AND expires_at IS NOT NULL
+         AND expires_at <= ? ORDER BY expires_at LIMIT ?`).all(now, limit);
+  }
+
+  markRawDeleted({ contentHash, now, reason }) {
+    this.#db.prepare(
+      `UPDATE raw_objects SET state='deleted', deleted_at=?, deleted_reason=? WHERE content_hash = ?`)
+      .run(now, reason, contentHash);
+  }
+
+  rawCounts() {
+    const one = (st) => this.#db.prepare(
+      'SELECT COUNT(*) AS n FROM raw_objects WHERE state = ?').get(st).n;
+    return { retained: one('retained'), expired: one('expired'), deleted: one('deleted'),
+             total: this.#db.prepare('SELECT COUNT(*) AS n FROM raw_objects').get().n };
+  }
+
+  // ---- derived search index (REQ-051, REQ-052) -----------------------------
+
+  /** Derived and DISPOSABLE. Dropping this loses nothing (DATABASE.md SS1). */
+  clearSearchIndex() {
+    const before = this.#db.prepare('SELECT COUNT(*) AS n FROM search_index').get().n;
+    this.#db.exec('DELETE FROM search_index');
+    return before;
+  }
+
+  indexCanonical({ canonicalId, haystack, declaredName, createdAt, now }) {
+    this.#db.prepare(
+      `INSERT INTO search_index (canonical_id, haystack, declared_name, created_at, indexed_at)
+       VALUES (?,?,?,?,?)
+       ON CONFLICT(canonical_id) DO UPDATE SET haystack=excluded.haystack,
+         declared_name=excluded.declared_name, indexed_at=excluded.indexed_at`
+    ).run(canonicalId, haystack, declaredName ?? null, createdAt, now);
+  }
+
+  searchIndexCount() {
+    return this.#db.prepare('SELECT COUNT(*) AS n FROM search_index').get().n;
+  }
+
+  /** Iterates canonical for a rebuild. Cursor-based: never loads the table (NFR-031). */
+  canonicalForIndexing({ cursor = null, limit = 500 } = {}) {
+    const n = Math.min(Math.max(1, limit), 1000);
+    const rows = cursor
+      ? this.#db.prepare(
+          `SELECT id, declared_name, declared_description, created_at, tombstoned_at
+           FROM canonical_skills WHERE (created_at, id) > (?, ?)
+           ORDER BY created_at, id LIMIT ?`).all(...decodeCursor(cursor), n)
+      : this.#db.prepare(
+          `SELECT id, declared_name, declared_description, created_at, tombstoned_at
+           FROM canonical_skills ORDER BY created_at, id LIMIT ?`).all(n);
+    const next = rows.length === n ? encodeCursor(rows.at(-1).created_at, rows.at(-1).id) : null;
+    return { rows, cursor: { next, limit: n } };
   }
 
   // ---- removal and correction (REQ-063, DEC-015) --------------------------

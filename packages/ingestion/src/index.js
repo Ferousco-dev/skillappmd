@@ -5,3 +5,6 @@ export * from './normaliser.js';
 export * from './deduplicator.js';
 export * from './removal.js';
 export * from './reanalysis.js';
+export * from './raw.js';
+export * from './pipeline.js';
+export * from './rebuild.js';

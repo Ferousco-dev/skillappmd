@@ -1,0 +1,8 @@
+{
+  "name": "@appmd/adapter-fs-objectstore",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local filesystem ObjectStore adapter (DES-018). Batch and local runtimes.",
+  "main": "src/index.js"
+}

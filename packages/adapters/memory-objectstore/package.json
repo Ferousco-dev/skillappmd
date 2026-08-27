@@ -1,0 +1,8 @@
+{
+  "name": "@appmd/adapter-memory-objectstore",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "In-memory ObjectStore adapter. Exists to prove the port carries no filesystem semantics.",
+  "main": "src/index.js"
+}

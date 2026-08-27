@@ -17,10 +17,64 @@ export const CanonicalStore = Object.freeze({
   ],
 });
 
-/** DES-017. Object storage (fs | r2). Bytes under a key. NOT a database (rule 6). */
+/**
+ * DES-017. Object storage (fs | r2 | memory). Bytes under an opaque key.
+ * NOT a database (DATABASE.md rule 6): `head` is metadata, and listing is not querying.
+ *
+ * Existing verb names are kept. `head` IS the metadata call, so no new verb is invented.
+ *
+ * Contract:
+ *   put(key, bytes, meta) -> { key, bytes, created, alreadyExisted }
+ *   get(key)              -> { bytes, meta } | null
+ *   head(key)             -> meta | null
+ *   exists(key)           -> boolean
+ *   delete(key)           -> boolean          (true if bytes were removed)
+ *
+ * REQ-029 immutability: `put` on an existing key whose stored bytes differ from the
+ * incoming bytes MUST throw. Because keys derive from the content hash this should be
+ * unreachable - it is enforced anyway, since "unreachable by construction" is a claim
+ * and a check is evidence.
+ *
+ * No path, bucket, SDK, HTTP or filesystem concept crosses this port.
+ */
 export const ObjectStore = Object.freeze({
   methods: ['put', 'get', 'head', 'delete', 'exists'],
+  guarantees: { contentAddressed: true, immutable: true, listingIsNotQuerying: true },
 });
+
+/** REQ-029: the only key shape any adapter accepts. Validated before a path is built. */
+export const OBJECT_KEY_RE = /^sha256:[0-9a-f]{64}$/;
+
+export function assertObjectStoreContract(store) {
+  for (const m of ObjectStore.methods) {
+    if (typeof store?.[m] !== 'function') {
+      throw new Error(`DES-017 violated: ObjectStore adapter missing ${m}()`);
+    }
+  }
+  return true;
+}
+
+/**
+ * REQ-033: raw content is INTERNAL PROCESSING DATA behind an access-control layer.
+ * Every read names its purpose; anything outside this list is refused. The point is
+ * not that the list is long - it is that "serve to a user" is not on it, and cannot
+ * be added without editing this file and failing a test.
+ */
+export const RAW_PURPOSE = Object.freeze({
+  REPROCESS: 'reprocess',
+  RETENTION: 'retention',
+  REMOVAL: 'removal',
+  VERIFY: 'verify',
+});
+
+export function assertRawPurpose(purpose) {
+  if (!Object.values(RAW_PURPOSE).includes(purpose)) {
+    throw new Error(
+      `REQ-033 violated: "${purpose}" is not a permitted raw-access purpose. ` +
+      `Raw content is internal processing data and is never served (REQ-062).`);
+  }
+  return true;
+}
 
 /**
  * DES-009. Queue (local-queue | cf-queue).

@@ -2,26 +2,25 @@
   "ilana_version": "1.0.3",
   "project": "appmd-skill-cloud",
   "mode": "FLEET",
-  "phase": "04",
-  "gate": "G3",
-  "agent": "constructor",
+  "phase": "05",
+  "gate": "G4",
+  "agent": "verifier",
   "process_style": "hybrid",
   "rigour": 3,
   "open": [
     "RSK-002",
     "RSK-004",
-    "RSK-007",
-    "G4-raw-storage-absent"
+    "RSK-007"
   ],
   "overrides": [],
   "counters": {
     "REQ": 98,
     "NFR": 39,
     "DOM": 13,
-    "DES": 71,
+    "DES": 92,
     "UI": 10,
-    "TC": 220,
-    "DEF": 6,
+    "TC": 256,
+    "DEF": 7,
     "CR": 6,
     "RSK": 8,
     "DEC": 37,
@@ -32,7 +31,7 @@
     "G1": 2,
     "G2": 1,
     "G3": 1,
-    "G4": 1
+    "G4": 2
   },
   "scope_deferred": [
     "frontend",

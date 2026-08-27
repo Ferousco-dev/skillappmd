@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiRouter } from '../src/router.js';
 import { SqliteCanonicalStore } from '../../../packages/adapters/sqlite/src/index.js';
-import { parseSkill, normalise, fingerprint, resolveOccurrence } from '../../../packages/ingestion/src/index.js';
+import { parseSkill, normalise, fingerprint, resolveOccurrence,
+         rebuildSearchIndex } from '../../../packages/ingestion/src/index.js';
 
 const clock = () => '2026-08-27T13:45:00Z';
 const pct = (a, p) => a.slice().sort((x, y) => x - y)[Math.min(a.length - 1, Math.floor(a.length * p))];

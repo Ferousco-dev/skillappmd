@@ -1,0 +1,8 @@
+{
+  "name": "@appmd/adapter-r2-objectstore",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "R2 ObjectStore boundary (DES-019). Shape only - live I/O requires external infrastructure.",
+  "main": "src/index.js"
+}

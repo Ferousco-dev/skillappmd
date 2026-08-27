@@ -786,3 +786,46 @@ lazily inside a findIndex callback, so an empty store never validated at all. A
 same-family adapter pair would never have surfaced it.
 
 220 tests, 220 pass. G4 attempt 1 FAILS. Remediation: increment 11 (raw storage).
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 11 COMPLETE — RAW STORAGE
+Remediation for the G4 attempt-1 failure. Plan first: docs/INCREMENT-11.md, every design
+decision traced to an existing REQ/NFR/DOM/DEC. No requirement invented.
+
+BUILT: ObjectStore adapters (fs, memory, r2-boundary); RAW stage; RAW->PARSED->CANONICAL
+pipeline; reprocessFromRaw; rights-aware retention over real bytes; migration v3
+(raw_objects + a REAL search_index); rebuildSearchIndex; RAW_PURPOSE access guard.
+
+REQ-032 EVIDENCE, the one that mattered: TC-225 reprocesses with every connector method
+throwing AND globalThis.fetch replaced, so any network contact from anywhere fails the
+test. TC-226 deletes the file underneath afterwards and asserts reprocessing then FAILS -
+proof the earlier pass genuinely read from disk rather than a mock. On real corpus data:
+100 records reprocessed from raw, ZERO network calls.
+
+DEF-007 FOUND BY RE-RUNNING EXISTING EVIDENCE, not by review. Wiring the derived index
+inline pushed the 10,000-record ladder to 128 MB, over NFR-014. Every unit test passed;
+only the increment 9b ladder showed it. I first removed a redundant getCanonical() re-read
+- it was NOT the cause (128 -> 131 MB), and that is recorded because stopping at the
+plausible fix would have left the real problem in place. The real cause was coupling
+indexing to the canonical write at all, which DATABASE.md SS46 had already ruled out.
+Moved off the ingest path; rebuildSearchIndex() is now the single mechanism and also the
+recovery path. 119 MB, within budget - with less headroom than the pre-increment 85 MB,
+which is the raw_objects rows and is stated rather than glossed.
+
+ALSO CAUGHT, in my own verification script rather than shipped code: a check over the
+first 150 extracted rows reported "search works: false". Those are stratum 0 - the
+~10-byte files with no frontmatter - so zero hits was CORRECT. The head-sampling error
+DEC-024 exists to prevent, walked into again in an ad-hoc script. Re-run with a stride:
+240 records, 79 named, search returns hits.
+
+SECURITY: traversal refused on 15 attack strings across both live adapters; nothing
+escapes the raw root (TC-213); no raw route and no raw bytes in any API response
+(TC-238); table names no longer interpolated into SQL even where the input was a local
+literal (DEF-004's rule generalised); raw root gitignored.
+
+220 -> 256 tests, all passing. No new dependencies. No frontend file touched.
+
+## 2026-08-27 | G4 | verifier | GATE PASS (attempt 2)
+Evidence: .ilana/gates/G4.md. Supersedes the attempt-1 FAIL.
+All seven previously-absent requirements now have a DES element, a TC identifier, an
+implementation, and evidence on real corpus data. 59/87 mandatory REQ carry a test, up
+from 52. Phase 05 Verification opens.

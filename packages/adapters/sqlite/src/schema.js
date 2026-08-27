@@ -10,7 +10,7 @@
  * drops 7.65 GB -> ~4.3 GB and D1 headroom roughly doubles.
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * REQ-094: migrations are ordered, re-runnable, and record what they touched.
@@ -167,6 +167,46 @@ export const MIGRATIONS = [
       `ALTER TABLE canonical_skills ADD COLUMN tombstoned_at TEXT`,
       `ALTER TABLE canonical_skills ADD COLUMN content_bytes_held INTEGER NOT NULL DEFAULT 1`,
       `CREATE INDEX IF NOT EXISTS idx_cs_tombstoned ON canonical_skills(tombstoned_at)`,
+    ],
+  },
+  {
+    version: 3,
+    name: 'raw-objects-and-derived-search-index',
+    up: [
+      // REQ-030: what the RELATIONAL store holds about a raw object. The bytes and a
+      // self-describing sidecar live in the object store; this table holds the pointer,
+      // the retention state, and enough provenance to answer questions without opening
+      // an object (INCREMENT-11.md SS5).
+      `CREATE TABLE IF NOT EXISTS raw_objects (
+         content_hash TEXT PRIMARY KEY,
+         object_key TEXT NOT NULL,
+         source_id TEXT NOT NULL,
+         source_url TEXT,
+         source_version_ref TEXT,
+         retrieved_at TEXT NOT NULL,
+         size_bytes INTEGER NOT NULL,
+         rights_state TEXT NOT NULL,
+         retention_policy TEXT NOT NULL,
+         expires_at TEXT,
+         state TEXT NOT NULL DEFAULT 'retained',   -- retained | expired | deleted
+         deleted_at TEXT,
+         deleted_reason TEXT
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_raw_state ON raw_objects(state)`,
+      `CREATE INDEX IF NOT EXISTS idx_raw_expiry ON raw_objects(expires_at)`,
+
+      // REQ-051 / REQ-052: a REAL derived index. Until now search() read canonical
+      // directly, so there was nothing to rebuild - which is why REQ-052 was absent.
+      // Derived, disposable, rebuildable from canonical alone.
+      `CREATE TABLE IF NOT EXISTS search_index (
+         canonical_id TEXT PRIMARY KEY,
+         haystack TEXT NOT NULL,
+         declared_name TEXT,
+         created_at TEXT NOT NULL,
+         indexed_at TEXT NOT NULL
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_search_haystack ON search_index(haystack)`,
+      `CREATE INDEX IF NOT EXISTS idx_search_cursor ON search_index(created_at, canonical_id)`,
     ],
   },
 ];

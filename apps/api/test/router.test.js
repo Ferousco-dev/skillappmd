@@ -4,7 +4,8 @@ import { ApiRouter, NOTICE } from '../src/router.js';
 import { serialiseSkill } from '../src/serialise.js';
 import { SqliteCanonicalStore, SCHEMA_VERSION } from '../../../packages/adapters/sqlite/src/index.js';
 import { MemoryRateLimiter } from '../../../packages/adapters/memory-ratelimit/src/index.js';
-import { parseSkill, normalise, fingerprint, resolveOccurrence } from '../../../packages/ingestion/src/index.js';
+import { parseSkill, normalise, fingerprint, resolveOccurrence,
+         rebuildSearchIndex } from '../../../packages/ingestion/src/index.js';
 
 const NOW = '2026-08-27T13:45:00Z';
 const clock = () => NOW;
@@ -24,6 +25,10 @@ function rig({ skills = 3, limiter = null } = {}) {
     resolveOccurrence({ store, discovery: d, canonical: c, fingerprints: fingerprint(raw), now: NOW });
     ids.push(c.id);
   }
+  // DATABASE.md SS46: canonical is written, then the derived index is built. The rig
+  // mirrors that sequence rather than relying on indexing happening as a side effect
+  // of the canonical write - which is precisely the coupling we removed.
+  rebuildSearchIndex({ store, now: NOW });
   return { store, ids, router: new ApiRouter({ store, clock, limiter }) };
 }
 const GET = (router, path, query = {}, clientId = 'test') =>
@@ -218,5 +223,25 @@ test('TC-161 REQ-071 errors carry a stable code and a request id, and leak nothi
   assert.equal(r.body.error.code, 'NOT_FOUND');
   assert.match(r.body.error.request_id, /^req_/);
   assert.equal(JSON.stringify(r.body).includes('sqlite'), false);
+  store.close();
+});
+
+
+test('TC-238 REQ-033 the API has no route to raw content and never returns raw bytes', () => {
+  const { router, ids, store } = rig({ skills: 2 });
+  // No raw route exists.
+  for (const path of ['/api/v1/raw', `/api/v1/skills/${ids[0]}/raw`, '/api/v1/objects',
+                      `/api/v1/raw/${ids[0]}`, '/api/v1/content']) {
+    const r = GET(router, path);
+    assert.equal(r.status, 404, `${path} must not exist`);
+  }
+  // And no response body carries raw bytes or an internal storage key.
+  for (const path of [`/api/v1/skills/${ids[0]}`, '/api/v1/skills', '/api/v1/search?q=skill']) {
+    const body = JSON.stringify(GET(router, path.split('?')[0], { q: 'skill' }).body);
+    assert.equal(/"raw_object_key"/.test(body), false, `${path} leaks an internal storage key`);
+    assert.equal(/sha256:[0-9a-f]{64}/.test(body.replace(/"(content|normalised)_hash":"sha256:[0-9a-f]{64}"/g, '')), false,
+      `${path} leaks an object key outside the declared identity fields`);
+    assert.equal(/Body \d/.test(body), false, `${path} leaks raw body text`);
+  }
   store.close();
 });

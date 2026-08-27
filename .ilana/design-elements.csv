@@ -70,6 +70,17 @@ DES-068,Zero-AI-spend guard,ARCHITECTURE.md#5,NFR-015
 DES-069,"Reference-only message payload (storage key + hash, never content)",QUEUE_MODEL.md#3,REQ-018
 DES-070,"Oracle validation harness (dedup_primary / frontmatter_valid, stratified)",TEST_STRATEGY.md#2,REQ-047;REQ-041;NFR-002;NFR-003
 DES-071,Offline test harness + recorded connector fixtures,TEST_STRATEGY.md#1,NFR-030
+DES-072,"ObjectStore fs adapter (content-addressed, traversal-guarded)",fs-objectstore,REQ-029;REQ-030;REQ-033;NFR-021
+DES-073,ObjectStore memory adapter (portability proof),memory-objectstore,REQ-029;NFR-027
+DES-074,ObjectStore R2 boundary,r2-objectstore,REQ-029;NFR-029
+DES-075,RAW stage: storeRaw / readRaw,ingestion/raw.js,REQ-029;REQ-030;REQ-031;REQ-033
+DES-076,RAW->PARSED->CANONICAL pipeline,ingestion/pipeline.js,REQ-029;REQ-031
+DES-077,reprocessFromRaw (no source contact),ingestion/pipeline.js,REQ-032;REQ-095
+DES-078,Rights-aware retention over real bytes,ingestion/raw.js,REQ-034;REQ-098
+DES-079,raw_objects table,sqlite/schema.js v3,REQ-030;REQ-034
+DES-080,Derived search_index table,sqlite/schema.js v3,REQ-051;REQ-069
+DES-081,rebuildSearchIndex (real rebuild),ingestion/rebuild.js,REQ-052;NFR-010
+DES-082,RawAccess purpose guard,ports/index.js,REQ-033
 UI-001,CLI + read-only HTTP API; no GUI,INTERFACE.md#1,REQ-088;REQ-089;REQ-090
 UI-002,"Destructive-action guards (--confirm, --dry-run)",INTERFACE.md#4,REQ-063;REQ-091;REQ-052
 UI-003,Error catalogue with recovery paths,INTERFACE.md#5,REQ-037;REQ-071

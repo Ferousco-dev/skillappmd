@@ -50,3 +50,7 @@ data/corpus/
 # --- dependency: quarantined to packages/connectors/gitskills (CR-005) ---
 packages/connectors/gitskills/node_modules/
 package-lock.json
+
+# --- raw object store: bytes are never vendored (REQ-033, NFR-019) ---
+data/raw/
+data/objects/

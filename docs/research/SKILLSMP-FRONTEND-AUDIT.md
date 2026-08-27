@@ -260,6 +260,8 @@ Patterns worth having that `API.md` cannot currently serve. Recorded, not faked.
 | Corpus totals for the counter | **TODO, BACKEND CONTRACT REQUIRED.** No endpoint reports totals; the landing figure is a build-time constant sourced from `R2`. |
 | Stars / forks | Out of scope. `REQ-093` and `DEC-020` restrict individual-author fields beyond attribution. |
 | Popularity or trending sort | **TODO, BACKEND CONTRACT REQUIRED.** Cursors encode `(sort_key, id)`; available sort keys are not enumerated. |
+| Occurrence **count** for a skill | **TODO, BACKEND CONTRACT REQUIRED.** Cursor pagination deliberately carries no total (`NFR-039`), so "seen N times" has no live source. Currently fixture-only. Deduplication is the product's strongest differentiator, so this is the highest-value addition to the contract. |
+| Occurrence **record shape** | **TODO, BACKEND CONTRACT REQUIRED.** `GET /skills/:id/occurrences` is listed in `API.md` §1 but no fields are defined, so an occurrence can only be rendered as an opaque id. Repository and path are the fields the UI needs. |
 
 ## Blocking issue
 
@@ -275,3 +277,98 @@ Skill detail and occurrences cannot be built against a live contract until
 these exist and the router is bound to a server. Front-end work should proceed
 against the documented contract with a typed client and fixture data, and
 integrate when the endpoints land.
+
+---
+
+# Comparative: skills.sh
+
+Added after the SkillsMP pass, at the user's request. `skill.sh` is a parked
+domain with no product on it; the live site is **https://skills.sh**, "The Open
+Agent Skills Ecosystem", built by Vercel.
+
+A second reference point is useful because skills.sh solves the same discovery
+problem with a very different posture: SkillsMP is a catalogue, skills.sh is a
+package manager.
+
+## What it is
+
+**Nav:** Skills, Packs, Topics, Official, Audits, Docs.
+
+**Hero:** A large pixelated SKILLS wordmark, one sentence of positioning, and a
+copyable install command, `npx skills add <owner/repo>`, given more prominence
+than the search field. Below it a row of agent logos under "AVAILABLE FOR THESE
+AGENTS".
+
+**Primary surface:** a **leaderboard**, not a card grid. A dense ranked table
+with columns: rank, skill name plus `owner/repo`, an 8-week activity sparkline,
+and an install count. Tabs switch the ranking window: All Time (1,289,001),
+Trending (24h), Hot. Search sits above it with a `/` keyboard shortcut.
+
+**Visual language:** pure black and white, monospace throughout, no rounded
+cards, no colour accent. Terminal aesthetic, information dense.
+
+## Audits, and where AppMD must diverge
+
+skills.sh runs a security audit surface with three independent providers: Gen
+Agent Trust Hub, Socket and Snyk. Results appear per skill as pass/fail
+("Safe"), an alert count ("0 alerts"), and a risk severity (Low, Medium, High,
+Critical), with "Pending" where an audit has not run.
+
+**This is the sharpest contrast in the whole research effort.**
+
+`SECURITY.md` §4 (`ETH-001`) sets six conditions before AppMD may publish any
+score. Two of them are violated by the pattern above:
+
+| Condition | skills.sh | AppMD |
+| --- | --- | --- |
+| 3. Absence of findings is not "safe" | Renders "Safe" and "0 alerts" | `findings: []` must render as "no findings from analyser X v0.1.0", never "safe" (`REQ-078`) |
+| 1. A score always travels with its findings and evidence | A severity label stands alone in a table cell | A bare score is **not representable** (`REQ-077`); the score is a projection of a findings list, not a stored scalar |
+
+`API.md` §5 already forbids emitting "a bare trust score" for exactly this
+reason, and `SECURITY.md` §4 states plainly: **Phase 1 publishes no trust score
+at all.**
+
+So AppMD does not get an audits page in Phase 1, and when it does, a cell
+reading "Safe" is not an option. This is an ethics constraint that was decided
+before the feature, not a missing capability.
+
+## What AppMD should reuse
+
+- **The dense ranked table.** For an index of millions, a table scans far better
+  than a card grid. Worth considering as an alternative density mode for
+  `/skills`.
+- **The `/` keyboard shortcut** to focus search. Cheap, and expected by the
+  developer audience.
+- **Agent compatibility shown up front.** AppMD already does this on the landing
+  page via the hanging agent marks.
+
+## What AppMD cannot reuse
+
+- **The install command.** `npx skills add <owner/repo>` is content delivery.
+  `API.md` §5 forbids serving skill content, so AppMD has no equivalent action
+  and should not imply one.
+- **Install counts and trending.** These require distribution telemetry. AppMD
+  does not distribute, so it cannot count installs. Not a gap to fill, a
+  different product shape.
+- **Packs.** Composition is future work (`REQ-072`-`REQ-074`), not Phase 1.
+
+## Contract gaps this adds
+
+| Pattern | Status |
+| --- | --- |
+| Ranking or sort (trending, popularity, recency) | **TODO, BACKEND CONTRACT REQUIRED.** `API.md` §4 says cursors encode `(sort_key, id)` but never enumerates the available sort keys, so no sort control can be built. |
+| Activity over time | **Not planned.** Requires per-skill time series the pipeline does not produce. |
+
+## Positioning conclusion
+
+Three products, three different answers to the same question:
+
+- **skills.sh** optimises for *installing* a skill. Ranking and install counts.
+- **SkillsMP** optimises for *reading* a skill. Content preview and download.
+- **AppMD** can do neither, and should not try. What it has that neither offers
+  is **provenance and an honest rights position**, including an explicit
+  `unknown`, plus deduplication across a corpus where measured duplicate share
+  is ~49.8%.
+
+That is a narrower product. It is also the only one of the three that can tell
+you whether you are allowed to use what you found.

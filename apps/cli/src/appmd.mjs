@@ -43,6 +43,7 @@ const NOUNS = {
   job: ['get', 'list'], dlq: ['list', 'inspect', 'resubmit'],
   index: ['rebuild'], backup: ['create', 'verify', 'restore'], doctor: [],
   removal: ['request', 'list', 'action', 'decline'], reanalyse: ['plan'],
+  raw: ['status', 'retention'],
 };
 
 function usage() {
@@ -62,6 +63,9 @@ function usage() {
   appmd removal action <request-id> --confirm     (deletes bytes; envelope survives)
   appmd removal decline <request-id> --reason <text>
   appmd reanalyse plan --analyser <id> --version <v>
+  appmd raw status                       raw object counts by retention state
+  appmd raw retention --confirm          delete expired raw bytes (REQ-034)
+  appmd index rebuild --confirm          rebuild the derived search index (REQ-052)
 
 Global: --db PATH   --json   --limit N   --cursor C
 Read verbs never mutate. Mutating verbs require --confirm.`);
@@ -244,6 +248,55 @@ try {
                               dispositionReason: flags.reason });
       out(r, () => console.log(`declined ${r.requestId}`));
     }
+    s2.close();
+  }
+
+  else if (noun === 'raw') {
+    const s2 = open();
+    const { FsObjectStore } = await import('../../../packages/adapters/fs-objectstore/src/index.js');
+    const { applyRetention } = await import('../../../packages/ingestion/src/index.js');
+    const objects = new FsObjectStore({ root: flags['raw-root'] ?? 'data/raw' });
+    if (verb === 'status') {
+      const c = s2.rawCounts();
+      out(c, () => {
+        console.log(`raw root      ${objects.root}`);
+        console.log(`retained      ${c.retained}`);
+        console.log(`deleted       ${c.deleted}   (bytes gone; envelope survives - DEC-015)`);
+        console.log(`total known   ${c.total}`);
+      });
+    } else if (verb === 'retention') {
+      // UI-002: deletes real bytes.
+      if (flags.confirm !== true && flags.confirm !== 'true') {
+        const due = s2.findExpiredRaw({ now: NOW(), limit: 10000 }).length;
+        console.error(`This DELETES raw bytes for ${due} expired object(s) under ${objects.root}.`);
+        console.error('The raw_objects rows and provenance envelopes are PRESERVED (DEC-015).');
+        console.error('Re-run with --confirm.');
+        process.exit(2);
+      }
+      const r = await applyRetention({ objects, store: s2, now: NOW() });
+      out(r, () => console.log(`considered ${r.considered}, deleted ${r.deleted}, already gone ${r.alreadyGone}`));
+    }
+    s2.close();
+  }
+
+  else if (noun === 'index' && verb === 'rebuild') {
+    const s2 = open();
+    const { rebuildSearchIndex } = await import('../../../packages/ingestion/src/index.js');
+    if (flags.confirm !== true && flags.confirm !== 'true') {
+      console.error(`This DESTROYS and rebuilds the derived search index (${s2.searchIndexCount()} entries).`);
+      console.error('Canonical data is untouched - the index is derived and rebuildable (REQ-051).');
+      console.error('Re-run with --confirm.');
+      process.exit(2);
+    }
+    const r = rebuildSearchIndex({ store: s2, now: NOW() });
+    out(r, () => {
+      console.log(`dropped   ${r.dropped}`);
+      console.log(`scanned   ${r.scanned}`);
+      console.log(`indexed   ${r.indexed}`);
+      console.log(`excluded  ${r.excludedTombstoned} tombstoned`);
+      console.log(`result    ${r.equivalence}`);
+      console.log(`source contact: ${r.sourceContact}`);
+    });
     s2.close();
   }
 

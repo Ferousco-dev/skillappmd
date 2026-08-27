@@ -25,7 +25,15 @@ export function fingerprint(rawText) {
  * Resolves one occurrence against the canonical store.
  * REQ-016: keyed on content, so re-running is a no-op rather than a duplicate.
  */
-export function resolveOccurrence({ store, discovery, canonical, fingerprints, now }) {
+/**
+ * DATABASE.md SS46: "Skill imported -> Database updated -> Search index updated later."
+ * Indexing is deliberately NOT done here. Maintaining it inline cost ~46 MB at the
+ * 10,000-record rung and pushed the pipeline over NFR-014's 128 MB - a self-inflicted
+ * regression caught by re-running the existing ladder evidence, not by review.
+ * The index is populated by rebuildSearchIndex() (REQ-052), which is also the recovery
+ * path, so there is one way to build it rather than two that can disagree.
+ */
+export function resolveOccurrence({ store, discovery, canonical, fingerprints, now, rawObjectKey = null }) {
   if (typeof now !== 'string') throw new TypeError('resolveOccurrence requires a UTC timestamp (NFR-038)');
 
   // Tier 1: exact bytes (REQ-044).
@@ -60,6 +68,7 @@ export function resolveOccurrence({ store, discovery, canonical, fingerprints, n
     relationshipReason: decision.reason,
     sourceVersionRef: fingerprints.gitBlobSha,
     fileSha: discovery.source_payload?.file_sha ?? null,
+    rawObjectKey,                                   // REQ-029: the canonical record keeps the raw reference
     discoveredAt: discovery.discovered_at ?? now,
     stage: 'DEDUPLICATED',
   });
