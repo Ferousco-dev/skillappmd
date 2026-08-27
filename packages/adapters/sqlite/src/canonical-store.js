@@ -96,6 +96,18 @@ export class SqliteCanonicalStore {
    * bypassed is not an invariant.
    */
   upsertCanonical(c) {
+    // DEC-031 / DEF-003: defence in depth. A cryptic "cannot be bound to parameter 7"
+    // costs far more to diagnose than a named field, and this write path will be
+    // reached by bulk loaders and future adapters that never read the normaliser.
+    assertBindable({
+      id: c.id, content_hash: c.contentHash, normalised_hash: c.normalisedHash,
+      partition_key: c.partitionKey, 'declared.name': c.declared?.name,
+      'declared.description': c.declared?.description,
+      'rights.state': c.rights?.state, retention_policy: c.retentionPolicy,
+      'attribution.repository': c.attribution?.repository,
+      'attribution.owner': c.attribution?.owner,
+      'attribution.canonical_source_url': c.attribution?.canonical_source_url,
+    });
     this.#db.prepare(
       `INSERT INTO canonical_skills (
          id, schema_version, content_hash, normalised_hash, partition_key,
@@ -263,6 +275,18 @@ export class SqliteCanonicalStore {
                reason: ok ? 'record count and digest match'
                           : `mismatch: expected ${expected.records}/${expected.digest}, got ${actual.records}/${actual.digest}` };
     } finally { s.close(); }
+  }
+}
+
+/** Names the offending field instead of leaving a positional SQLite error. */
+function assertBindable(fields) {
+  for (const [name, v] of Object.entries(fields)) {
+    if (v === null || v === undefined) continue;
+    const t = typeof v;
+    if (t !== 'string' && t !== 'number' && t !== 'boolean' && !(v instanceof Uint8Array)) {
+      throw new TypeError(
+        `cannot store field "${name}": expected a scalar, got ${Array.isArray(v) ? 'array' : t}`);
+    }
   }
 }
 

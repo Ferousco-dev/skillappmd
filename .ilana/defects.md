@@ -57,3 +57,32 @@ bounded by the same limits as everything else (`MAX_SCALAR`, `MAX_LINES`).
 
 **Result.** 83.7% → **97.7%** agreement, **0 parse failures**.
 **Regression test:** `TC-109` covers all four shapes and asserts folding versus literal semantics.
+
+---
+
+## DEF-003 — A non-scalar frontmatter value crashed the canonical write 300 rows into a run
+**Found:** 2026-08-27 by dedup oracle validation on real data · **Severity: MEDIUM** · **Status: CLOSED**
+**Requirement:** `REQ-039`, `NFR-022` · **Component:** `normaliser.js`, `adapters/sqlite`
+
+**Symptom.** `TypeError: Provided value cannot be bound to SQLite parameter 7` — a positional
+error, mid-run, naming nothing.
+
+**Cause.** One real document (`Theboul/smart_mechanic-frontend`) writes `description:` with an
+indented map beneath it. Our parser correctly returns an object; the indexed
+`declared_description` column can only bind a scalar.
+
+**Why the unit tests missed it.** Every fixture I wrote gave `description` a string, because that
+is what a description *is*. The corpus contains a document where it is not. **This is the same
+lesson as `DEF-002`, arriving by a different route: fixtures encode the author's assumptions, and
+real data does not share them.**
+
+**Fix, at both layers (`DEC-031`).**
+1. `normaliser` coerces `name`/`description` to a scalar or `null` for the indexed columns; the raw
+   value is preserved verbatim in `declared.frontmatter` (`REQ-036` is not compromised).
+2. `upsertCanonical` validates bindability first and **names the offending field** —
+   `cannot store field "declared.name": expected a scalar, got object`. This write path will be
+   reached by future bulk loaders and adapters that never touch the normaliser, and a positional
+   SQLite error costs far more to diagnose than a named one.
+
+**Regression tests:** `TC-134` (real shape ingests, column null, raw value preserved),
+`TC-135` (the store names the field).

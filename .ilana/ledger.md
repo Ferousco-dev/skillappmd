@@ -435,3 +435,51 @@ coverage it does not provide is a liability. It now measures the actual deferral
 and TC-084 was added to assert jitter genuinely spreads retries.
 
 92 tests, 92 pass. Zero runtime dependencies.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 5 COMPLETE
+Parser and normaliser. Zero-dependency restricted YAML subset: anchors, aliases, tags and
+merge keys are REJECTED rather than implemented, because a smaller grammar is a smaller
+attack surface for untrusted third-party content (NFR-021).
+
+DEF-002 (HIGH): the parser could not read YAML block scalars (`>`, `>-`, `|`, implicit
+multi-line), failing 1 in 9 real documents. Every unit test passed, because the fixtures
+were written in the style that had been implemented. Only real corpus data exposed it.
+Oracle agreement 83.7% -> 97.7%, parse failures 5 -> 0.
+
+CR-004 RAISED: NFR-003 compared two different definitions of "valid". The corpus column
+means "YAML parsed with name and description present"; ours meant "conforms to the Agent
+Skills spec". Chasing 99% would have meant weakening our spec checking to match a looser
+oracle - optimising the metric by damaging the product. The parser now emits TWO verdicts.
+Graded on the comparable one: 97.7% at n=300, and all 3 residual disagreements are cases
+where the ORACLE is wrong (one is a BOM their parser appears to choke on).
+
+DEC-033: contested spec readings (reserved words in a name, angle brackets in a
+description) WARN rather than invalidate. These are adverse judgements published about a
+third party's work on a reading that is not settled (ETH-001).
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 6 COMPLETE
+Fingerprinting and deduplication.
+
+DEF-003 (MEDIUM) found and closed: a real document opens a map under `description:`,
+which cannot bind to a scalar column. Surfaced as a positional SQLite error 300 rows into
+a run. Fixed at both layers per DEC-031; the store now names the offending field.
+Same lesson as DEF-002 by a different route: fixtures encode the author's assumptions.
+
+THREE ORACLES, and the third exists because the first two were not sufficient:
+  1. BYTE EXACTNESS  131/131 - our recomputed git blob SHA equals the corpus file_sha
+     for every content-bearing row. 0 mismatches. Our byte handling is exactly right.
+  2. GROUPING        127 comparable groups, 100.00% agreement, 0 disagreements.
+     BUT: 0 of those groups have more than one member. Content is stored only on dedup
+     primaries (R3 Finding 3), so every content-bearing row is distinct BY CONSTRUCTION.
+     Reporting "100%" here would be TRUE AND MEANINGLESS - the collapse path is never
+     exercised. Recorded as such in the run output rather than left to flatter us.
+  3. COLLAPSE ON REAL DUPLICATE GROUPS - added because of the above. The corpus tells us
+     which rows are byte-identical (shared file_sha), so members of those groups were
+     ingested and the collapse asserted: 4 groups, 9 occurrences -> 4 canonical,
+     5 collapsed, 0 failures.
+
+NFR-002 target MET, with the limitation stated: oracle 2's perfect score is over
+singletons, and oracle 3's evidence covers 4 groups. Broader evidence is increment 9's
+job, on the 1,000 and 10,000 rungs.
+
+133 tests, 133 pass.

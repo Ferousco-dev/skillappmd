@@ -14,7 +14,7 @@ REQ-012,"Discovery shall accept a bounded batch limit, so operators may run 100,
 REQ-013,"Discovery shall record, per run: source, parameters, start/end time, count discovered, count skipped, errors.",functional,M,DES-008;DES-048;UI-004,,,designed
 REQ-014,The system shall poll the SkillsMP RSS feed for incremental discovery.,functional,S,DES-005,,,designed
 REQ-015,"Each pipeline stage shall be an independently queued job whose worker concurrency is configurable per stage, such that changing one stage's concurrency requires no change to any other stage's configuration or code.",functional,M,DES-009,,TC-075,implemented
-REQ-016,Every job shall be idempotent: re-execution with identical input produces identical state and no duplicate records.,functional,M,DES-064,,TC-019;TC-040;TC-076;TC-077,implemented
+REQ-016,Every job shall be idempotent: re-execution with identical input produces identical state and no duplicate records.,functional,M,DES-064,,TC-019;TC-040;TC-076;TC-077;TC-127,implemented
 REQ-017,"Every job shall carry job_id, skill_ref, source, attempt, status, started_at, completed_at, error.",functional,M,DES-012,,TC-085;TC-089,implemented
 REQ-018,"Queue messages shall carry references (storage key, content hash, ids), never content.",functional,M,DES-069,,TC-073;TC-074,implemented
 REQ-019,A failed job shall retry with exponential backoff and jitter to a configured maximum attempt count.,functional,M,DES-014,,TC-035;TC-072;TC-078;TC-082;TC-084,implemented
@@ -40,13 +40,13 @@ REQ-038,"The parser shall record frontmatter_valid per the spec's stated constra
 REQ-039,"Normalisation shall produce a canonical record carrying mandatory attribution: repository, owner, canonical source URL. A record shall not be storable without them.",functional,M,DES-025;DES-041,,TC-111;TC-119,implemented
 REQ-040,"Normalisation shall record every field as source fact or AppMD inference, with provenance, and shall never merge the two into one field.",functional,M,DES-025;DES-036,,TC-113,implemented
 REQ-041,"The parser's frontmatter_valid verdict shall be comparable against the corpus's own column, and disagreements shall be reportable.",functional,M,DES-023;DES-070,,,designed
-REQ-042,The system shall compute content_hash (SHA-256 over raw bytes) for every occurrence.,functional,M,DES-026,,TC-012;TC-014,implemented
-REQ-043,"The system shall compute normalised_hash (SHA-256 over normalised text: line endings, trailing whitespace, frontmatter key order).",functional,M,DES-026,,TC-013;TC-021,implemented
-REQ-044,Occurrences with equal content_hash shall resolve to one CanonicalSkill as EXACT_DUPLICATE.,functional,M,DES-027,,TC-020;TC-044,implemented
-REQ-045,Deduplication shall never use name equality alone as evidence of duplication.,functional,M,DES-027,,TC-022,implemented
-REQ-046,"Every occurrence shall remain individually retrievable after deduplication, with its repository and path. Dedup collapses identity, never evidence.",functional,M,DES-027,,TC-045,implemented
-REQ-047,"Deduplication results shall be measurable against the corpus's published verdict, reporting precision, recall and a disagreement list.",functional,M,DES-070,,TC-065,implemented
-REQ-048,The system shall record MIRROR and FORK relationships using repository fork metadata as a distinct signal from content equality.,functional,S,DES-028,,TC-023,implemented
+REQ-042,The system shall compute content_hash (SHA-256 over raw bytes) for every occurrence.,functional,M,DES-026,,TC-012;TC-014;TC-122,implemented
+REQ-043,"The system shall compute normalised_hash (SHA-256 over normalised text: line endings, trailing whitespace, frontmatter key order).",functional,M,DES-026,,TC-013;TC-021;TC-122;TC-125,implemented
+REQ-044,Occurrences with equal content_hash shall resolve to one CanonicalSkill as EXACT_DUPLICATE.,functional,M,DES-027,,TC-020;TC-044;TC-123,implemented
+REQ-045,Deduplication shall never use name equality alone as evidence of duplication.,functional,M,DES-027,,TC-022;TC-126,implemented
+REQ-046,"Every occurrence shall remain individually retrievable after deduplication, with its repository and path. Dedup collapses identity, never evidence.",functional,M,DES-027,,TC-045;TC-124;TC-128,implemented
+REQ-047,"Deduplication results shall be measurable against the corpus's published verdict, reporting precision, recall and a disagreement list.",functional,M,DES-070,,TC-065;TC-131;TC-132,implemented
+REQ-048,The system shall record MIRROR and FORK relationships using repository fork metadata as a distinct signal from content equality.,functional,S,DES-028,,TC-023;TC-129,implemented
 REQ-049,Near-duplicate detection via semantic fingerprinting.,functional,F,DES-028,,,designed
 REQ-050,"The canonical store shall hold CanonicalSkill, SkillOccurrence, Repository, Source, ProvenanceRecord, RightsPosture.",functional,M,DES-029,,,designed
 REQ-051,"The canonical store shall be the single source of truth. Search, vector and graph indexes shall be derived and rebuildable from it.",functional,M,DES-057;DES-062,,,designed
@@ -105,7 +105,7 @@ NFR-005,100% of canonical field values shall be classifiable as source fact or A
 NFR-006,0 canonical records shall carry redistributable = true without a recorded L2 licence evidencing it.,non-functional,M,DES-039,,TC-008;TC-042,implemented
 NFR-007,"No single job failure shall cause reprocessing of already-completed work. Verified by injecting failure at row *n* of 10,000 and asserting rows 1..*n*−1 are untouched.",non-functional,M,DES-014,,,designed
 NFR-008,The pipeline shall resume from its persisted cursor after abrupt termination (SIGKILL) with no duplicate canonical records and no lost jobs.,non-functional,M,DES-064,,,designed
-NFR-009,Every stage shall be idempotent: executing the same job 10 times shall produce the state of executing it once.,non-functional,M,DES-064,,TC-040,implemented
+NFR-009,Every stage shall be idempotent: executing the same job 10 times shall produce the state of executing it once.,non-functional,M,DES-064,,TC-040;TC-127,implemented
 NFR-010,"Canonical data shall be recoverable such that deleting every derived index and rebuilding produces an equivalent index, with no source contact. Where records have been tombstoned (DEC-015), the rebuild is equivalent minus tombstoned reco...",non-functional,M,DES-022;DES-057,,TC-053,implemented
 NFR-011,"PROVISIONAL TARGET, NOT AN ACCEPTANCE CRITERION (DEC-017). Working figure: a 10,000-occurrence batch end-to-end in ≤30 minutes on the development machine. This number was invented by the analyst with no benchmark behind it. It shall not ...",non-functional,M,DES-067,,,designed
 NFR-012,"GET /api/v1/skills/:id shall respond in ≤200 ms at p95 against a 10,000-skill store, measured locally.",non-functional,M,DES-051;DES-063,,,designed
@@ -134,7 +134,7 @@ NFR-034,"The architecture shall document its next binding constraint at 1M, 10M 
 NFR-035,"The canonical store shall be recoverable independently of every derived index and of every external source. Phase 1 targets: RPO ≤ 24 hours (at most one day of ingestion replayable), RTO ≤ 4 hours (restore and verify on the development m...",non-functional,M,DES-035,,TC-050;TC-051,implemented
 NFR-036,"Personal information shall be limited to what provenance and attribution require (DOM-013). The system shall not collect email addresses, real names beyond the public account identifier, follower graphs, contribution histories, or any fi...",non-functional,M,DES-037,,,designed
 NFR-037,"Every web-based connector shall fetch and honour the source's robots policy where one applies, together with Crawl-delay and Retry-After, and shall never bypass a restriction. Where a source explicitly authorises API access, the connecto...",non-functional,M,DES-007,,,designed
-NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,TC-011;TC-038;TC-083;TC-120,implemented
+NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,TC-011;TC-038;TC-083;TC-120;TC-133,implemented
 NFR-039,"Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size. This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be adda...",non-functional,M,DES-052,,TC-046,implemented
 DOM-001,"A SkillOccurrence is uniquely keyed by (source_id, repo_full_name, path, content_hash). It is an observation, never an identity.",domain,M,DES-027;DES-064,,TC-018,implemented
 DOM-002,"A CanonicalSkill is an AppMD-assigned identity to which one or more occurrences resolve. Its id is stable, opaque, and never derived from a mutable attribute (name, URL, star count).",domain,M,DES-027;DES-033,,,designed

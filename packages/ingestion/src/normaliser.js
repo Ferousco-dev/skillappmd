@@ -10,6 +10,14 @@ import { contentHash, normalisedHash, partitionKey, sourceFact, appmdInference,
 
 export const NORMALISER_VERSION = '0.1.0';
 
+/** Scalar or null. Objects and arrays are kept in `declared.frontmatter`, not in a column. */
+function asScalar(v) {
+  if (v === undefined || v === null) return null;
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  return null;   // maps and lists are not a name or a description
+}
+
 export function normalise({ discovery, parsed, rawText, repoLicence = null, now }) {
   if (typeof now !== 'string') throw new TypeError('normalise requires an explicit UTC timestamp (NFR-038)');
 
@@ -34,9 +42,12 @@ export function normalise({ discovery, parsed, rawText, repoLicence = null, now 
   assertRightsInvariant(rights);                       // NFR-006
 
   // DOM-006: source facts and AppMD inferences are structurally separate, never merged.
+  // DEF-003: real frontmatter can bind a non-scalar to `name` or `description`
+  // (e.g. `description:` opening an empty map). The full raw value is preserved in
+  // `frontmatter`; the indexed columns carry a scalar or null.
   const declared = parsed.ok ? {
-    name: parsed.frontmatter?.name ?? null,
-    description: parsed.frontmatter?.description ?? null,
+    name: asScalar(parsed.frontmatter?.name),
+    description: asScalar(parsed.frontmatter?.description),
     frontmatter: parsed.frontmatter,                   // REQ-036: unknown keys preserved
     allowed_tools: parsed.allowedTools,
   } : { name: null, description: null, frontmatter: {}, allowed_tools: null };
