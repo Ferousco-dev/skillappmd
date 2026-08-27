@@ -318,3 +318,39 @@ smuggling in as a side effect of a batch-size flag. Option B would mean approvin
 breaking it in the same session, which is worse than either honouring it or changing it openly.
 
 **Requested:** approve A (and the package choice), or direct B or C.
+
+---
+
+## CR-006 — `NFR-014`'s 128 MB limit is being applied to a component architecture already excluded from Workers
+**Raised:** 2026-08-27 · `[architect]` · **Status: OPEN — blocks `CR-005` criterion 4**
+**Evidence:** `docs/research/R4-PARQUET-MEMORY.md`
+
+**Finding.** Real corpus content cannot be read within 128 MB by any Parquet reader, because each
+200 MB shard has **one row group** and the `content` column chunk is **136 MB compressed /
+323 MB raw**. Measured: `parquet-wasm` 1,067 MB with content, 365 MB without; `hyparquet` 568 MB.
+Two independent implementations, same conclusion. **The constraint is the data, not the library.**
+
+**The category error.** `NFR-014` exists so pipeline stages stay Worker-compatible. `DATABASE.md`
+§7 already recorded that the corpus connector **cannot run in a Worker** — that was the two-runtime
+finding at G2. Constraining a batch-only extractor to a Workers isolate limit constrains nothing
+real, and blocks work that is otherwise sound.
+
+Measured separately, the split is clean:
+
+| Component | Peak | Worker-compatible |
+| --- | ---: | --- |
+| Ingestion pipeline, 10,000 records | **58 MB delta** | yes |
+| Parquet extraction | 365–1,067 MB | no, and never was |
+
+**Requested amendment:**
+
+> **`NFR-014`.** Memory use shall stay ≤128 MB for every **pipeline stage** and for the **edge
+> runtime**, matching the Workers isolate limit, so no Worker-bound design depends on headroom
+> production will not have. **Batch-runtime corpus extraction** is exempt and carries its own
+> stated budget, measured and recorded, because it is architecturally excluded from Workers
+> (`DATABASE.md` §7). Observed 2026-08-27: pipeline **58 MB** at 10,000 records; extraction peak
+> **~1.2 GB**.
+
+**Also requested:** approve the two-phase extraction of `R4` §5 option B — a one-time offline
+extraction writing selected rows to `data/corpus/*.jsonl`, which the ladder then consumes within
+128 MB. This keeps the honest memory claim where it belongs and needs no rule broken.

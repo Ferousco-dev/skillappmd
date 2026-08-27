@@ -25,6 +25,16 @@ const RULES = [
     why: 'connectors import ports only' },
 ];
 
+/**
+ * CR-005 criterion 6: the Parquet dependency must stay inside the GitSkills corpus
+ * connector and must never leak into domain, ports, pipeline or app code. Enforced
+ * here rather than trusted, because "we'll be careful" is not a boundary.
+ */
+const QUARANTINED = [
+  { pkg: /^parquet-wasm(\/|$)/, allowedIn: 'packages/connectors/gitskills/src/' },
+];
+const QUARANTINE_SCAN = ['packages', 'apps'];
+
 const IMPORT_RE = /(?:^|\n)\s*(?:import[\s\S]*?from\s*|import\s*|export[\s\S]*?from\s*)['"]([^'"]+)['"]/g;
 
 function walk(dir, out = []) {
@@ -74,6 +84,23 @@ for (const rule of RULES) {
             violations.push({ file: relative(ROOT, file), spec, layer: rule.layer,
               why: `relative import escapes into ${forbidden}: ${rule.why}` });
           }
+        }
+      }
+    }
+  }
+}
+
+// Quarantine sweep: the whole tree, not only the layered packages.
+for (const root of QUARANTINE_SCAN) {
+  for (const file of walk(join(ROOT, root))) {
+    const rel = relative(ROOT, file).replace(/\\/g, '/');
+    if (rel.includes('/node_modules/')) continue;
+    const src = readFileSync(file, 'utf8');
+    for (const m of src.matchAll(IMPORT_RE)) {
+      for (const q of QUARANTINED) {
+        if (q.pkg.test(m[1]) && !rel.startsWith(q.allowedIn)) {
+          violations.push({ file: rel, spec: m[1], layer: 'quarantine',
+            why: `"${m[1]}" is quarantined to ${q.allowedIn} (CR-005). It must remain replaceable behind the CorpusReader seam.` });
         }
       }
     }

@@ -46,3 +46,7 @@ data/corpus/
 
 # --- os ---
 .DS_Store
+
+# --- dependency: quarantined to packages/connectors/gitskills (CR-005) ---
+packages/connectors/gitskills/node_modules/
+package-lock.json

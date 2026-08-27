@@ -612,3 +612,45 @@ increment, because the rung's value is dedup breadth and that deserves a decisio
 rather than a batch-size flag.
 
 172 tests, 172 pass.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 9b HALTED ON EVIDENCE (CR-005 criterion 4)
+parquet-wasm 0.7.2 installed, quarantined to packages/connectors/gitskills.
+
+CRITERION 6 DEMONSTRATED: the dependency boundary is enforced by lint, not trusted.
+  depcheck now sweeps the whole tree for quarantined packages. Planting
+  `import { readParquet } from 'parquet-wasm'` in packages/ingestion fails the build
+  with the package name, the allowed location and the reason. Removing it passes.
+CRITERION 7 DEMONSTRATED: 172 / 172 tests still pass with the dependency present.
+CRITERIA 2 and 5 already demonstrated in increment 9 (TC-060/061, TC-136/137).
+
+CRITERION 4 CANNOT BE MET, and the evidence says why. R4:
+  Each 200 MB shard has ONE row group. The `content` column chunk is 135.93 MB
+  compressed / 322.78 MB raw. Parquet's unit of independent access is the row group,
+  so DEC-016's "stream one row group at a time" degenerates to "read the whole shard",
+  and a column chunk cannot be partially decoded.
+
+  Measured peaks, baseline subtracted:
+    parquet-wasm  with content        1,067 MB
+    parquet-wasm  WITHOUT content       365 MB
+    hyparquet     with content          568 MB   (probed in scratch, not installed)
+    AppMD ingestion pipeline, 10,000     58 MB   WITHIN BUDGET
+
+  Two independent readers, one WASM and one pure-JS with byte-range reads, differing by
+  ~2x and both far over. The constraint is the DATA, not the library. No further library
+  search would change it.
+
+  Also observed: parquet-wasm traps (RuntimeError: unreachable) on
+  read({rowGroups:[0]}) for a shard this size; fromUrl and metadata() are fine.
+
+CR-006 RAISED. NFR-014's 128 MB exists so PIPELINE STAGES stay Worker-compatible.
+DATABASE.md SS7 already recorded at G2 that the corpus connector CANNOT run in a Worker.
+Applying a Workers isolate limit to a batch-only extractor constrains nothing real while
+blocking sound work - a category error in our own SRS, surfaced by measuring rather than
+by argument. The pipeline, which is what NFR-014 is actually about, measures 58 MB.
+
+Recommended: amend NFR-014 to say what it means, and adopt two-phase extraction (a
+one-time offline extract to data/corpus/*.jsonl, consumed by the ladder within 128 MB).
+That satisfies every criterion without breaking the CR-002 trigger approved this session.
+
+STOPPED, per the instruction not to proceed until the exit condition is demonstrated
+with evidence. Criterion 4 is not demonstrable as literally written.
