@@ -3,7 +3,7 @@
 
 | | |
 | --- | --- |
-| Document | SRS **v1.1** |
+| Document | SRS **v1.2** |
 | Date | 2026-08-27 |
 | Owner | `[analyst]` (single writer; Ìlànà kernel §4) |
 | Shape | IEEE 830 |
@@ -303,6 +303,7 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-070** | API responses shall distinguish source facts from AppMD inferences in their structure, not in prose. | M |
 | **REQ-071** | The API shall never emit secrets, credentials, internal storage keys or raw content. | M |
 | **REQ-093** | The API shall not expose personal information beyond what attribution requires — the public account identifier and the canonical source URL. Fields classified as individual-author identity (`REQ-092`) shall be omitted from public responses unless attribution requires them. | M |
+| **REQ-099** | Every API response shall carry explicit cache directives (`CR-007`). A representation shall be marked publicly cacheable **only where every record it contains reports `rights.cacheable`**; a single `unknown`-rights record makes the whole representation `no-store`, because a page is one representation and cannot be partially evicted. Error responses and the health endpoint shall be `no-store`. Every cacheable response shall carry a strong `ETag` and honour `If-None-Match`. | M |
 | **REQ-097** | The API shall apply rate limiting through a port interface, so limits are configuration rather than code. Phase 1 requires exactly one implementation: **in-process, enforcing a configurable request budget per client identifier over a configurable time window, returning HTTP 429 with `Retry-After` on breach.** Distributed or shared-state rate limiting is future work (`DEC-021`). | M |
 | **REQ-072** | A CLI shall consume the same API surface as any future frontend. | S |
 | **REQ-073** | MCP tool exposure. | F |
@@ -422,6 +423,7 @@ requirements; the following are.
 | **NFR-031** | No design element shall assume the full dataset fits in memory or in one process. |
 | **NFR-032** | All traversal shall be cursor-based; no offset pagination anywhere. |
 | **NFR-039** | **Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size.** This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be addable. Covers `REQ-066`, `REQ-067` and every future collection endpoint. |
+| **NFR-040** | **Edge cache lifetime shall not exceed the removal propagation bound.** `REQ-063` removal takes effect at the origin immediately, but a cached representation survives up to its `max-age`; that window is therefore the true removal latency and shall be **≤300 s**. Raising it makes removal slower without any code change appearing to cause it, so the bound is enforced by test, and cache purge on removal is a documented operator obligation (`runbook.md`). |
 | **NFR-033** | Canonical identity shall be partitionable by content hash prefix without schema change. |
 | **NFR-034** | The architecture shall document its next binding constraint at 1M, 10M and 100M skills, with the evidence for each (BRIEF §51). |
 
@@ -551,7 +553,7 @@ read as demanding infrastructure Phase 1 does not need, it is read the narrower 
 `.ilana/traceability.csv` maps `REQ`/`NFR`/`DOM` → design → module → test.
 Article 3: no production code without a requirement id; no requirement without ≥1 test case.
 
-**Counts:** 90 functional (`REQ-001`..`REQ-090`), 34 non-functional (`NFR-001`..`NFR-034`),
+**Counts (v1.2):** 91 functional (`REQ-001`..`REQ-099`), 35 non-functional (`NFR-001`..`NFR-040`),
 12 domain (`DOM-001`..`DOM-012`). Phase 1 mandatory: **80** `REQ` at priority **M** (counted from `.ilana/traceability.csv`, not asserted).
 
 ---
@@ -618,3 +620,19 @@ was reused or renumbered; IDs are immortal per the Ìlànà kernel.
 - **Scope.** No Phase 1 expansion into AI, embeddings, Vectorize, graph, resolution or
   composition. §7 now states this explicitly rather than leaving it to inference.
 - **The 76 requirements untouched by this review** remain as baselined in v1.0.
+
+---
+
+## 11. CHANGE LOG — v1.1 → v1.2
+
+| Id | Change | Origin |
+| --- | --- | --- |
+| `REQ-099` | **NEW.** Explicit cache directives, rights-gated, with strong `ETag` and `If-None-Match` | `CR-007`, user request |
+| `NFR-040` | **NEW.** Edge cache lifetime bounded by the removal propagation window (≤300 s) | `CR-007` |
+
+**Why this needed a change request at all.** The API already computed `rights.cacheable` and
+emitted it in the response *body* while setting no cache headers, so Cloudflare's edge cache was
+inert. Fixing that is not a tuning tweak: it decides whether a record whose licence we cannot
+resolve gets copied into caches AppMD does not control, and it puts an upper bound on how fast
+`REQ-063` removal actually reaches a reader. Both are model-level questions, so they became
+requirements rather than constants.

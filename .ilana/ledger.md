@@ -1004,3 +1004,27 @@ The G8 process change shipped without a test of its own. Added TC-315..TC-318: t
 passes a clean plan, fails on a subsystem with no increment, fails on an increment absent
 from ROADMAP.md, and passes against this repository. Mutation-checked - removing
 process.exitCode=1 turns two of the four red. Counts resynced: 318 cases, 344 executions.
+
+## 2026-08-27 | post-G8 | architect | CR-007 HTTP CACHE DIRECTIVES
+SRS v1.1 -> v1.2. REQ-099 (rights-gated cache directives, strong ETag, If-None-Match) and
+NFR-040 (edge lifetime <= removal propagation bound, 300s) added under change control.
+
+The API already computed rights.cacheable and emitted it in the response BODY while setting
+no cache headers, so the edge cache was inert. Two model-level consequences made this a
+requirement rather than a constant: a record whose licence we cannot resolve must not be
+copied into caches we do not control (DEC-018), and max-age is the true latency of REQ-063
+removal. Detail 300s, collection 60s; one unknown-rights record makes a whole page no-store.
+
+TC-319..TC-329 added. Mutation-checked: forcing isCacheable to true fails 2, moving meta
+into the ETag fails 2. TC-324 is the one that proves the cache can hit at all.
+
+Redis rejected for caching (a Worker leaving the edge to reach Redis is slower than the D1
+query it replaces, plus a paid dependency and a managed secret). Recorded as RSK-009 that
+RateLimiter is where Redis or Durable Objects would genuinely be needed - per-colo memory
+counters do not enforce a global budget.
+
+Corrected while writing docs/runbook.md 3.1: I had written `appmd removal apply --skill
+<id>`, which does not exist. Real commands are `removal request --skill --repo --reason
+--by` and `removal action <request-id> --confirm`.
+
+355 executions of 329 cases passing. 141/141 mandatory requirements traced.

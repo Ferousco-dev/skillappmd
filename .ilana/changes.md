@@ -359,3 +359,54 @@ extraction writing selected rows to `data/corpus/*.jsonl`, which the ladder then
 
 `NFR-014` amended. Extraction classified as a batch-only acquisition step with six binding
 constraints (`DEC-036`). The pipeline budget is **unchanged at 128 MB**. **CR-006 CLOSED.**
+
+---
+
+## CR-007 — HTTP cache directives and conditional requests on the read API
+
+**Raised:** 2026-08-27 · **Requested by:** user · **Status:** APPROVED, IMPLEMENTED
+**Against:** SRS v1.1 (baselined — `DEC-021` requires a CR for any change)
+
+### Why
+
+The API computes `rights.cacheable` and emits it in the response **body**, but sets no
+`Cache-Control` and no `ETag` on the response itself. Cloudflare's edge cache is therefore inert:
+every request reaches a Worker and D1, even though skill metadata is near-static and most reads are
+repeats. On the free tier this is the difference between a 100,000 requests/day ceiling and an
+*origin-miss* ceiling.
+
+This is the cheapest available scale lever and it costs nothing to operate.
+
+### Change
+
+Adds **`REQ-099`** and **`NFR-040`**. SRS moves to **v1.2**.
+
+| Id | Text |
+| --- | --- |
+| `REQ-099` | Every API response shall carry explicit cache directives. A representation shall be marked publicly cacheable only where every record it contains reports `rights.cacheable`. Responses containing any record whose rights are `unknown`, all error responses, and the health endpoint shall be `no-store`. |
+| `NFR-040` | Edge cache lifetime shall not exceed the removal propagation bound. `REQ-063` removal takes effect at the origin immediately; a cached representation may survive up to its `max-age`. That window shall be **≤300 s** and shall be stated in the runbook as a purge obligation. |
+
+### Three consequences, stated rather than discovered later
+
+1. **Removal is no longer instantaneous end-to-end.** A tombstoned record can be served from the
+   edge for up to `max-age`. `REQ-063` was promoted to M precisely because removal matters, so the
+   bound is set deliberately (300 s) rather than inherited from a default, and `docs/runbook.md`
+   gains a purge step. **This is a real weakening and it is the price of the cache.**
+2. **`ETag` deliberately excludes `meta`.** `request_id` and `generated_at` change on every request;
+   including them would make every ETag unique and the cache useless. The validator covers `data`,
+   `cursor` and `notice` — the parts that are actually the representation.
+3. **A cached response replays the origin's `request_id`.** Several clients will see the same id.
+   This is stated, not hidden: `meta.generated_at` then reads as the age of the representation,
+   which is the more useful signal for a cached response anyway.
+
+### Rejected alternative — Redis
+
+Not adopted. The `Cache` port already exists, so Redis remains available as an adapter and nothing
+here forecloses it. It is the wrong instrument for *this* problem: a Redis lookup from a Worker is a
+network round trip **out of** the edge, frequently slower than the D1 query it replaces, whereas an
+HTTP cache hit never leaves the colo. It also adds a paid external dependency and a managed secret,
+against the intake's "cheap by construction" principle.
+
+**Where Redis would genuinely earn its place** is `RateLimiter`, not `Cache`: the current adapter
+counts in process memory, so on Workers each colo would enforce its own limit and `REQ-097` would
+be globally unenforced. Recorded as `RSK-009`, not built.

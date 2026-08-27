@@ -3,6 +3,7 @@
  * A pure function of (request) -> (response), so it is testable without a socket.
  */
 import { serialiseSkill, serialiseOccurrence, envelope, errorBody, NOTICE } from './serialise.js';
+import { cacheHeaders, matchesIfNoneMatch, NO_STORE, MAX_AGE_COLLECTION } from './cache-policy.js';
 
 export const API_VERSION = 'v1';
 const MAX_LIMIT = 100;
@@ -24,9 +25,21 @@ export class ApiRouter {
     const generatedAt = this.#clock();
     const reply = (status, body, headers = {}) => ({ status, body, headers });
 
+    // REQ-099 / CR-007. Every 200 goes through here so a new endpoint cannot be added
+    // without a cache decision - omitting the call is a missing header, not a default.
+    const cached = (body, kind, cacheableOverride) => {
+      const headers = cacheHeaders(body, kind, cacheableOverride);
+      if (matchesIfNoneMatch(req.headers?.['if-none-match'], headers.ETag)) {
+        // 304 carries no body. Cache-Control must ride along or an intermediary may
+        // re-derive freshness from nothing.
+        return { status: 304, body: null, headers };
+      }
+      return reply(200, body, headers);
+    };
+
     if (req.method !== 'GET') {
       return reply(405, errorBody('METHOD_NOT_ALLOWED',
-        'The Phase 1 API is read-only. Ingestion is operator-driven via the CLI.', requestId));
+        'The Phase 1 API is read-only. Ingestion is operator-driven via the CLI.', requestId), NO_STORE);
     }
 
     // REQ-097: rate limiting before any work is done.
@@ -35,7 +48,7 @@ export class ApiRouter {
       if (!gate.allowed) {
         return reply(429, errorBody('RATE_LIMITED',
           `Request budget exhausted. Retry after ${gate.retryAfterSeconds}s.`, requestId),
-          { 'Retry-After': String(gate.retryAfterSeconds) });
+          { 'Retry-After': String(gate.retryAfterSeconds), ...NO_STORE });
       }
     }
 
@@ -44,15 +57,16 @@ export class ApiRouter {
 
     try {
       if (path === `/api/${API_VERSION}/health`) {
+        // Health reports liveness. A cached health check is a lie about the present.
         return reply(200, { status: 'ok', schema_version: this.#store.schemaVersion(),
-                            generated_at: generatedAt });
+                            generated_at: generatedAt }, NO_STORE);
       }
 
       if (path === `/api/${API_VERSION}/skills`) {
         const limit = clampLimit(q.limit);
         const page = this.#store.cursorScan({ cursor: q.cursor ?? null, limit });
-        return reply(200, envelope(page.rows.map(serialiseSkill),
-          { requestId, generatedAt, cursor: page.cursor }));
+        return cached(envelope(page.rows.map(serialiseSkill),
+          { requestId, generatedAt, cursor: page.cursor }), 'collection');
       }
 
       let m = path.match(new RegExp(`^/api/${API_VERSION}/skills/([^/]+)/occurrences$`));
@@ -61,23 +75,31 @@ export class ApiRouter {
         if (!this.#store.getCanonical(canonicalId)) return this.#notFound('skill', canonicalId, requestId);
         const limit = clampLimit(q.limit);
         const page = this.#store.listOccurrences({ canonicalId, cursor: q.cursor ?? null, limit });
-        return reply(200, envelope(page.rows.map(serialiseOccurrence),
-          { requestId, generatedAt, cursor: page.cursor }));
+        const body = envelope(page.rows.map(serialiseOccurrence),
+          { requestId, generatedAt, cursor: page.cursor });
+        // An occurrence carries no rights block of its own. It inherits the parent
+        // record's decision rather than defaulting to cacheable - a location is still a
+        // fact about work whose licence we may not know.
+        const parentRights = JSON.parse(this.#store.getCanonical(canonicalId).rights_json);
+        return cached(body, 'collection', parentRights?.cacheable === true);
       }
 
       m = path.match(new RegExp(`^/api/${API_VERSION}/skills/([^/]+)$`));
       if (m) {
         const row = this.#store.getCanonical(decodeURIComponent(m[1]));
         if (!row) return this.#notFound('skill', m[1], requestId);
-        return reply(200, envelope(serialiseSkill(row), { requestId, generatedAt }));
+        return cached(envelope(serialiseSkill(row), { requestId, generatedAt }), 'detail');
       }
 
       m = path.match(new RegExp(`^/api/${API_VERSION}/sources/([^/]+)$`));
       if (m) {
         const src = this.#store.getSource?.(decodeURIComponent(m[1]));
         if (!src) return this.#notFound('source', m[1], requestId);
+        // A source record is AppMD's own configuration, not third-party work: no rights
+        // block, so it cannot go through isCacheable(). It is safe to cache and short-lived.
         return reply(200, envelope({ id: src.id, access_policy: JSON.parse(src.access_policy),
-                                     registered_at: src.registered_at }, { requestId, generatedAt }));
+                                     registered_at: src.registered_at }, { requestId, generatedAt }),
+                     { 'Cache-Control': `public, max-age=${MAX_AGE_COLLECTION}, must-revalidate` });
       }
 
       if (path === `/api/${API_VERSION}/search`) {
@@ -87,8 +109,8 @@ export class ApiRouter {
         }
         const limit = clampLimit(q.limit);
         const page = this.#store.search({ q: term, cursor: q.cursor ?? null, limit });
-        return reply(200, envelope(page.rows.map(serialiseSkill),
-          { requestId, generatedAt, cursor: page.cursor }));
+        return cached(envelope(page.rows.map(serialiseSkill),
+          { requestId, generatedAt, cursor: page.cursor }), 'collection');
       }
 
       return reply(404, errorBody('NOT_FOUND', `No route for ${req.path}`, requestId));

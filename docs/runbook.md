@@ -43,6 +43,27 @@ appmd index rebuild --confirm                 # after restore, or on index suspi
 appmd dlq list                                # what failed and why
 ```
 
+### 3.1 Author removal — the cache purge obligation (`NFR-040`, `CR-007`)
+
+`REQ-063` removal tombstones the record and deletes the bytes **at the origin, immediately**. It
+does **not** reach copies already held in an edge cache. Until deployment there is no edge, so this
+step is currently a no-op — but it is written down now, because the moment a cache exists this
+becomes the difference between "removed" and "removed everywhere".
+
+```bash
+appmd removal request --skill <id> --repo <r> --reason <text> --by <who>
+appmd removal list
+appmd removal action <request-id> --confirm        # deletes bytes; envelope survives
+# THEN, once deployed: purge the CDN entry for /api/v1/skills/<id> and any page containing it.
+```
+
+**The window is bounded, not eliminated.** `max-age` is 300 s for a record and 60 s for a
+collection, so an unpurged copy expires within five minutes. Records whose rights are `unknown` are
+`no-store` and were never cached in the first place — which is most of them.
+
+**If you raise the TTL, you have made removal slower.** `TC-329` fails if the bound moves, so the
+decision cannot be made silently.
+
 ## 4. Incident responses
 
 | Symptom | First move | Then |

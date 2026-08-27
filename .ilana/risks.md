@@ -57,3 +57,22 @@ have *caused*, because our score creates reliance the author's own README never 
 | `RSK-005` | Closed — native DLQ verified (`DEC-025`) |
 | `RSK-006` | Mitigated — size-partitioning method documented |
 | `RSK-008` | Accepted — corpus snapshot decay, seed only |
+
+---
+
+## `RSK-009` — per-colo rate limiting does not enforce a global budget
+
+**Raised:** 2026-08-27 (`CR-007`) · **Owner:** `[architect]` · **Review:** Phase 2, before deploy
+**Likelihood:** certain if deployed as-is · **Impact:** moderate
+
+`MemoryRateLimiter` counts in process memory. On Workers each colo runs its own isolate, so a
+client hitting N colos gets N× the budget and `REQ-097` is enforced locally but not globally.
+
+**Not a defect** — `REQ-097` explicitly scopes Phase 1 to one in-process implementation and defers
+distributed limiting to `DEC-021`. It is recorded here because deployment is the moment the gap
+becomes real, and the `RateLimiter` port already exists to absorb the fix.
+
+**This is the one place Redis would genuinely earn its keep** (`CR-007` §Rejected alternative):
+shared mutable counters with TTL is exactly Redis's shape, and unlike caching it is not something
+the edge can do for free. Durable Objects are the Cloudflare-native alternative and avoid an
+external paid dependency. Neither is built.

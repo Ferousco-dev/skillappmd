@@ -10,17 +10,17 @@
   "open": [],
   "overrides": [],
   "counters": {
-    "REQ": 98,
-    "NFR": 39,
+    "REQ": 99,
+    "NFR": 40,
     "DOM": 13,
-    "DES": 92,
+    "DES": 93,
     "UI": 10,
-    "TC": 318,
+    "TC": 329,
     "DEF": 8,
-    "CR": 6,
-    "RSK": 8,
+    "CR": 7,
+    "RSK": 9,
     "DEC": 39,
-    "MET": 31,
+    "MET": 32,
     "ETH": 2
   },
   "attempts": {
@@ -40,7 +40,7 @@
     "recommendation learning"
   ],
   "baseline": {
-    "srs": "v1.1",
+    "srs": "v1.2",
     "at": "2026-08-27",
     "change_control": "CR required"
   },
