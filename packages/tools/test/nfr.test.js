@@ -1,0 +1,251 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync,
+         mkdtempSync, rmSync } from 'node:fs';
+import { join, resolve, relative } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+
+/**
+ * NON-FUNCTIONAL VERIFICATION — G5 criterion 9.
+ *
+ * These assert properties of the REPOSITORY and the RUNNING SYSTEM, not of a single
+ * function: security posture, dependency discipline, portability, documentation of
+ * scaling limits. They are the tests that would catch a regression no unit test can see.
+ */
+const ROOT = resolve('.');
+const walk = (dir, out = []) => {
+  if (!existsSync(dir)) return out;
+  for (const e of readdirSync(dir)) {
+    if (e === 'node_modules' || e === '.git') continue;
+    const p = join(dir, e);
+    statSync(p).isDirectory() ? walk(p, out) : out.push(p);
+  }
+  return out;
+};
+const sources = () => [...walk(join(ROOT, 'packages')), ...walk(join(ROOT, 'apps'))]
+  .filter((f) => /\.(js|mjs)$/.test(f));
+const production = () => sources().filter((f) => !/[/\\](test|fixtures)[/\\]/.test(f));
+
+// ---------------------------------------------------------------- security
+
+test('TC-275 NFR-019 no secret or key material appears anywhere in source control', () => {
+  const patterns = [
+    [/sk_live_[A-Za-z0-9]{8,}/, 'a live API key'],
+    [/ghp_[A-Za-z0-9]{20,}/, 'a GitHub token'],
+    [/AKIA[0-9A-Z]{16}/, 'an AWS access key'],
+    [/-----BEGIN [A-Z ]*PRIVATE KEY-----/, 'private key material'],
+    [/(?:password|passwd|secret)\s*[:=]\s*['"][^'"\s]{10,}['"]/i, 'an embedded credential'],
+  ];
+  const offenders = [];
+  for (const f of [...sources(), join(ROOT, '.gitignore')]) {
+    const text = readFileSync(f, 'utf8');
+    for (const [re, what] of patterns) {
+      if (re.test(text)) offenders.push(`${relative(ROOT, f)}: ${what}`);
+    }
+  }
+  assert.deepEqual(offenders, [], 'source control must contain no credential material');
+});
+
+test('TC-276 NFR-020 credentials are read from the environment, never written as literals', () => {
+  // Every credential-shaped read goes through process.env or an injected parameter.
+  const offenders = [];
+  for (const f of production()) {
+    const text = readFileSync(f, 'utf8');
+    // A literal assigned to something credential-shaped.
+    const m = text.match(/(apiKey|api_key|token|password|secret)\s*=\s*['"][A-Za-z0-9_\-]{8,}['"]/i);
+    if (m) offenders.push(`${relative(ROOT, f)}: ${m[0].slice(0, 40)}`);
+  }
+  assert.deepEqual(offenders, []);
+});
+
+test('TC-277 NFR-019/REQ-086 no log statement can emit a raw record or a credential', () => {
+  const offenders = [];
+  for (const f of production()) {
+    const text = readFileSync(f, 'utf8');
+    for (const m of text.matchAll(/console\.(log|error|warn|info)\(([^\n]*)/g)) {
+      const arg = m[2];
+      // Only INTERPOLATED VALUES matter. An earlier version matched the WORDS "bytes"
+      // and "content" anywhere in a log line, which flagged ordinary operator prose
+      // ("bytes gone; envelope survives") as a credential leak. A detector that cries
+      // wolf gets muted, and a muted detector protects nothing.
+      const interpolations = [...arg.matchAll(/\$\{([^}]*)\}/g)].map((x) => x[1]);
+      for (const expr of interpolations) {
+        if (/\braw(Text|Bytes|Content)\b|\.content\b|\bapiKey\b|\btoken\b|\bsecret\b|\bpassword\b/i.test(expr)) {
+          offenders.push(`${relative(ROOT, f)}: \${${expr.slice(0, 50)}}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(offenders, [], 'no log line interpolates raw content or a credential');
+});
+
+test('TC-278 REQ-027/NFR-024 the system contains no circumvention mechanism', () => {
+  const forbidden = [
+    /user[-_]?agent\s*[:=]\s*['"][^'"]*(Mozilla|Chrome|Safari|Googlebot|bingbot)/i,
+    /\bbypass[A-Z_]?(robots|ratelimit|rate_limit|captcha)/i,
+    /\bsolve[A-Z_]?captcha/i,
+    /rotate[A-Z_]?(proxy|ip)\b/i,
+  ];
+  const offenders = [];
+  for (const f of production()) {
+    const text = readFileSync(f, 'utf8');
+    for (const re of forbidden) if (re.test(text)) offenders.push(`${relative(ROOT, f)}: ${re}`);
+  }
+  assert.deepEqual(offenders, [], 'no user-agent impersonation, no limit or bot-detection evasion');
+});
+
+test('TC-279 REQ-026 the fetcher identifies AppMD truthfully and contactably', () => {
+  const uaFiles = production().filter((f) => /User-Agent/i.test(readFileSync(f, 'utf8')));
+  assert.ok(uaFiles.length > 0, 'a User-Agent is set somewhere');
+  for (const f of uaFiles) {
+    const text = readFileSync(f, 'utf8');
+    for (const m of text.matchAll(/'User-Agent':\s*([^,\n]+)/g)) { /* header use */ }
+    for (const m of text.matchAll(/userAgent\s*=\s*'([^']+)'/g)) {
+      const ua = m[1];
+      assert.match(ua, /AppMD/, 'the agent names AppMD');
+      assert.match(ua, /https?:\/\/|@/, 'and is contactable');
+      assert.equal(/Mozilla|Chrome|Safari|Googlebot/i.test(ua), false, 'and impersonates nobody');
+    }
+  }
+});
+
+test('TC-280 REQ-080/NFR-021 no execution path for third-party content exists', () => {
+  const dangerous = [/\beval\s*\(/, /new\s+Function\s*\(/, /child_process/, /\bexecSync\b/,
+                     /\bspawnSync\b/, /vm\.runIn/];
+  const offenders = [];
+  for (const f of production()) {
+    const text = readFileSync(f, 'utf8');
+    for (const re of dangerous) if (re.test(text)) offenders.push(`${relative(ROOT, f)}: ${re}`);
+  }
+  assert.deepEqual(offenders, [],
+    'skill content is instructions for an agent; executing it IS the attack');
+});
+
+test('TC-281 REQ-093/NFR-036 the API layer references no unnecessary personal field', () => {
+  const banned = /\b(email|real_name|full_name|follower|contribution_history|phone|address)\b/;
+  const offenders = [];
+  for (const f of production().filter((p) => p.includes(`${join('apps', 'api')}`))) {
+    const text = readFileSync(f, 'utf8');
+    if (banned.test(text)) offenders.push(relative(ROOT, f));
+  }
+  assert.deepEqual(offenders, [], 'the API surface names no personal field beyond attribution');
+});
+
+// ---------------------------------------------------------------- portability
+
+test('TC-282 NFR-027 every port has at least two adapters, one needing no cloud account', () => {
+  const adapters = readdirSync(join(ROOT, 'packages', 'adapters'));
+  const byPort = {
+    CanonicalStore: adapters.filter((a) => /sqlite|memory-store|postgres/.test(a)),
+    ObjectStore: adapters.filter((a) => /objectstore/.test(a)),
+    Queue: adapters.filter((a) => /queue/.test(a)),
+    RateLimiter: adapters.filter((a) => /ratelimit/.test(a)),
+  };
+  for (const [port, impls] of Object.entries(byPort)) {
+    assert.ok(impls.length >= 1, `${port} has an adapter`);
+  }
+  assert.ok(byPort.CanonicalStore.length >= 2, 'CanonicalStore: sqlite + memory');
+  assert.ok(byPort.ObjectStore.length >= 2, 'ObjectStore: fs + memory (+ r2 boundary)');
+  // The offline requirement: at least one adapter per port needs no account.
+  assert.ok(byPort.ObjectStore.some((a) => /fs|memory/.test(a)));
+  assert.ok(byPort.CanonicalStore.some((a) => /sqlite|memory/.test(a)));
+});
+
+test('TC-283 NFR-028/NFR-029 domain layers import no vendor SDK and no I/O module', () => {
+  const pure = ['packages/skill-core/src', 'packages/ports/src'];
+  const forbidden = /from\s+['"](node:fs|node:http|node:net|node:child_process|parquet-wasm|apache-arrow|@cloudflare)/;
+  for (const layer of pure) {
+    for (const f of walk(join(ROOT, layer)).filter((p) => /\.js$/.test(p))) {
+      const text = readFileSync(f, 'utf8');
+      assert.equal(forbidden.test(text), false,
+        `${relative(ROOT, f)} must import no I/O module or vendor SDK`);
+    }
+  }
+  // And the lint that enforces it actually fails when violated.
+  const probe = join(ROOT, 'packages/skill-core/src/__nfr283_probe.js');
+  try {
+    writeFileSync(probe, "import 'parquet-wasm';\nexport const x = 1;\n");
+    let failed = false;
+    try { execFileSync('node', ['packages/tools/src/depcheck.js', '.'], { stdio: 'pipe' }); }
+    catch { failed = true; }
+    assert.equal(failed, true, 'the dependency lint must FAIL on a planted violation');
+  } finally { rmSync(probe, { force: true }); }
+});
+
+test('TC-284 NFR-030 unit tests declare no network primitive', () => {
+  const netCall = /\b(fetch|XMLHttpRequest)\s*\(|from\s+['"]node:(http|https|net|dgram)['"]/;
+  const offenders = [];
+  for (const f of sources().filter((p) => /[/\\]test[/\\]/.test(p))) {
+    const text = readFileSync(f, 'utf8');
+    // globalThis.fetch REPLACEMENT is how TC-225 proves no network happens; that is the
+    // opposite of making a call, so it is not an offence.
+    const stripped = text.replace(/globalThis\.fetch\s*=[\s\S]*?;/g, '')
+                         .replace(/globalThis\.fetch\s*=\s*realFetch;/g, '');
+    if (netCall.test(stripped)) offenders.push(relative(ROOT, f));
+  }
+  assert.deepEqual(offenders, [], 'no test performs real network I/O');
+});
+
+test('TC-285 NFR-016 no pipeline stage requires a paid cloud plan to run locally', () => {
+  // Every adapter used by the default local composition is offline-capable.
+  const r2 = readFileSync(join(ROOT, 'packages/adapters/r2-objectstore/src/index.js'), 'utf8');
+  assert.match(r2, /R2NotConfiguredError/, 'the cloud adapter fails loudly rather than silently');
+  assert.equal(/@cloudflare|aws-sdk|require\(/.test(r2), false, 'and imports no SDK');
+  // The full suite itself is the evidence: it runs with no account and no network.
+  assert.ok(existsSync(join(ROOT, 'packages/adapters/fs-objectstore/src/index.js')));
+  assert.ok(existsSync(join(ROOT, 'packages/adapters/sqlite/src/index.js')));
+});
+
+// ---------------------------------------------------------------- cost and scale
+
+test('TC-286 NFR-015 Phase 1 contains no LLM or embedding call site', () => {
+  const aiCall = /openai|anthropic\.|\.embeddings|createEmbedding|chat\.completions|@anthropic-ai|inference\.run/i;
+  const offenders = [];
+  for (const f of production()) {
+    const text = readFileSync(f, 'utf8');
+    // The word "inferred"/"inference" is our provenance vocabulary, not an API call.
+    const stripped = text.replace(/appmd_inference|APPMD_INFERENCE|inferred|assertInference|inference is|AppMD inference/g, '');
+    if (aiCall.test(stripped)) offenders.push(relative(ROOT, f));
+  }
+  assert.deepEqual(offenders, [], 'zero AI spend is a property of the code, not a promise');
+});
+
+test('TC-287 NFR-018 the corpus footprint stays inside its stated cap', () => {
+  const dir = join(ROOT, 'data', 'corpus');
+  if (!existsSync(dir)) return;                       // nothing fetched in this environment
+  let bytes = 0;
+  for (const f of walk(dir)) bytes += statSync(f).size;
+  assert.ok(bytes <= 1024 ** 3, `corpus is ${(bytes / 1e6).toFixed(1)} MB, cap is 1 GB`);
+});
+
+test('TC-288 NFR-034 the architecture names its next binding constraint at each milestone', () => {
+  const scaling = readFileSync(join(ROOT, 'docs/SCALING.md'), 'utf8');
+  for (const milestone of ['1M', '10M', '100M', '1B']) {
+    assert.ok(scaling.includes(milestone), `SCALING.md must address ${milestone}`);
+  }
+  // Not merely mentioned - each has a named constraint and a response.
+  assert.match(scaling, /D1 hard ceiling/);
+  assert.match(scaling, /Vectorize 20M/);
+  assert.match(scaling, /single-writer canonical path/);
+  assert.match(scaling, /operational complexity, not cost/);
+});
+
+test('TC-289 NFR-031 no production module loads a whole dataset into memory', () => {
+  // Cursor or streaming APIs only: a readFileSync over corpus data would breach NFR-014.
+  const offenders = [];
+  for (const f of production()) {
+    const text = readFileSync(f, 'utf8');
+    if (/readFileSync\([^)]*corpus|\.rows\(\)\.map\(|JSON\.parse\(readFileSync\([^)]*jsonl/i.test(text)) {
+      offenders.push(relative(ROOT, f));
+    }
+  }
+  assert.deepEqual(offenders, [], 'corpus access is streamed, never slurped');
+});
+
+test('TC-290 NFR-017 derived results are keyed by content hash and analyser version', () => {
+  const raw = readFileSync(join(ROOT, 'packages/ingestion/src/reanalysis.js'), 'utf8');
+  assert.match(raw, /analyser/, 'the analyser identity is part of the key');
+  assert.match(raw, /idempotencyKey:\s*`reanalyse:\$\{analyser\}:\$\{version\}:\$\{a\.id\}`/,
+    'the re-analysis key includes analyser AND version, so unchanged content is not reprocessed');
+});

@@ -829,3 +829,50 @@ Evidence: .ilana/gates/G4.md. Supersedes the attempt-1 FAIL.
 All seven previously-absent requirements now have a DES element, a TC identifier, an
 implementation, and evidence on real corpus data. 59/87 mandatory REQ carry a test, up
 from 52. Phase 05 Verification opens.
+
+## 2026-08-27 | phase 05 | verifier | VERIFICATION SUITE BUILT
+Test plan: docs/test-plan.md (IEEE 829). CI: .github/workflows/verify.yml, which also
+plants a dependency violation and fails if the lint does not catch it.
+
+Four levels now exist, per Ilana's warning that unit coverage without an integration
+level is not testing:
+  unit         ~130 (skill-core, parser, licence, identity, domain model)
+  integration    14 (every port, 3 adapter combinations)
+  system         10 (the real CLI as a CHILD PROCESS - argument parsing, exit codes,
+                     confirmation guards and output formatting all in scope)
+  non-functional 24 (security, portability, cost, scale, quality targets)
+
+67 untested requirements -> 5. 137/139 mandatory now carry a test. 318 tests, all passing.
+
+FOUR DETECTORS VERIFIED AGAINST PLANTED VIOLATIONS, because a security test that cannot
+fail is decoration: raw-content-in-logs, domain-imports-SDK, notice-is-structural, and
+the CI dependency lint. Each failed correctly when the violation was planted.
+
+TWO OF MY OWN ASSERTIONS WERE HOLLOW and were rewritten rather than counted:
+  TC-297 ended in an empty regex alternation (/...|notice|/) which matches everything -
+    a hollow assertion inside a test about honest framing.
+  TC-277's first detector flagged the WORDS "bytes" and "content" in ordinary operator
+    prose ("bytes gone; envelope survives"), which would have muted it as noise.
+
+## 2026-08-27 | G5 | verifier | GATE FAIL
+Evidence: .ilana/gates/G5.md. Criteria 1, 2, 4-9 PASS. Criterion 10 outstanding (user
+sign-off, which by definition cannot be given by the team that built the thing).
+
+CRITERION 3 FAILS. DEF-008: REQ-004 (SkillsMPConnector, M) and REQ-028 (skip re-fetch on
+unchanged content, M) were NEVER IMPLEMENTED. REQ-005, REQ-014 and REQ-025 are absent too
+at priority S.
+
+HOW IT STAYED HIDDEN: TC-260 was titled "REQ-004/DOM-012 every connector declares an
+enforceable access policy" and exercised only GitSkillsCorpusConnector. The traceability
+matrix is generated from test titles, so REQ-004 READ AS COVERED. A test naming a
+requirement it does not exercise is worse than an uncovered requirement: an uncovered
+requirement is visible, a falsely-covered one is not.
+
+ROOT CAUSE, IDENTICAL TO G4's: ROADMAP.md increment 3 was scoped to REQ-001..003 and
+REQ-004 was never assigned to any increment. SOURCE_CONNECTORS.md SS4 specifies the
+connector in detail - the design was right and the PLAN lost it. Twice now the plan has
+been the weak link rather than the architecture.
+
+TC-260 retitled to what it proves. An audit of every test title naming a requirement
+found no other instance. packages/tools/src/traceability.js now runs in CI so the next
+one surfaces immediately rather than after weeks.

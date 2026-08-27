@@ -10,7 +10,8 @@
   "open": [
     "RSK-002",
     "RSK-004",
-    "RSK-007"
+    "RSK-007",
+    "DEF-008"
   ],
   "overrides": [],
   "counters": {
@@ -19,8 +20,8 @@
     "DOM": 13,
     "DES": 92,
     "UI": 10,
-    "TC": 256,
-    "DEF": 7,
+    "TC": 318,
+    "DEF": 8,
     "CR": 6,
     "RSK": 8,
     "DEC": 37,
@@ -31,7 +32,8 @@
     "G1": 2,
     "G2": 1,
     "G3": 1,
-    "G4": 2
+    "G4": 2,
+    "G5": 1
   },
   "scope_deferred": [
     "frontend",

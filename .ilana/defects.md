@@ -241,3 +241,44 @@ first 150 rows of the extracted corpus concluded "search works: false". Those ro
 the ~10-byte files with no frontmatter — so every haystack was empty and zero hits was correct.
 **The head-sampling error `DEC-024` exists to prevent, walked into again in an ad-hoc script.**
 Re-run with a stride: 240 records, 79 with declared names, search returns hits.
+
+---
+
+## DEF-008 — `SkillsMPConnector` (`REQ-004`, priority M) was never implemented, and a test title concealed it
+**Found:** 2026-08-27, phase 05 traceability audit · **Severity: HIGH** · **Status: OPEN — blocks G5**
+**Requirement:** `REQ-004` (M), and `REQ-005`, `REQ-014`, `REQ-025`, `REQ-028` alongside it
+
+**What is absent.**
+
+| Req | Pri | Statement | Status |
+| --- | --- | --- | --- |
+| `REQ-004` | **M** | `SkillsMPConnector` using only documented REST and MCP endpoints | **ABSENT** |
+| `REQ-028` | **M** | Skip re-fetch when the source reports content unchanged (ETag / `lastmod` / commit sha) | **ABSENT** |
+| `REQ-005` | S | `GitHubConnector` | ABSENT |
+| `REQ-014` | S | Poll the SkillsMP RSS feed | ABSENT |
+| `REQ-025` | S | Circuit breaker | ABSENT (abstraction described, never built) |
+
+**How it stayed hidden — the part that matters.** `TC-260` was titled
+*"REQ-004/DOM-012 every connector declares an enforceable access policy"* and exercised only
+`GitSkillsCorpusConnector`. The traceability matrix is generated from test titles, so `REQ-004`
+read as covered. **A test naming a requirement it does not exercise is worse than an uncovered
+requirement: an uncovered requirement is visible, a falsely-covered one is not.**
+
+This is the same shape as G4's raw-storage failure, arriving through a different door. There, a
+graceful degradation (`bytes deleted false`) hid an absent subsystem. Here, a test title did.
+
+**Fix applied to the concealment.** `TC-260` retitled to what it actually proves (`DOM-012`,
+`REQ-006`), with a note recording why. An audit across every test title that names a requirement
+found **no other instance**.
+
+**Not fixed: the absent connectors.** Implementing them is not a defect fix; it is scope, and it
+needs a decision rather than a silent build.
+
+**Assessment against G5.** Criterion 3 requires every `REQ` and `NFR` to map to a test. Two
+**mandatory** requirements have no implementation to test. **G5 cannot pass on the current
+evidence**, and the honest response is to report it rather than to write a test that asserts an
+absence and call the box ticked.
+
+**Note on `RSK-002`.** `REQ-004`'s absence has one accidental benefit worth recording: no live
+SkillsMP call has ever been made from this codebase, so the unresolved robots-versus-API question
+has not been acted on either way.

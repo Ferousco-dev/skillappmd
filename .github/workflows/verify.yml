@@ -1,0 +1,62 @@
+# G5 criterion 8: the regression suite runs automatically on every change.
+# NFR-030: no network. NFR-016: no paid plan, no cloud account, no secrets.
+name: verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No `npm ci`: skill-core, ports, ingestion, adapters and both apps have zero
+      # dependencies (DEC-030). The two quarantined packages are batch-only and are
+      # exercised by contract tests that need no bucket.
+      - name: Dependency direction (NFR-028)
+        run: node packages/tools/src/depcheck.js .
+
+      - name: Prove the lint fails when violated
+        run: |
+          printf "import 'parquet-wasm';\nexport const x=1;\n" > packages/skill-core/src/__ci_probe.js
+          if node packages/tools/src/depcheck.js . ; then
+            echo "FAIL: the dependency lint did not catch a planted violation"
+            rm -f packages/skill-core/src/__ci_probe.js
+            exit 1
+          fi
+          rm -f packages/skill-core/src/__ci_probe.js
+          echo "ok: the lint fails on a planted violation"
+
+      - name: Unit, integration and non-functional tests
+        run: |
+          node --test \
+            'packages/skill-core/test/*.test.js' \
+            'packages/adapters/sqlite/test/*.test.js' \
+            'packages/adapters/local-queue/test/*.test.js' \
+            'packages/adapters/memory-store/test/*.test.js' \
+            'packages/adapters/fs-objectstore/test/*.test.js' \
+            'packages/connectors/gitskills/test/*.test.js' \
+            'packages/ingestion/test/*.test.js' \
+            'packages/tools/test/*.test.js' \
+            'apps/api/test/*.test.js'
+
+      - name: System tests (CLI as a child process)
+        run: node --test 'apps/cli/test/*.test.js'
+
+      - name: Secret scan
+        run: |
+          if grep -rInE 'sk_live_[A-Za-z0-9]{8,}|ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----' \
+               --exclude-dir=node_modules --exclude-dir=.git . ; then
+            echo "FAIL: credential material found in source control"
+            exit 1
+          fi
+          echo "ok: no credential material"
+
+      - name: Traceability has no orphan requirement
+        run: node packages/tools/src/traceability.js
