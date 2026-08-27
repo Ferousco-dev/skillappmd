@@ -876,3 +876,53 @@ been the weak link rather than the architecture.
 TC-260 retitled to what it proves. An audit of every test title naming a requirement
 found no other instance. packages/tools/src/traceability.js now runs in CI so the next
 one surfaces immediately rather than after weeks.
+
+## 2026-08-27 | RSK-002 | ethics-officer | CLOSED ON LIVE EVIDENCE
+The user asked "is there still need for a mail when we have the apis". Checking took ten
+seconds and settled a risk carried open for the entire project.
+
+  GET /api/v1/skills/search returns real data ANONYMOUSLY, no key
+  /developers: "Sign in and generate your API key. Anonymous access is also available
+    with lower rate limits"
+  Published quotas for both tiers. A PUBLISHED QUOTA IS THE PERMISSION.
+
+robots.txt's Disallow: /api/ is a CRAWLER directive - it governs bots discovering pages,
+not clients calling a documented API. Reading it as a prohibition was over-caution.
+
+The caution was right at G0: two contradictory documents, no live evidence, a source
+strategy about to rest on a guess. What was WRONG was never re-testing it. That is the
+same pattern as DEF-002, DEF-003 and DEF-005 - a plausible belief nobody re-checked
+against reality - and this time the belief was mine about someone else's permission.
+DEC-038. The letter stays on disk, unsent.
+
+## 2026-08-27 | phase 05 | constructor | REQ-004 BUILT — DEF-008 CLOSED
+SkillsMPConnector, ConditionalFetcher (REQ-028), CircuitBreaker (REQ-025), RobotsPolicy
+(REQ-096). Both MANDATORY requirements from DEF-008 are now built and tested.
+
+Tests run offline against fixtures RECORDED FROM THE LIVE API, including the real
+MISSING_QUERY 400. Five defects in this project came from fixtures encoding my
+assumptions instead of reality; recording them from the source is the cheap fix.
+
+Live smoke test, inside their published limits: 1 request, 5 real records, GitHub
+coordinates resolved, channel recorded on every record.
+
+No discoverAll(): the catalogue cannot be enumerated, and a method implying otherwise
+would be a lie in the shape of a function. getContent() returns NotAvailable by design.
+
+DETECTORS FIRED IMMEDIATELY ON THE NEW CODE, and the distinction mattered:
+  TC-279 REAL FINDING - robots.js and conditional-fetch.js defaulted to a User-Agent
+    naming AppMD but NOT CONTACTABLE, breaching REQ-026 in code written minutes earlier.
+    Fixed the CODE.
+  TC-286 FALSE POSITIVE - matched SkillsMP's own disclaimer "not affiliated with
+    Anthropic or OpenAI", a fact recorded about them. Fixed the DETECTOR.
+  TC-278 FALSE POSITIVE - matched the regex that REFUSES impersonation, punishing the
+    code for defending the requirement. Fixed the DETECTOR.
+Both corrected detectors re-proven against planted violations.
+
+## 2026-08-27 | G5 | verifier | GATE CONDITIONAL PASS (attempt 2)
+Evidence: .ilana/gates/G5.md. Criteria 1-9 PASS. 334 tests, 334 passing.
+139/139 mandatory requirements carry a test, up from 137/139 and originally 83/150.
+8 defects, all closed. REQ-005 and REQ-014 remain unbuilt at priority S, declared in
+DEC-039 and reported as orphans by CI on every run.
+Criterion 10 (acceptance sign-off) is the user's and cannot be given by the team that
+built the thing.

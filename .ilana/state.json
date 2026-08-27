@@ -8,10 +8,8 @@
   "process_style": "hybrid",
   "rigour": 3,
   "open": [
-    "RSK-002",
     "RSK-004",
-    "RSK-007",
-    "DEF-008"
+    "RSK-007"
   ],
   "overrides": [],
   "counters": {
@@ -20,11 +18,11 @@
     "DOM": 13,
     "DES": 92,
     "UI": 10,
-    "TC": 318,
+    "TC": 334,
     "DEF": 8,
     "CR": 6,
     "RSK": 8,
-    "DEC": 37,
+    "DEC": 39,
     "MET": 0,
     "ETH": 1
   },

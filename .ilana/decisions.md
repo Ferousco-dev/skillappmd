@@ -683,3 +683,62 @@ another one" is exactly the kind of drift that should be visible.
 
 Footprint: `parquet-wasm` 19 MB + `apache-arrow` 12 MB = **31 MB, batch runtime only**. Zero
 dependencies remain in `skill-core`, `ports`, `ingestion`, `adapters` and both apps.
+
+---
+
+## DEC-038 — `RSK-002` closed on live evidence: the SkillsMP API is publicly offered and pre-authorised
+**Status:** DECIDED · **closes `RSK-002`** · **supersedes the ASSUMPTION status of `DEC-004`**
+**Evidence:** live verification 2026-08-27, after the user asked the obvious question I had not
+
+| Verified | Consequence |
+| --- | --- |
+| `GET /api/v1/skills/search` returns real data **anonymously, with no key** | Unauthenticated use is offered, not tolerated |
+| `/developers`: *"Sign in and generate your API key. **Anonymous access is also available** with lower rate limits"* | Pre-authorisation, stated in their own words |
+| Published limits for both tiers (50/day anon · 500/day keyed) | **A published quota is the permission.** Nobody publishes a budget for something they forbid |
+| OpenAPI spec, MIT-licensed, behind a `/developers` portal | An invitation, not a tolerated back door |
+| ToS: *"browse, search, and download skills for personal and commercial use"* | Search is exactly what the API does |
+
+**`robots.txt` was never the obstacle I treated it as.** It is a **crawler-directive protocol**: it
+governs bots discovering pages, not clients calling a documented API. `Disallow: /api/` stops a
+search engine indexing JSON as though it were content. Reading it as an API prohibition was
+over-caution.
+
+**What I got wrong, and it is the project's own recurring failure mode.** The caution was correct
+at G0 — two contradictory documents, no live evidence, and a whole source strategy about to rest on
+a guess. Labelling it `DEC-004: ASSUMPTION` cost nothing. What was wrong was **carrying it as an
+open risk for the entire project without ever re-testing it**, then recommending a letter, when a
+single anonymous API call resolved it in ten seconds. That is precisely the pattern `DEF-002`,
+`DEF-003` and `DEF-005` all share: a plausible belief nobody re-checked against reality. It took
+the user asking *"is there still need for a mail when we have the apis"* to prompt the check.
+
+**The one clause that genuinely remains:** *"You may not scrape or systematically download large
+portions of **the website**."* It says *the website*. The API is the sanctioned alternative to
+scraping one, and `DEC-002` already routes content through GitHub rather than SkillsMP. AppMD is
+not what that clause addresses.
+
+**Operating constraints are UNCHANGED** — they were never contingent on the robots question and are
+already enforced and tested (`TC-278`, `TC-279`):
+
+1. Stay inside published limits; treat them as ceilings, not targets.
+2. Truthful, contactable User-Agent. Never impersonate a browser or another bot.
+3. Honour `Retry-After` and `Crawl-delay`.
+4. Never bulk-fetch `/creators/**` HTML — the ToS clause that does bind us.
+5. No circumvention of anything, ever.
+
+**The clarification letter stays on disk, unsent.** It becomes worth sending only if AppMD later
+wants something the public API does not offer — bulk access, a delta feed — where we would be
+asking a favour rather than permission.
+
+---
+
+## DEC-039 — `REQ-005` and `REQ-014` remain unbuilt, declared rather than hidden
+**Status:** DECIDED · closes the S-priority half of `DEF-008`
+
+| Req | Why it stays unbuilt in Phase 1 |
+| --- | --- |
+| `REQ-005` `GitHubConnector` | The corpus already supplies content **and** L2 licences for 282,200 repositories (`R2`). Demoted to S at G1 for exactly this reason. Building it now would add a rate-limited network dependency to a path that does not need one |
+| `REQ-014` SkillsMP RSS polling | Incremental discovery has no consumer: nothing yet runs on a schedule. `REQ-004` provides discovery; the feed adds freshness for a use case Phase 1 does not have |
+
+Both are reported as orphans by `packages/tools/src/traceability.js` on every CI run. **A declared
+gap that a tool announces is a different thing from a gap nobody knows about** — `DEF-008` was the
+second kind, and that is precisely what made it serious.

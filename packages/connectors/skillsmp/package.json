@@ -1,0 +1,11 @@
+{
+  "name": "@appmd/connector-skillsmp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SkillsMPConnector. REQ-004. Discovery and signal only - SkillsMP hosts no content (DEC-002).",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

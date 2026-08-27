@@ -4,7 +4,7 @@ L = likelihood, I = impact. Owner in brackets.
 | ID | Risk | L | I | Mitigation | Status |
 | --- | --- | --- | --- | --- | --- |
 | RSK-001 | SkillsMP unreachable in bulk by any sanctioned route; brief's "primary source" premise invalid | Certain | High | `DEC-002` re-scope to seed/signal; GitHub is content path | **MITIGATED** |
-| RSK-002 | `robots.txt Disallow: /api/` vs published API — our interpretation may be wrong `[ethics-officer]` | Med | High | `DEC-004` keyed low-volume only; seek written clarification | **OPEN** |
+| RSK-002 | `robots.txt Disallow: /api/` vs published API — our interpretation may be wrong `[ethics-officer]` | Med | High | **CLOSED 2026-08-27 on live evidence (`DEC-038`)**: anonymous access is offered with published limits, so the API is pre-authorised; robots governs crawlers, not documented API consumers | **CLOSED** |
 | RSK-003 | SkillsMP may terminate access "without prior notice" (ToS) | Med | Med | No hard dependency; connector droppable without data loss | MONITOR |
 | RSK-004 | Per-skill licence ≠ repo licence ≠ frontmatter claim; redistribution exposure `[ethics-officer]` | High | High | `DEC-006` three-layer model, default-deny | **OPEN** |
 | RSK-005 | Cloudflare Queues DLQ support + delivery guarantees UNVERIFIED | Med | Med | Verified 2026-08-27: native DLQ, at-least-once. See `DEC-025` | **CLOSED** |

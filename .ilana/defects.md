@@ -279,6 +279,29 @@ needs a decision rather than a silent build.
 evidence**, and the honest response is to report it rather than to write a test that asserts an
 absence and call the box ticked.
 
+### RESOLUTION — 2026-08-27
+
+Both **mandatory** requirements are now implemented and tested.
+
+| Req | Pri | Built | Tests |
+| --- | --- | --- | --- |
+| `REQ-004` | **M** | `SkillsMPConnector` — REST discovery, access policy as data, GitHub coordinates as identity, `getContent()` returns `NotAvailable` by design | `TC-299`–`TC-309` |
+| `REQ-028` | **M** | `ConditionalFetcher` — `If-None-Match` / `If-Modified-Since`, plus a version-ref short circuit that skips the request entirely | `TC-313`, `TC-314` |
+| `REQ-025` | S | `CircuitBreaker` with half-open probing, wired into the connector | `TC-310`, `TC-311` |
+| `REQ-096` | M | `RobotsPolicy` — parses directives, separates `crawl` from `api` channel | `TC-312` |
+
+Tests run **offline against fixtures recorded from the live API**, so the shapes asserted are the
+shapes SkillsMP actually returns — not shapes I imagined. That distinction has now mattered five
+times in this project.
+
+**Still absent, both priority S, and left absent deliberately:** `REQ-005` (`GitHubConnector`) and
+`REQ-014` (RSS polling). Neither is needed for Phase 1: the corpus supplies content and L2 licences
+(`R2`), and incremental discovery has no consumer yet. Recorded as orphans by the traceability
+checker rather than hidden, so the next person sees them.
+
+**`DEF-008` status: CLOSED** for the mandatory scope; the two S-priority absences carry forward as
+declared gaps.
+
 **Note on `RSK-002`.** `REQ-004`'s absence has one accidental benefit worth recording: no live
 SkillsMP call has ever been made from this codebase, so the unresolved robots-versus-API question
 has not been acted on either way.

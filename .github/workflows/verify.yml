@@ -42,6 +42,7 @@ jobs:
             'packages/adapters/memory-store/test/*.test.js' \
             'packages/adapters/fs-objectstore/test/*.test.js' \
             'packages/connectors/gitskills/test/*.test.js' \
+            'packages/connectors/skillsmp/test/*.test.js' \
             'packages/ingestion/test/*.test.js' \
             'packages/tools/test/*.test.js' \
             'apps/api/test/*.test.js'

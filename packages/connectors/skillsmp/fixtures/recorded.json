@@ -1,0 +1,198 @@
+{
+  "search_pdf": {
+    "status": 200,
+    "rateLimit": {
+      "x-ratelimit-daily-limit": "50",
+      "x-ratelimit-daily-remaining": "47",
+      "x-ratelimit-minute-limit": "10",
+      "x-ratelimit-minute-remaining": "9"
+    },
+    "body": {
+      "success": true,
+      "data": {
+        "skills": [
+          {
+            "id": "openclaw-openclaw-skills-nano-pdf-skill-md",
+            "name": "nano-pdf",
+            "author": "openclaw",
+            "description": "Edit PDFs with natural-language instructions using the nano-pdf CLI.",
+            "contentLanguage": "en",
+            "githubUrl": "https://github.com/openclaw/openclaw/tree/main/skills/nano-pdf",
+            "skillUrl": "https://skillsmp.com/creators/openclaw/openclaw/skills-nano-pdf",
+            "stars": 387415,
+            "updatedAt": 1779015027
+          },
+          {
+            "id": "openclaw-openclaw-skills-summarize-skill-md",
+            "name": "summarize",
+            "author": "openclaw",
+            "description": "Summarize or transcribe URLs, YouTube/videos, podcasts, articles, transcripts, PDFs, and local files.",
+            "contentLanguage": "en",
+            "githubUrl": "https://github.com/openclaw/openclaw/tree/main/skills/summarize",
+            "skillUrl": "https://skillsmp.com/creators/openclaw/openclaw/skills-summarize",
+            "stars": 387415,
+            "updatedAt": 1779015027
+          },
+          {
+            "id": "affaan-m-ecc-skills-visa-doc-translate-skill-md",
+            "name": "visa-doc-translate",
+            "author": "affaan-m",
+            "description": "Translate visa application documents (images) to English and create a bilingual PDF with original and translation. Use when visa application document images must be translated to English as a bilingual PDF.",
+            "contentLanguage": "en",
+            "githubUrl": "https://github.com/affaan-m/ECC/tree/main/skills/visa-doc-translate",
+            "skillUrl": "https://skillsmp.com/creators/affaan-m/ecc/skills-visa-doc-translate",
+            "stars": 243037,
+            "updatedAt": 1786507094
+          },
+          {
+            "id": "affaan-m-ecc-docs-zh-cn-skills-visa-doc-translate-skill-md",
+            "name": "visa-doc-translate",
+            "author": "affaan-m",
+            "description": "\u5c06\u7b7e\u8bc1\u7533\u8bf7\u6587\u4ef6\uff08\u56fe\u7247\uff09\u7ffb\u8bd1\u6210\u82f1\u6587\uff0c\u5e76\u521b\u5efa\u5305\u542b\u539f\u6587\u548c\u8bd1\u6587\u7684\u53cc\u8bedPDF",
+            "contentLanguage": "zh",
+            "githubUrl": "https://github.com/affaan-m/ECC/tree/main/docs/zh-CN/skills/visa-doc-translate",
+            "skillUrl": "https://skillsmp.com/creators/affaan-m/ecc/docs-zh-cn-skills-visa-doc-translate",
+            "stars": 243037,
+            "updatedAt": 1775425287
+          },
+          {
+            "id": "affaan-m-ecc-docs-ja-jp-skills-visa-doc-translate-skill-md",
+            "name": "visa-doc-translate",
+            "author": "affaan-m",
+            "description": "\u30d3\u30b6\u7533\u8acb\u66f8\u985e\uff08\u753b\u50cf\uff09\u3092\u82f1\u8a9e\u306b\u7ffb\u8a33\u3057\u3001\u539f\u6587\u3068\u7ffb\u8a33\u3092\u542b\u3080\u30d0\u30a4\u30ea\u30f3\u30ac\u30ebPDF\u3092\u4f5c\u6210\u3059\u308b",
+            "contentLanguage": "ja",
+            "githubUrl": "https://github.com/affaan-m/ECC/tree/main/docs/ja-JP/skills/visa-doc-translate",
+            "skillUrl": "https://skillsmp.com/creators/affaan-m/ecc/docs-ja-jp-skills-visa-doc-translate",
+            "stars": 243037,
+            "updatedAt": 1778999500
+          }
+        ],
+        "pagination": {
+          "page": 1,
+          "limit": 5,
+          "total": 6,
+          "totalPages": 2,
+          "hasNext": true,
+          "hasPrev": false,
+          "totalIsExact": false
+        },
+        "filters": {
+          "search": "pdf",
+          "sortBy": "stars"
+        }
+      },
+      "meta": {
+        "requestId": "9f793a10-36fd-4986-ae6e-8214ba8ce458",
+        "responseTimeMs": 425
+      }
+    }
+  },
+  "search_paged": {
+    "status": 200,
+    "rateLimit": {
+      "x-ratelimit-daily-limit": "50",
+      "x-ratelimit-daily-remaining": "46",
+      "x-ratelimit-minute-limit": "10",
+      "x-ratelimit-minute-remaining": "8"
+    },
+    "body": {
+      "success": true,
+      "data": {
+        "skills": [
+          {
+            "id": "affaan-m-ecc-docs-zh-tw-skills-security-review-skill-md",
+            "name": "security-review",
+            "author": "affaan-m",
+            "description": "Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive security checklist and patterns.",
+            "contentLanguage": "zh",
+            "githubUrl": "https://github.com/affaan-m/ECC/tree/main/docs/zh-TW/skills/security-review",
+            "skillUrl": "https://skillsmp.com/creators/affaan-m/ecc/docs-zh-tw-skills-security-review",
+            "stars": 243037,
+            "updatedAt": 1774833678
+          },
+          {
+            "id": "affaan-m-ecc-kiro-skills-security-review-skill-md",
+            "name": "security-review",
+            "author": "affaan-m",
+            "description": "Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive security checklist and patterns.",
+            "contentLanguage": "en",
+            "githubUrl": "https://github.com/affaan-m/ECC/tree/main/.kiro/skills/security-review",
+            "skillUrl": "https://skillsmp.com/creators/affaan-m/ecc/kiro-skills-security-review",
+            "stars": 243037,
+            "updatedAt": 1774833678
+          },
+          {
+            "id": "affaan-m-ecc-skills-quarkus-security-skill-md",
+            "name": "quarkus-security",
+            "author": "affaan-m",
+            "description": "Quarkus Security best practices for authentication, authorization, JWT/OIDC, RBAC, input validation, CSRF, secrets management, and dependency security. Use when reviewing Quarkus authn/authz, JWT or OIDC, RBAC, validation, or secrets.",
+            "contentLanguage": "en",
+            "githubUrl": "https://github.com/affaan-m/ECC/tree/main/skills/quarkus-security",
+            "skillUrl": "https://skillsmp.com/creators/affaan-m/ecc/skills-quarkus-security",
+            "stars": 243037,
+            "updatedAt": 1786507094
+          }
+        ],
+        "pagination": {
+          "page": 2,
+          "limit": 3,
+          "total": 7,
+          "totalPages": 3,
+          "hasNext": true,
+          "hasPrev": true,
+          "totalIsExact": false
+        },
+        "filters": {
+          "search": "authentication",
+          "sortBy": "stars"
+        }
+      },
+      "meta": {
+        "requestId": "087d9d7e-dd74-4c18-bedd-43bdbe0e392c",
+        "responseTimeMs": 463
+      }
+    }
+  },
+  "search_category": {
+    "status": 200,
+    "rateLimit": {
+      "x-ratelimit-daily-limit": "50",
+      "x-ratelimit-daily-remaining": "45",
+      "x-ratelimit-minute-limit": "10",
+      "x-ratelimit-minute-remaining": "7"
+    },
+    "body": {
+      "success": true,
+      "data": {
+        "skills": [],
+        "pagination": {
+          "page": 1,
+          "limit": 3,
+          "total": 0,
+          "totalPages": 1,
+          "hasNext": false,
+          "hasPrev": false,
+          "totalIsExact": true
+        },
+        "filters": {
+          "search": "deploy",
+          "sortBy": "stars"
+        }
+      },
+      "meta": {
+        "requestId": "26d80d17-6768-4623-99e3-b60c84db1747",
+        "responseTimeMs": 244
+      }
+    }
+  },
+  "missing_query": {
+    "status": 400,
+    "body": {
+      "success": false,
+      "error": {
+        "code": "MISSING_QUERY",
+        "message": "Query parameter \"q\" is required"
+      }
+    }
+  }
+}

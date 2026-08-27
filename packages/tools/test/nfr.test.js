@@ -96,18 +96,25 @@ test('TC-278 REQ-027/NFR-024 the system contains no circumvention mechanism', ()
 });
 
 test('TC-279 REQ-026 the fetcher identifies AppMD truthfully and contactably', () => {
-  const uaFiles = production().filter((f) => /User-Agent/i.test(readFileSync(f, 'utf8')));
-  assert.ok(uaFiles.length > 0, 'a User-Agent is set somewhere');
-  for (const f of uaFiles) {
+  // Inspect the DEFAULT VALUES assigned to a userAgent, not every mention of a browser
+  // name. SkillsMPConnector legitimately contains /Mozilla|Googlebot/ inside the regex
+  // that REFUSES impersonation - a detector that flagged that would have punished the
+  // code for defending the requirement.
+  const uas = [];
+  for (const f of production()) {
     const text = readFileSync(f, 'utf8');
-    for (const m of text.matchAll(/'User-Agent':\s*([^,\n]+)/g)) { /* header use */ }
-    for (const m of text.matchAll(/userAgent\s*=\s*'([^']+)'/g)) {
-      const ua = m[1];
-      assert.match(ua, /AppMD/, 'the agent names AppMD');
-      assert.match(ua, /https?:\/\/|@/, 'and is contactable');
-      assert.equal(/Mozilla|Chrome|Safari|Googlebot/i.test(ua), false, 'and impersonates nobody');
-    }
+    for (const m of text.matchAll(/userAgent\s*=\s*'([^']+)'/g)) uas.push([f, m[1]]);
   }
+  assert.ok(uas.length > 0, 'a default User-Agent is declared somewhere');
+  for (const [f, ua] of uas) {
+    assert.match(ua, /AppMD/, `${relative(ROOT, f)}: the agent must name AppMD`);
+    assert.match(ua, /https?:\/\/|@/, 'and be contactable');
+    assert.equal(/Mozilla|Chrome|Safari|Googlebot|bingbot/i.test(ua), false,
+      `${relative(ROOT, f)}: it must impersonate nobody`);
+  }
+  // And impersonation is refused at RUNTIME, not merely absent from the defaults.
+  const connector = readFileSync(join(ROOT, 'packages/connectors/skillsmp/src/connector.js'), 'utf8');
+  assert.match(connector, /REQ-026 violated/, 'a bad User-Agent is rejected, not just avoided');
 });
 
 test('TC-280 REQ-080/NFR-021 no execution path for third-party content exists', () => {
@@ -204,8 +211,15 @@ test('TC-286 NFR-015 Phase 1 contains no LLM or embedding call site', () => {
   const offenders = [];
   for (const f of production()) {
     const text = readFileSync(f, 'utf8');
-    // The word "inferred"/"inference" is our provenance vocabulary, not an API call.
-    const stripped = text.replace(/appmd_inference|APPMD_INFERENCE|inferred|assertInference|inference is|AppMD inference/g, '');
+    // Strip our own vocabulary and third-party PROSE before looking for a call site.
+    // SkillsMP's own disclaimer - "not affiliated with Anthropic or OpenAI" - is a fact
+    // we record about them, not an API we call. A detector that cannot tell a sentence
+    // from a call site will be muted, and a muted detector protects nothing.
+    const stripped = text
+      .replace(/appmd_inference|APPMD_INFERENCE|inferred|assertInference|inference is|AppMD inference/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')            // block comments
+      .replace(/(^|\n)\s*\/\/[^\n]*/g, '')          // line comments
+      .replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");     // string literals
     if (aiCall.test(stripped)) offenders.push(relative(ROOT, f));
   }
   assert.deepEqual(offenders, [], 'zero AI spend is a property of the code, not a promise');

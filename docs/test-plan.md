@@ -80,14 +80,14 @@ project did not create.
 | # | Criterion | Target | Actual |
 | --- | --- | --- | --- |
 | 1 | Test plan exists | yes | this document |
-| 2 | Unit tests pass | 100% | **318/318** |
-| 3 | Every `REQ`/`NFR` maps to a `TC` | no orphans | **137/139 mandatory — 2 orphans (`DEF-008`)** |
+| 2 | Unit tests pass | 100% | **334/334** |
+| 3 | Every `REQ`/`NFR` maps to a `TC` | no orphans | **139/139 mandatory. 2 orphans remain, both priority S and declared (`DEC-039`)** |
 | 4 | Integration covers module boundaries | every port | 14 tests, every port, 3 adapter combinations |
 | 5 | System testing against the SRS | yes | 10 tests, CLI as a child process |
-| 6 | Defects recorded with lifecycle | all | 8 recorded, 7 closed, 1 open |
+| 6 | Defects recorded with lifecycle | all | 8 recorded, **8 closed** |
 | 7 | Exit criteria met or shortfall explicit | explicit | this table |
 | 8 | Regression suite automatic | CI | `.github/workflows/verify.yml` |
-| 9 | Non-functional testing | per NFR | 16 tests: security, portability, cost, scale |
+| 9 | Non-functional testing | per NFR | 16 tests: security, portability, cost, scale — each detector proven against a planted violation |
 | 10 | Acceptance signed by a user, not the dev team | signed | **NOT MET — requires the user** |
 
 ## 9. Acceptance evidence available for sign-off
