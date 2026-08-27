@@ -7,22 +7,20 @@
   "agent": "conductor",
   "process_style": "hybrid",
   "rigour": 3,
-  "open": [
-    "CR-010 awaiting approval"
-  ],
+  "open": [],
   "overrides": [],
   "counters": {
-    "REQ": 109,
-    "NFR": 40,
+    "REQ": 112,
+    "NFR": 42,
     "DOM": 13,
-    "DES": 97,
+    "DES": 98,
     "UI": 10,
-    "TC": 352,
+    "TC": 369,
     "DEF": 10,
     "CR": 11,
-    "RSK": 11,
+    "RSK": 12,
     "DEC": 40,
-    "MET": 33,
+    "MET": 36,
     "ETH": 2
   },
   "attempts": {

@@ -487,7 +487,7 @@ Semantic search (`CR-010`, requires the AI-spend amendment), MCP transport, depl
 
 ## CR-010 — semantic resolution: amend `NFR-015` (zero AI spend)
 
-**Raised:** 2026-08-27 · **Status:** AWAITING APPROVAL — no AI code exists and nothing is spent
+**Raised:** 2026-08-27 · **Status:** **APPROVED** 2026-08-27 by the user
 **Against:** SRS v1.3 · **Amends:** `NFR-015` · **Enables:** increment 15
 
 ### The requirement this answers, measured not assumed
@@ -555,10 +555,22 @@ The Gemini key is a **Workers secret**, supplied by the user. It shall not appea
 key**; the user sets it themselves via their own tooling. No default and no fallback: a missing key
 is a startup failure, never a silent degradation to keyword search.
 
-### Open, to verify before building
+### Verified before building (the open question is closed)
 
-Which output dimensions `gemini-embedding-001` actually supports — 768 versus 3072 is a 4× storage
-difference, and I have not verified that truncation is available rather than assumed it.
+`gemini-embedding-001` **does** support `output_dimensionality`, documented as flexible across
+**128–3072** with 768/1536/3072 recommended. The cheap option is real, not hoped for: **768
+dimensions, ~$0.73/month**, not the $2.92 that 3072 would have cost.
+
+Two further details that change the implementation rather than the price:
+
+- **`taskType` is not optional in practice.** Documents are embedded as `RETRIEVAL_DOCUMENT` and
+  queries as `RETRIEVAL_QUERY`. Embedding both the same way is the standard way to get a semantic
+  search that quietly underperforms.
+- **The Batch API is half price** ($0.075 vs $0.15 per 1M tokens), which is what the one-time corpus
+  embedding should use. Per-query embedding at resolution time uses the standard endpoint.
+
+Vectorize index: `wrangler vectorize create <name> --dimensions=768 --metric=cosine`. Dimensions
+**cannot be changed after creation**, so this is a one-way decision and 768 is deliberate.
 
 ---
 

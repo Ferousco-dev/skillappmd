@@ -781,3 +781,26 @@ it is printed on every run, and the check **fails closed**: anything that is not
 empty, so `…,src/x.js,,implemented` parsed `status` as `''`. Harmless while nothing read `status`;
 the moment it decided pass/fail it would have **silently downgraded a real defect to a declared
 gap**. Found by planting an orphan and watching it pass — not by reading the code.
+
+## DEC-042 — embed the description, not the body; 768 dimensions; a similarity floor
+**Status:** DECIDED · `CR-010`
+
+**Description, not body.** The author's description is the closest thing in the corpus to the query
+an agent sends. Bodies average 4,425 B — roughly 5× the token cost for text that is mostly
+instructions to a model. And `REQ-062`: we do not serve bodies, so embedding one would put a derived
+representation of unlicensed content into a store we control. The description is metadata; the body
+is the work.
+
+**768 dimensions.** Verified as supported (`output_dimensionality`, 128–3072). Storage is linear in
+dimensions: ~$0.73/month against ~$2.92 at 3072. Vectorize **cannot change** an index's
+dimensionality after creation, so this is one-way and deliberate.
+
+**A similarity floor (0.35).** Cosine always returns a nearest neighbour, so without a floor the
+resolver answers *every* question confidently — including questions the corpus cannot answer.
+Returning nothing is a legitimate answer, and the resolver skill already tells the agent what to do
+with it: write the capability yourself. **A confident wrong answer is worse than no answer**, because
+the agent acts on it.
+
+**Different task types for documents and queries.** `RETRIEVAL_DOCUMENT` when indexing,
+`RETRIEVAL_QUERY` when resolving. Using one for both still returns results, just worse ones — which
+is why `TC-356` asserts it rather than trusting it.

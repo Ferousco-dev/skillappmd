@@ -95,3 +95,25 @@ Batching store calls per record (one round trip instead of three) would recover 
 also what a D1 adapter wants anyway, since each call there is a network round trip.
 
 **Trigger:** the first ladder rung above 10,000 records, or the first D1 measurement.
+
+---
+
+## `RSK-012` — ranking quality is unproven and cannot be proven by these tests
+
+**Raised:** 2026-08-27 (`CR-010`) · **Owner:** `[metrologist]` · **Review:** after the first real embed
+**Likelihood:** certain · **Impact:** the product's central claim
+
+Every test of semantic resolution runs against `FakeEmbedder`, which hashes text into a stable
+vector. That proves ordering, dimensionality, idempotence, resumability, provenance, the similarity
+floor and the tombstone check — everything **except whether the ranking is any good**, because a
+hash has no semantics.
+
+**This is the same shape as `DEF-009`**: a property proved only by adapters that cannot exhibit the
+failure. There, two synchronous stores could not reveal a synchrony assumption; here, a fake
+embedder cannot reveal a bad ranking.
+
+**What would actually measure it:** a labelled set of task descriptions with known-correct answers
+drawn from the live index, scored on recall@10. Until that exists, "semantic search works" is a
+claim about plumbing, not about answers, and should be described that way.
+
+**Do not treat a green suite as evidence of quality.**

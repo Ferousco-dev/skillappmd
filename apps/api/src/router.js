@@ -4,19 +4,21 @@
  */
 import { serialiseSkill, serialiseOccurrence, envelope, errorBody, NOTICE } from './serialise.js';
 import { cacheHeaders, matchesIfNoneMatch, NO_STORE, MAX_AGE_COLLECTION } from './cache-policy.js';
+import { resolveTask } from '../../../packages/ingestion/src/resolution.js';
 
 export const API_VERSION = 'v1';
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 50;
 
 export class ApiRouter {
-  #store; #clock; #limiter; #ids;
+  #store; #clock; #limiter; #ids; #embedder; #vectors;
 
-  constructor({ store, clock, limiter, requestId = defaultRequestId }) {
+  constructor({ store, clock, limiter, requestId = defaultRequestId, embedder = null, vectors = null }) {
     if (!store || typeof clock !== 'function') {
       throw new TypeError('ApiRouter requires a CanonicalStore port and a clock (NFR-038)');
     }
     this.#store = store; this.#clock = clock; this.#limiter = limiter; this.#ids = requestId;
+    this.#embedder = embedder; this.#vectors = vectors;
   }
 
   /** @param {{method:string,path:string,query?:object,clientId?:string}} req */
@@ -100,6 +102,32 @@ export class ApiRouter {
         return reply(200, envelope({ id: src.id, access_policy: JSON.parse(src.access_policy),
                                      registered_at: src.registered_at }, { requestId, generatedAt }),
                      { 'Cache-Control': `public, max-age=${MAX_AGE_COLLECTION}, must-revalidate` });
+      }
+
+      // REQ-110. Task -> capability, which is the question an agent is able to ask.
+      // Keyword search answers "which record contains this word" and returns nothing for
+      // "extract text from a scanned document"; this is the endpoint that does.
+      if (path === `/api/${API_VERSION}/resolve`) {
+        if (!this.#embedder || !this.#vectors) {
+          // NFR-042: absent capability is reported, never silently downgraded to keyword
+          // search, which would look like a working answer.
+          return reply(503, errorBody('RESOLVER_UNAVAILABLE',
+            'Semantic resolution is not configured on this deployment.', requestId), NO_STORE);
+        }
+        const task = String(q.task ?? '').trim();
+        if (task === '') {
+          return reply(400, errorBody('MISSING_TASK',
+            'Parameter "task" is required. Describe the task, not a package name.', requestId), NO_STORE);
+        }
+        const { rows, inference } = await resolveTask({
+          task, embedder: this.#embedder, index: this.#vectors, store: this.#store,
+          topK: clampLimit(q.limit),
+        });
+        const body = envelope(rows.map(({ row, score }) => ({ ...serialiseSkill(row), match: { score } })),
+          { requestId, generatedAt });
+        // REQ-112: the judgement travels with the analyser that made it.
+        body.inferred_by = inference;
+        return await cached(body, 'collection');
       }
 
       if (path === `/api/${API_VERSION}/search`) {

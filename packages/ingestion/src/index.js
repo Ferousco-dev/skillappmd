@@ -8,3 +8,4 @@ export * from './reanalysis.js';
 export * from './raw.js';
 export * from './pipeline.js';
 export * from './rebuild.js';
+export * from './resolution.js';

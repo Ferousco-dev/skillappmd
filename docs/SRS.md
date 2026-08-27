@@ -3,7 +3,7 @@
 
 | | |
 | --- | --- |
-| Document | SRS **v1.2** |
+| Document | SRS **v1.3** |
 | Date | 2026-08-27 |
 | Owner | `[analyst]` (single writer; Ìlànà kernel §4) |
 | Shape | IEEE 830 |
@@ -303,6 +303,9 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-070** | API responses shall distinguish source facts from AppMD inferences in their structure, not in prose. | M |
 | **REQ-071** | The API shall never emit secrets, credentials, internal storage keys or raw content. | M |
 | **REQ-093** | The API shall not expose personal information beyond what attribution requires — the public account identifier and the canonical source URL. Fields classified as individual-author identity (`REQ-092`) shall be omitted from public responses unless attribution requires them. | M |
+| **REQ-110** | The system shall provide **semantic resolution**: `GET /api/v1/resolve?task=` shall accept a natural-language task description and return candidate skills ranked by semantic similarity, in the same envelope and under the same rights rules as every other endpoint. |
+| **REQ-111** | Embeddings shall be produced through a **port**, so the provider is an adapter and the pipeline is testable with no network and no spend. |
+| **REQ-112** | A resolution result shall record the **model id and dimensionality** that produced it, as `appmd_inference` provenance — a ranking is an AppMD judgement, never a source fact. |
 | **REQ-099** | Every API response shall carry explicit cache directives (`CR-007`). A representation shall be marked publicly cacheable **only where every record it contains reports `rights.cacheable`**; a single `unknown`-rights record makes the whole representation `no-store`, because a page is one representation and cannot be partially evicted. Error responses and the health endpoint shall be `no-store`. Every cacheable response shall carry a strong `ETag` and honour `If-None-Match`. | M |
 | **REQ-097** | The API shall apply rate limiting through a port interface, so limits are configuration rather than code. Phase 1 requires exactly one implementation: **in-process, enforcing a configurable request budget per client identifier over a configurable time window, returning HTTP 429 with `Retry-After` on breach.** Distributed or shared-state rate limiting is future work (`DEC-021`). | M |
 | **REQ-072** | A CLI shall consume the same API surface as any future frontend. | S |
@@ -381,7 +384,7 @@ requirements; the following are.
 
 | ID | Requirement |
 | --- | --- |
-| **NFR-015** | Phase 1 shall complete with **zero** LLM or embedding API spend. Deterministic processing only. |
+| **NFR-015** | **AMENDED by `CR-010`.** AI spend shall be **zero on the ingestion path** — parse, normalise, fingerprint, deduplicate and rights resolution remain deterministic and free. Embedding is a **batch acquisition step** with a declared budget, run deliberately and never as a side effect of ingesting a record. Per-query embedding is permitted on the resolution path only, with a measured ceiling. **Any run whose projected cost exceeds its declared budget shall refuse to start.** Same shape as `CR-006`, which made Parquet extraction batch-only rather than relaxing the memory budget everywhere. |
 | **NFR-016** | No pipeline stage shall require a paid cloud plan to run locally (`DEC-010`). |
 | **NFR-017** | Every future AI-derived result shall be cached keyed by content hash and analyser version; unchanged content shall never be reprocessed (BRIEF §16). |
 | **NFR-018** | Corpus disk use in Phase 1 shall not exceed 1 GB (`DEC-011`: `repos` + one `artifacts` shard). |
@@ -423,6 +426,8 @@ requirements; the following are.
 | **NFR-031** | No design element shall assume the full dataset fits in memory or in one process. |
 | **NFR-032** | All traversal shall be cursor-based; no offset pagination anywhere. |
 | **NFR-039** | **Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size.** This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be addable. Covers `REQ-066`, `REQ-067` and every future collection endpoint. |
+| **NFR-041** | Embedding shall be **reproducible and resumable**: a record's embedding is keyed by its `normalised_hash` and the model id, so re-running embeds only what changed and an interrupted run resumes rather than re-spending. |
+| **NFR-042** | **No secret shall be readable from the running system.** The embedding provider key is supplied as a runtime secret, is never written to source, configuration, logs, error messages or any API response, and a missing key shall be a **startup failure**, never a silent degradation to keyword search. |
 | **NFR-040** | **Edge cache lifetime shall not exceed the removal propagation bound.** `REQ-063` removal takes effect at the origin immediately, but a cached representation survives up to its `max-age`; that window is therefore the true removal latency and shall be **≤300 s**. Raising it makes removal slower without any code change appearing to cause it, so the bound is enforced by test, and cache purge on removal is a documented operator obligation (`runbook.md`). |
 | **NFR-033** | Canonical identity shall be partitionable by content hash prefix without schema change. |
 | **NFR-034** | The architecture shall document its next binding constraint at 1M, 10M and 100M skills, with the evidence for each (BRIEF §51). |
@@ -553,7 +558,7 @@ read as demanding infrastructure Phase 1 does not need, it is read the narrower 
 `.ilana/traceability.csv` maps `REQ`/`NFR`/`DOM` → design → module → test.
 Article 3: no production code without a requirement id; no requirement without ≥1 test case.
 
-**Counts (v1.2):** 91 functional (`REQ-001`..`REQ-099`), 35 non-functional (`NFR-001`..`NFR-040`),
+**Counts (v1.3):** 97 functional (`REQ-001`..`REQ-112`), 37 non-functional (`NFR-001`..`NFR-042`),
 12 domain (`DOM-001`..`DOM-012`). Phase 1 mandatory: **80** `REQ` at priority **M** (counted from `.ilana/traceability.csv`, not asserted).
 
 ---

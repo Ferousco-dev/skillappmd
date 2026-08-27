@@ -88,6 +88,35 @@ export const Queue = Object.freeze({
 
 /** DES-063 / DES-053 / DES-058 / DES-007. */
 export const Cache = Object.freeze({ methods: ['get', 'set', 'delete'] });
+
+/**
+ * REQ-111. Embedding is a PORT so the provider is an adapter — the pipeline is testable
+ * with no network and no spend, and swapping Gemini for Workers AI is one file.
+ *
+ * `embed` takes an array because both the batch corpus job and a single query go through
+ * the same call, and a per-item API would make the batch path accidentally expensive.
+ */
+export const Embedder = Object.freeze({ methods: ['embed', 'dimensions', 'modelId'] });
+
+/** REQ-110. The vector index. Rebuildable from canonical, like every derived index. */
+export const VectorIndex = Object.freeze({ methods: ['upsert', 'query', 'describe'] });
+
+/** NFR-041: an embedding is identified by content AND model, so a model change re-embeds. */
+export const embeddingKey = (normalisedHash, modelId, dimensions) =>
+  `${normalisedHash}:${modelId}:${dimensions}`;
+
+/**
+ * NFR-042. A missing key is a startup failure, never a silent fall back to keyword search.
+ * Degrading quietly would make the product look like it works while answering worse.
+ */
+export function assertEmbedderConfigured(embedder) {
+  for (const m of Embedder.methods) {
+    if (typeof embedder?.[m] !== 'function') {
+      throw new Error(`REQ-111 violated: embedder missing ${m}()`);
+    }
+  }
+  return embedder;
+}
 export const RateLimiter = Object.freeze({ methods: ['acquire', 'release', 'status'] });
 export const Clock = Object.freeze({ methods: ['nowIso'] });   // NFR-038: UTC RFC3339 only
 export const RobotsPolicy = Object.freeze({ methods: ['fetch', 'isAllowed', 'crawlDelay'] });

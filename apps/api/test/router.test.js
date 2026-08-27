@@ -245,3 +245,55 @@ test('TC-238 REQ-033 the API has no route to raw content and never returns raw b
   }
   store.close();
 });
+
+test('TC-367 REQ-110/NFR-042 resolve reports absence rather than degrading to keyword search', async () => {
+  // A deployment without an embedder must SAY so. Falling back to /search would return
+  // plausible results for a question the system cannot actually answer.
+  const { router, store } = await rig();
+  const r = await GET(router, '/api/v1/resolve', { task: 'extract text from a scan' });
+  assert.equal(r.status, 503);
+  assert.equal(r.body.error.code, 'RESOLVER_UNAVAILABLE');
+  assert.equal(r.headers['Cache-Control'], 'no-store');
+  store.close();
+});
+
+test('TC-368 REQ-110 resolve requires a task description', async () => {
+  const { store: s0 } = await rig();
+  const { FakeEmbedder } = await import('../../../packages/adapters/gemini-embedder/src/index.js');
+  const { MemoryVectorIndex } = await import('../../../packages/adapters/vector-index/src/index.js');
+  const router = new ApiRouter({
+    store: s0, clock,
+    embedder: new FakeEmbedder({ dimensions: 8 }),
+    vectors: new MemoryVectorIndex({ dimensions: 8 }),
+  });
+  const r = await GET(router, '/api/v1/resolve', {});
+  assert.equal(r.status, 400);
+  assert.equal(r.body.error.code, 'MISSING_TASK');
+  s0.close();
+});
+
+test('TC-369 REQ-110/REQ-112 resolve returns candidates with the judgement attached', async () => {
+  const { FakeEmbedder } = await import('../../../packages/adapters/gemini-embedder/src/index.js');
+  const { MemoryVectorIndex } = await import('../../../packages/adapters/vector-index/src/index.js');
+  const { embedRecords } = await import('../../../packages/ingestion/src/resolution.js');
+
+  const { store, ids } = await rig({ skills: 3 });
+  const embedder = new FakeEmbedder({ dimensions: 32 });
+  const vectors = new MemoryVectorIndex({ dimensions: 32 });
+  const rows = (await store.cursorScan({ limit: 50 })).rows;
+  await embedRecords({ records: rows, embedder, index: vectors });
+
+  const router = new ApiRouter({ store, clock, embedder, vectors });
+  const target = rows.find((r) => r.id === ids[0]);
+  const r = await GET(router, '/api/v1/resolve',
+    { task: `${target.declared_name} — ${target.declared_description}` });
+
+  assert.equal(r.status, 200);
+  assert.equal(r.body.data[0].id, ids[0]);
+  assert.ok(r.body.data[0].match.score > 0.99, 'the score travels with the candidate');
+  assert.equal(r.body.data[0].content, null, 'REQ-062 still holds on this endpoint');
+  assert.ok(r.body.data[0].attribution.repository, 'REQ-061 still holds too');
+  assert.equal(r.body.inferred_by.analyser, 'semantic-resolver');
+  assert.ok(r.body.inferred_by.model);
+  store.close();
+});

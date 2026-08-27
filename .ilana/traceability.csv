@@ -162,3 +162,8 @@ REQ-106,The canonical store shall be implementable on Cloudflare D1 without chan
 REQ-107,The edge runtime bundle shall import nothing from node:.,functional,M,DES-057,apps/worker/src/index.js,TC-345;TC-350,implemented
 REQ-108,The Worker shall allow-list CORS origins and never emit a wildcard.,functional,M,DES-057,apps/worker/src/index.js,TC-347,implemented
 REQ-109,"A missing or failing database binding shall be reported, never masked as healthy.",functional,M,DES-057,apps/worker/src/index.js,TC-346;TC-349,implemented
+REQ-110,Semantic resolution: GET /api/v1/resolve?task= returns candidates ranked by similarity.,functional,M,DES-058,packages/ingestion/src/resolution.js,TC-361;TC-362;TC-364;TC-366;TC-367;TC-368;TC-369,implemented
+REQ-111,"Embeddings are produced through a port, so the pipeline is testable with no network and no spend.",functional,M,DES-058,packages/adapters/gemini-embedder/src/index.js,TC-356;TC-357,implemented
+REQ-112,A resolution result records the model id and dimensionality as appmd_inference.,functional,M,DES-058,packages/ingestion/src/resolution.js,TC-363;TC-369,implemented
+NFR-041,"Embedding is reproducible and resumable, keyed by normalised_hash and model id.",non-functional,M,DES-058,packages/ingestion/src/resolution.js,TC-358;TC-359,implemented
+NFR-042,No secret is readable from the running system; a missing key is a startup failure.,non-functional,M,DES-058,packages/adapters/gemini-embedder/src/index.js,TC-354;TC-355;TC-367,implemented
