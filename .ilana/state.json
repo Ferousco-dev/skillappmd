@@ -2,9 +2,9 @@
   "ilana_version": "1.0.3",
   "project": "appmd-skill-cloud",
   "mode": "FLEET",
-  "phase": "05",
-  "gate": "G4",
-  "agent": "verifier",
+  "phase": "07",
+  "gate": "G6",
+  "agent": "quality-auditor",
   "process_style": "hybrid",
   "rigour": 3,
   "open": [

@@ -926,3 +926,13 @@ Evidence: .ilana/gates/G5.md. Criteria 1-9 PASS. 334 tests, 334 passing.
 DEC-039 and reported as orphans by CI on every run.
 Criterion 10 (acceptance sign-off) is the user's and cannot be given by the team that
 built the thing.
+
+## 2026-08-27 | G5 | user | ACCEPTANCE SIGNED — GATE PASS
+Criterion 10 met. The user reviewed the evidence in docs/test-plan.md SS9 and stated
+"i accept".
+
+Recorded as the USER's decision. Ilana is explicit that acceptance cannot be signed by
+the team that built the thing, and it was not: every other gate in this project was
+assessed by a role this session adopted, and this one was not.
+
+G5 PASSES on all ten criteria. Gates now: G0-G6 all pass. Phase 07 Quality Assurance opens.
