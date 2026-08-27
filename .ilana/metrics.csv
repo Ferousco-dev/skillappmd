@@ -35,3 +35,5 @@ MET-033,2026-08-27,async_conversion_throughput_cost,process,3.9,ratio,"10442 -> 
 MET-034,2026-08-27,rights_unknown_share,product,0.601,ratio,"n=4665 over 3074 repositories; supersedes 0.687 at n=131"
 MET-035,2026-08-27,repos_with_licence,product,0.522,ratio,"1604/3074 real repositories carry a licence"
 MET-036,2026-08-27,production_index_size,product,4668,records,"live via GET /api/v1/skills cursor walk"
+MET-037,2026-08-27,embeddable_share,product,0.779,ratio,"3636/4665 records carry a name or description; 1029 carry neither"
+MET-038,2026-08-27,embedding_cost_live_index,product,0.0476,usd,"projected from actual text, 317394 tokens at $0.15/1M"

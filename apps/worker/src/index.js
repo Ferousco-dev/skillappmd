@@ -10,6 +10,8 @@
  */
 import { ApiRouter } from '../../api/src/router.js';
 import { createD1CanonicalStore } from '../../../packages/adapters/d1/src/index.js';
+import { GeminiEmbedder } from '../../../packages/adapters/gemini-embedder/src/index.js';
+import { VectorizeIndex } from '../../../packages/adapters/vector-index/src/index.js';
 
 /** REQ-097. Per-colo, which is NOT a global budget — see RSK-009. */
 class ColoRateLimiter {
@@ -64,11 +66,23 @@ export default {
     }
 
     const store = createD1CanonicalStore(env.DB);
+
+    // NFR-042. Semantic resolution is present only when BOTH the key and the index are
+    // configured. Absent, /resolve answers 503 and says so - it never falls back to
+    // keyword search, which would make a half-configured deployment look complete.
+    let embedder = null, vectors = null;
+    if (env.GEMINI_API_KEY && env.VECTORIZE) {
+      embedder = new GeminiEmbedder({ apiKey: env.GEMINI_API_KEY, dimensions: 768 });
+      vectors = new VectorizeIndex(env.VECTORIZE, { dimensions: 768 });
+    }
+
     const router = new ApiRouter({
       store,
       clock: () => new Date().toISOString(),
       limiter,
       requestId: () => crypto.randomUUID(),
+      embedder,
+      vectors,
     });
 
     let res;

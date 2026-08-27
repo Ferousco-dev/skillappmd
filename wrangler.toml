@@ -30,5 +30,15 @@ database_id = "36d4c6a7-d261-4152-876b-1ac8f5955e77"
 # binding = "RAW"
 # bucket_name = "skillappmd-raw"
 
+# Vectorize holds the semantic index (CR-010). 768 dimensions, cosine — the
+# dimensionality CANNOT be changed after creation, so it matches the embedder deliberately
+# (DEC-042). Derived and rebuildable: losing it costs an embedding run, never a record.
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "skillappmd-vectors"
+
+# GEMINI_API_KEY is NOT here. It is a Workers secret, set with `wrangler secret put`,
+# and a missing one is a startup failure rather than a silent downgrade (NFR-042).
+
 [observability]
 enabled = true

@@ -117,3 +117,22 @@ drawn from the live index, scored on recall@10. Until that exists, "semantic sea
 claim about plumbing, not about answers, and should be described that way.
 
 **Do not treat a green suite as evidence of quality.**
+
+---
+
+## `RSK-013` — 22% of the index cannot be reached by semantic resolution
+
+**Raised:** 2026-08-27 · **Owner:** `[architect]` · **Review:** with the first recall measurement
+**Likelihood:** certain · **Impact:** a fifth of the index is invisible to the product's main entry point
+
+**1,029 of 4,665 records (22.1%) carry neither a `name` nor a `description`** in their frontmatter.
+`DEC-042` embeds name + description, so these records have nothing to embed and can never be
+returned by `/api/v1/resolve`. They remain findable by keyword search and by id.
+
+This is a property of the corpus, not a defect: many published `SKILL.md` files simply have no
+frontmatter worth the name. But it caps recall at **77.9%** before ranking quality is even
+considered, and a recall measurement that ignores it will look better than the product is.
+
+**Options, none taken yet:** embed a body excerpt for records lacking a description — which
+`DEC-042` rejected on `REQ-062` grounds and would need that decision revisited, not bypassed; or
+report the gap in the resolve response so a consumer knows the index is not exhaustive.
