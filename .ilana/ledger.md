@@ -135,3 +135,72 @@ HANDOFF
   assumed:  DEC-004, DEC-007, DEC-013 remain ASSUMPTION.
   next:     ARCHITECTURE.md, DATABASE.md, SOURCE_CONNECTORS.md, INGESTION.md, DEDUPLICATION.md,
             PROVENANCE.md, SECURITY.md, SCALING.md, API.md, ROADMAP.md; then G2.
+
+---
+
+## 2026-08-27 | phase 01 | analyst | STAKEHOLDER REVIEW DELIVERED
+Review across 10 dimensions requested by the user: promises, Phase 1 content, architecturally
+load-bearing requirements, invented assumptions, Cloudflare cost drivers, legal exposure,
+1M+ bottlenecks, migration risk, over-engineering, gaps.
+
+Analyst self-disclosures of note:
+  - 13 invented numbers/choices listed explicitly, including NFR-011 as a pure guess.
+  - Departure from BRIEF §38 disclosed: `Unknown` rights state had been replaced by all-false
+    booleans and `cacheable` added.
+  - Largest cost driver identified: 9 queue messages per occurrence (>=9M at 1M skills).
+  - Largest legal exposure identified: unconditional raw retention of unknown-licence content.
+  - Runtime finding: Parquet reading is unlikely to run inside a Worker; deployment is two
+    runtimes, not one.
+  - 8 gaps identified, incl. missing canonical backup (contradicting BRIEF §62) and missing
+    personal-data handling for identifiable repo owners.
+
+## 2026-08-27 | phase 01 | analyst | SRS v1.1 EMITTED
+User returned 18 numbered decisions. All applied. Artifact: docs/SRS.md v1.1 (620 lines).
+
+  Modified 10: DOM-008, REQ-005, REQ-025, REQ-029, REQ-034, REQ-063, REQ-067, NFR-002,
+               NFR-010, NFR-011
+  Added   14: DOM-013, REQ-091..REQ-098, NFR-035..NFR-039
+  Added structurally: SS7.1 governing principle; schema_version, identity_class, rights.state,
+               retention block in the canonical schema.
+
+  Counts: 98 REQ (87 M, 6 S, 5 F), 39 NFR, 13 DOM. 150 traceability rows.
+  ID integrity verified by script: REQ 1..98, NFR 1..39, DOM 1..13, no gaps, no duplicates.
+
+  Two analyst choices were REVERSED by the stakeholder: DEC-018 (rights `unknown` restored as an
+  explicit state) and DEC-019 (raw retention made rights-aware and non-permanent by default).
+  Both reversals were correct and both are recorded as such.
+
+Decisions logged: DEC-017..DEC-023.
+
+---
+
+## 2026-08-27 | G1 | analyst | GATE PASS (attempt 2)
+Evidence: .ilana/gates/G1.md. Supersedes the attempt-1 CONDITIONAL PASS.
+
+  Criterion 3 FOUND A SECOND REAL DEFECT: REQ-097 contained "simple configurable abstraction",
+  introduced in this very revision. Rewritten to observable behaviour (per-client budget,
+  configurable window, HTTP 429 + Retry-After). Re-run: 0 hits in requirement rows.
+  Two revisions, two adjective-test catches. The check earns its place.
+
+  Criterion 6 remains PASS WITH DECLARED DEVIATION: 13 of 39 NFRs carry number+unit; the rest
+  are binary predicates with stated verification procedures. Declared, not glossed.
+
+  Criterion 7 NOW MET: stakeholder reviewed and returned 18 decisions, two of which reversed
+  analyst choices. That is what independent validation is supposed to look like.
+
+Decision: SRS v1.1 BASELINED. Further change requires CR-###.
+Phase 02 NOT started - user instruction: stop and await approval.
+
+HANDOFF
+  from:     analyst
+  to:       architect  (HELD - not yet handed off, awaiting user approval)
+  gate:     G1 PASS
+  produced: docs/SRS.md v1.1, .ilana/traceability.csv (150 rows), .ilana/gates/G1.md
+  ids:      REQ-001..098, NFR-001..039, DOM-001..013, DEC-001..023
+  open:     RSK-002 (SkillsMP robots/API - letter drafted, unsent)
+            RSK-004 (three-layer licence exposure - reduced by DEC-019, not closed)
+            RSK-005 (Queues DLQ UNVERIFIED) - BLOCKS G2
+            RSK-007 / ETH-001 (trust-score conditions) - BLOCKS G2
+            DEC-007 (canonical store undecided) - resolved by docs/DATABASE.md
+  assumed:  DEC-004, DEC-007, DEC-013 remain ASSUMPTION. NFR-011 provisional per DEC-017.
+  next:     AWAIT USER APPROVAL before phase 02.

@@ -3,13 +3,13 @@
 
 | | |
 | --- | --- |
-| Document | SRS v1.0 |
+| Document | SRS **v1.1** |
 | Date | 2026-08-27 |
 | Owner | `[analyst]` (single writer; Ìlànà kernel §4) |
 | Shape | IEEE 830 |
 | Rigour | 3 — gates enforce, overrides logged |
-| Status | **Submitted for G1** |
-| Supersedes | — |
+| Status | **Submitted for G1, attempt 2** |
+| Supersedes | SRS v1.0 (2026-08-27) — see §10 Change log |
 
 ---
 
@@ -162,10 +162,11 @@ true about the world*; `DATABASE.md` will decide how to persist it.
 | **DOM-005** | Occurrence relationships are drawn from a closed vocabulary: `EXACT_DUPLICATE`, `NEAR_DUPLICATE`, `FORK`, `MIRROR`, `VERSION`, `RELATED`, `ALTERNATIVE`, `UNRELATED`. Name equality alone never establishes any of them. | BRIEF §13 |
 | **DOM-006** | Every field value in a `CanonicalSkill` is either a **source fact** (with its source) or an **AppMD inference** (with producer, version and confidence). There is no third kind and the two are never merged into one field. | BRIEF §12; `ETH-001` |
 | **DOM-007** | Licence is three independent layers: L1 dataset/aggregator, L2 repository, L3 frontmatter claim. L3 is a claim, not an authority. Conflicts are recorded, never silently resolved. | `DEC-006` |
-| **DOM-008** | Rights posture is **computed**, never stored as a single inherited flag. Unknown or conflicting licence ⇒ `redistributable = false`. | `DEC-006`; BRIEF §38 |
+| **DOM-008** | Rights posture is **computed**, never stored as a single inherited flag. It carries the brief's four concepts: `indexable`, `linkable`, `redistributable`, and **`unknown` as an explicit state in its own right** — never silently collapsed into all-false booleans. `cacheable` is tracked additionally where architecture requires it and never substitutes for `unknown`. An `unknown` posture denies redistribution **and** records that the denial rests on absent evidence rather than on evidence of prohibition. | `DEC-018`; BRIEF §38 |
 | **DOM-009** | A `Repository` is the attribution unit and the L2 licence holder. Attribution is mandatory on every canonical record. | `ETH-002` |
 | **DOM-010** | Raw content is immutable once stored and addressed by its content hash. Normalisation never mutates raw. | BRIEF §10 |
 | **DOM-011** | A skill's temporal state (`first_commit_at`, `last_commit_at`, `discovered_at`, `last_verified_at`) is a first-class attribute; freshness is derived from it, never assumed. | BRIEF §34 |
+| **DOM-013** | Identity in the corpus resolves to three distinct classes — **repository identity**, **organisation identity**, and **individual author identity** — which carry different privacy weight and shall not be conflated. Only personal information necessary for provenance and attribution is retained; anything beyond that is not collected. | `DEC-020`; intake Q5 |
 | **DOM-012** | A `Source` has an access policy — rate limits, permitted methods, ToS constraints — that is **data, not code**, and is enforced by the runtime. | BRIEF §49–50; `DEC-004` |
 
 ---
@@ -183,7 +184,7 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-002** | Every connector shall emit `DiscoveryRecord` objects of one normalised shape regardless of source. | M |
 | **REQ-003** | The system shall implement `GitSkillsCorpusConnector` reading the CC-BY-4.0 Parquet corpus. | M |
 | **REQ-004** | The system shall implement `SkillsMPConnector` using **only** the documented REST and MCP endpoints, never HTML scraping of `/creators/**`. | M |
-| **REQ-005** | The system shall implement `GitHubConnector` resolving `owner/repo` + path to repository metadata, licence and content via the official API. | M |
+| **REQ-005** | The system shall implement `GitHubConnector` resolving `owner/repo` + path to repository metadata, licence and content via the official API. Demoted because the corpus supplies both content and L2 licence; the `SourceConnector` abstraction (`REQ-001`, `REQ-008`) remains **M** and is unaffected. | S |
 | **REQ-006** | Each connector shall declare its access policy — rate limits, auth mode, permitted methods, ToS notes — as data the runtime enforces. | M |
 | **REQ-007** | The system shall reject registration of a connector that declares no access policy. | M |
 | **REQ-008** | Adding a new source shall require no modification to discovery, queue, parse, normalise, fingerprint, dedup or storage code. Demonstrated by two connectors of genuinely different shape (bulk corpus vs rate-limited API). | M |
@@ -212,27 +213,30 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-021** | Dead-lettered jobs shall be listable, inspectable, and manually re-submittable. | M |
 | **REQ-022** | Failure of one job shall not halt, restart or re-run the pipeline for any other job. | M |
 | **REQ-023** | The queue shall be provided through a port interface with a local adapter and a Cloudflare Queues adapter. | M |
+| **REQ-095** | The system shall support **re-analysis**: given a change of analyser version, analysis rules, model, or security rules, it shall identify every affected canonical record and enqueue it for reprocessing, without re-contacting any source (`REQ-032`). Each derived result shall record the analyser id and version that produced it, so "affected" is a query rather than a guess. Phase 1 implements identification and enqueue for the deterministic analysers it actually has; the mechanism is what matters, not the number of analysers using it. | M |
 
 ### 4.4 Fetch
 
 | ID | Requirement | Pri |
 | --- | --- | --- |
 | **REQ-024** | The fetcher shall enforce per-source rate limits, concurrency caps, backoff, jitter and `Retry-After`. | M |
-| **REQ-025** | The fetcher shall open a circuit breaker on repeated source failure and report it. | M |
+| **REQ-025** | The fetcher shall open a circuit breaker on repeated source failure and report it. The abstraction is defined in Phase 1 and retained for future network-based connectors; only the local-corpus path may omit an implementation. | S |
 | **REQ-026** | The fetcher shall send a truthful, contactable User-Agent identifying AppMD, and shall never impersonate a browser or another bot. | M |
 | **REQ-027** | The system shall contain **no** mechanism for evading rate limits, bot detection, authentication or access controls. | M |
 | **REQ-028** | The fetcher shall skip re-fetch when the source reports content unchanged (ETag / `lastmod` / commit sha). | M |
+| **REQ-096** | Every web-based connector shall retrieve the source's robots policy where one applies, cache it with a stated freshness, and evaluate each request against it before issuing it. A request that a directive disallows shall not be issued. Connectors operating an explicitly authorised API shall record which access channel each request uses, so API consumption and crawling remain separable in the record (`NFR-037`, `DEC-004`). | M |
 
 ### 4.5 Raw storage
 
 | ID | Requirement | Pri |
 | --- | --- | --- |
-| **REQ-029** | Raw content shall be stored immutably, addressed by content hash, before any parsing. | M |
+| **REQ-029** | Raw content shall be stored immutably, addressed by content hash, before any parsing. Immutability governs the **provenance envelope**; content bytes are subject to the retention lifecycle of `REQ-098` (`DEC-015`, `DEC-019`). | M |
 | **REQ-030** | Each raw record shall retain: original bytes, source, source URL, retrieval timestamp, source version, content hash. | M |
 | **REQ-031** | Normalisation shall never mutate or delete raw records; RAW → PARSED → CANONICAL are distinct layers. | M |
 | **REQ-032** | The system shall reprocess stored raw content into canonical records **without re-contacting the source**. | M |
 | **REQ-033** | Raw content shall be treated as internal processing data, behind an access-control layer, and shall not be served publicly in Phase 1. | M |
-| **REQ-034** | Every raw record shall carry a retention rule and be deletable on request, with deletion recorded. | M |
+| **REQ-034** | Every raw record shall carry a retention rule derived from its rights posture, and shall be deletable both on request and on retention expiry, the deletion recorded as a tombstone that survives the bytes. | M |
+| **REQ-098** | Raw content retention shall be **rights-aware and default to non-permanent** (`DEC-019`). The system shall not indefinitely retain full third-party content by default. Where content is required only for processing, the system shall process it, derive the required metadata, retain the **provenance envelope** (content hash, source, URL, timestamps, licence layers, rights posture), and delete the raw bytes once retention is no longer justified. **`unknown` and restrictive rights postures receive the shortest retention.** The provenance envelope and any tombstone survive byte deletion permanently (`DEC-015`). | M |
 
 ### 4.6 Parse and normalise
 
@@ -269,6 +273,8 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-053** | The canonical schema shall be extensible: new fields shall not require rewriting existing records. | M |
 | **REQ-054** | The store shall be provided through a port interface with a local adapter; the production adapter is chosen in `DATABASE.md` at G2. | M |
 | **REQ-055** | Historical versions shall never be silently overwritten; a content change creates a new version linked to its predecessor. | M |
+| **REQ-091** | The system shall provide operator commands to **back up** the canonical store, **restore** it to a target location, and **verify** a restore by comparing record count and content-hash digest against the snapshot. Backup and restore shall function with no derived index present and no source contact (`NFR-035`). | M |
+| **REQ-094** | Every canonical record shall carry a **schema version**. The system shall provide a forward migration path that transforms records from an older schema version to the current one **without destroying data**: migrations shall be re-runnable, shall record which records they touched, and shall be verifiable by restoring a pre-migration backup. A migration that cannot preserve a field shall fail rather than drop it. | M |
 
 ### 4.9 Licensing, rights and attribution
 
@@ -281,7 +287,8 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-060** | Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the **more restrictive** applied for redistribution. | M |
 | **REQ-061** | Every publicly exposed record shall carry attribution and canonical source URL. The API shall be incapable of emitting a record without them. | M |
 | **REQ-062** | The Phase 1 API shall not serve third-party skill content under any licence condition. | M |
-| **REQ-063** | The system shall provide an author-initiated correction/removal path, with actions recorded. | S |
+| **REQ-063** | The system shall provide an author-initiated correction/removal path, recording the request, the actor, the disposition and the timestamp. The path exists in Phase 1 even though Phase 1 exposes no content, because removal touches the canonical model and the ingestion pipeline and cannot be retrofitted cheaply. | **M** |
+| **REQ-092** | The system shall classify every retained identity as **repository**, **organisation**, or **individual author** (`DOM-013`), and shall record, per person-linked field, the provenance purpose that justifies retaining it. A person-linked field with no stated purpose shall not be stored. | M |
 
 ### 4.10 Read API
 
@@ -290,11 +297,13 @@ architecture accommodates it. Only **M** requirements gate G4.
 | **REQ-064** | The system shall expose a versioned HTTP API under `/api/v1/`. | M |
 | **REQ-065** | `GET /api/v1/skills/:id` shall return one canonical skill with provenance, rights posture and attribution. | M |
 | **REQ-066** | `GET /api/v1/skills` shall list skills with cursor-based pagination. Offset pagination shall not be used. | M |
-| **REQ-067** | `GET /api/v1/skills/:id/occurrences` shall return every occurrence resolving to that canonical skill. | M |
+| **REQ-067** | `GET /api/v1/skills/:id/occurrences` shall return the occurrences resolving to that canonical skill, **cursor-paginated** per `NFR-039`. | M |
 | **REQ-068** | `GET /api/v1/sources/:id` shall return source metadata and its declared access policy. | M |
 | **REQ-069** | `GET /api/v1/search` shall provide keyword search over canonical metadata. | M |
 | **REQ-070** | API responses shall distinguish source facts from AppMD inferences in their structure, not in prose. | M |
 | **REQ-071** | The API shall never emit secrets, credentials, internal storage keys or raw content. | M |
+| **REQ-093** | The API shall not expose personal information beyond what attribution requires — the public account identifier and the canonical source URL. Fields classified as individual-author identity (`REQ-092`) shall be omitted from public responses unless attribution requires them. | M |
+| **REQ-097** | The API shall apply rate limiting through a port interface, so limits are configuration rather than code. Phase 1 requires exactly one implementation: **in-process, enforcing a configurable request budget per client identifier over a configurable time window, returning HTTP 429 with `Retry-After` on breach.** Distributed or shared-state rate limiting is future work (`DEC-021`). | M |
 | **REQ-072** | A CLI shall consume the same API surface as any future frontend. | S |
 | **REQ-073** | MCP tool exposure. | F |
 | **REQ-074** | Semantic/hybrid search, capability, graph, resolution and composition endpoints. | F |
@@ -342,7 +351,7 @@ requirements; the following are.
 | ID | Requirement |
 | --- | --- |
 | **NFR-001** | Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs. |
-| **NFR-002** | Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's `dedup_primary` on exact-content grouping over a ≥10,000-row sample; disagreements shall be individually explained. |
+| **NFR-002** | Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's `dedup_primary` on exact-content grouping over a ≥10,000-row sample. **This is a quality target, not an automatic gate failure** (`DEC-023`): a shortfall is a finding to triage, since legitimate policy differences from the oracle are expected. The binding obligation is that **every disagreement is individually explained**; an unexplained disagreement *is* a gate failure. |
 | **NFR-003** | Parser `frontmatter_valid` shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other. |
 | **NFR-004** | 100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time. |
 | **NFR-005** | 100% of canonical field values shall be classifiable as source fact or AppMD inference. |
@@ -355,13 +364,14 @@ requirements; the following are.
 | **NFR-007** | No single job failure shall cause reprocessing of already-completed work. Verified by injecting failure at row *n* of 10,000 and asserting rows 1..*n*−1 are untouched. |
 | **NFR-008** | The pipeline shall resume from its persisted cursor after abrupt termination (`SIGKILL`) with no duplicate canonical records and no lost jobs. |
 | **NFR-009** | Every stage shall be idempotent: executing the same job 10 times shall produce the state of executing it once. |
-| **NFR-010** | Canonical data shall be recoverable such that deleting every derived index and rebuilding produces an equivalent index, with no source contact. |
+| **NFR-010** | Canonical data shall be recoverable such that deleting every derived index and rebuilding produces an equivalent index, with no source contact. Where records have been tombstoned (`DEC-015`), the rebuild is equivalent **minus tombstoned records**, and the rebuild report shall state that count rather than reporting an identical index. |
+| **NFR-035** | The canonical store shall be recoverable **independently of every derived index and of every external source**. Phase 1 targets: **RPO ≤ 24 hours** (at most one day of ingestion replayable), **RTO ≤ 4 hours** (restore and verify on the development machine). The backup shall be a periodic full snapshot of canonical data plus its schema version. The restore procedure shall be documented and **executed at least once** in Phase 1, not merely written; recovery is verified by restoring to a scratch location and asserting record count and a content-hash digest match the source snapshot. Deliberately minimal per `DEC-021`: a copied, verified, restorable file — no replication, no clustering, no point-in-time machinery. |
 
 ### 5.3 Performance (Phase 1 scale, local hardware)
 
 | ID | Requirement |
 | --- | --- |
-| **NFR-011** | The pipeline shall process a 10,000-occurrence batch end-to-end in ≤30 minutes on the development machine. |
+| **NFR-011** | **PROVISIONAL TARGET, NOT AN ACCEPTANCE CRITERION** (`DEC-017`). Working figure: a 10,000-occurrence batch end-to-end in ≤30 minutes on the development machine. This number was invented by the analyst with no benchmark behind it. It shall not gate G4 and shall be replaced by a measured target, set from Phase 1 benchmark data by `[metrologist]`, before it binds anything. |
 | **NFR-012** | `GET /api/v1/skills/:id` shall respond in ≤200 ms at p95 against a 10,000-skill store, measured locally. |
 | **NFR-013** | Fetch concurrency shall be configurable per source and shall default to ≤6 simultaneous outgoing connections, matching the Workers ceiling so local behaviour predicts production behaviour (R1 §6.3). |
 | **NFR-014** | Memory use per worker process shall stay ≤128 MB, matching the Workers isolate limit, so no design depends on headroom production will not have. |
@@ -383,6 +393,7 @@ requirements; the following are.
 | **NFR-020** | All credentials shall be supplied by environment/secret store, never by literal. |
 | **NFR-021** | Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it. |
 | **NFR-022** | Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason. |
+| **NFR-036** | Personal information shall be limited to what provenance and attribution require (`DOM-013`). The system shall not collect email addresses, real names beyond the public account identifier, follower graphs, contribution histories, or any field not required to attribute a skill to its origin. Verified by a field-level audit asserting every retained person-linked field maps to a stated provenance purpose. |
 
 ### 5.6 Legal and ethical
 
@@ -392,6 +403,8 @@ requirements; the following are.
 | **NFR-024** | The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50). |
 | **NFR-025** | Attribution shall be preserved through every transformation, from discovery to API response. |
 | **NFR-026** | GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus. |
+| **NFR-037** | Every web-based connector shall fetch and honour the source's robots policy where one applies, together with `Crawl-delay` and `Retry-After`, and shall never bypass a restriction. Where a source explicitly authorises API access, the connector shall remain **distinguishable from an autonomous crawler** — identifying itself truthfully and operating within the documented API contract (`DEC-004`). Verified by a test asserting no request violates a declared directive. |
+| **NFR-038** | All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. `2026-08-27T13:45:00Z`). Local time and naive timestamps shall not appear in any stored record, log line or API response. |
 
 ### 5.7 Maintainability and portability
 
@@ -408,6 +421,7 @@ requirements; the following are.
 | --- | --- |
 | **NFR-031** | No design element shall assume the full dataset fits in memory or in one process. |
 | **NFR-032** | All traversal shall be cursor-based; no offset pagination anywhere. |
+| **NFR-039** | **Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size.** This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be addable. Covers `REQ-066`, `REQ-067` and every future collection endpoint. |
 | **NFR-033** | Canonical identity shall be partitionable by content hash prefix without schema change. |
 | **NFR-034** | The architecture shall document its next binding constraint at 1M, 10M and 100M skills, with the evidence for each (BRIEF §51). |
 
@@ -420,6 +434,7 @@ values on inferred fields**, and rights are computed, not stored as an inherited
 
 ```jsonc
 {
+  "schema_version": 1,                   // REQ-094 — migration target, never implicit
   "id": "cs_01J...",                    // DOM-002: opaque, stable, never derived from mutable data
   "identity": {
     "primary_occurrence": "occ_...",     // the representative
@@ -460,17 +475,32 @@ values on inferred fields**, and rights are computed, not stored as an inherited
     "conflict": true                     // REQ-060: recorded, not resolved away
   },
 
-  "rights": {                            // DOM-008 — computed (REQ-059), default deny
-    "indexable": true,  "linkable": true,
-    "cacheable": true,  "redistributable": false,
+  "rights": {                            // DOM-008 — computed (REQ-059), brief §38's four concepts
+    "state": "known",                    // "known" | "unknown"  ← EXPLICIT, never collapsed (DEC-018)
+    "indexable": true,
+    "linkable": true,
+    "redistributable": false,
+    "cacheable": true,                   // tracked additionally; never a substitute for "unknown"
     "basis": "L2/L3 conflict → most restrictive applied",
-    "computed_at": "2026-08-27T..."
+    "computed_at": "2026-08-27T13:45:00Z"
+  },
+  // When state == "unknown": redistributable is false, and the record says the denial rests on
+  // ABSENT EVIDENCE, not on evidence of prohibition. Those are different facts about the world
+  // and a system that reports them identically is lying by omission.
+
+  "retention": {                         // REQ-098, DEC-019 — rights-aware, default non-permanent
+    "raw_bytes_held": true,
+    "policy": "process-then-reduce",     // unknown/restrictive → shortest retention
+    "expires_at": "2026-09-27T00:00:00Z",
+    "tombstone": null                    // survives byte deletion permanently (DEC-015)
   },
 
   "temporal": {                          // DOM-011
     "first_commit_at": "...", "last_commit_at": "...",
     "discovered_at": "...",   "last_verified_at": "..."
   },
+
+  "identity_class": "individual",        // REQ-092 / DOM-013: repository | organisation | individual
 
   "provenance": {                        // REQ-040
     "sources": [ { "source_id": "gitskills", "external_ref": "...", "at": "..." } ],
@@ -496,6 +526,24 @@ source reputation scoring.
 Each is addressed architecturally in §4.10 / `ARCHITECTURE.md` to prove Phase 1 does not
 foreclose it. None is implemented.
 
+**Phase 1 shall not be expanded into** AI, embeddings, Vectorize, knowledge graph, skill
+resolution, skill composition, or billion-scale infrastructure. Those remain future architecture.
+
+### 7.1 Governing principle (`DEC-021`)
+
+> **Design for future scale without implementing future scale.**
+
+| Phase 1 | Future |
+| --- | --- |
+| simple, cheap, testable | replaceable components, horizontal scaling |
+
+No distributed infrastructure is introduced merely because 1B+ records are eventually wanted.
+The obligation Phase 1 carries is that components are **replaceable** (`NFR-027`, `NFR-028`) and
+that no design element **forecloses** scaling (`NFR-031`–`NFR-034`) — not that any of it is built.
+
+This principle outranks any individual requirement in this document. Where a requirement could be
+read as demanding infrastructure Phase 1 does not need, it is read the narrower way.
+
 ---
 
 ## 8. TRACEABILITY
@@ -517,3 +565,56 @@ Article 3: no production code without a requirement id; no requirement without �
 | `ETH-001` — trust-score publication conditions | REQ-076..079 | `[ethics-officer]` |
 | `DEC-007` — canonical store undecided | REQ-050, REQ-054 | `[architect]`, resolved in `DATABASE.md` |
 | `DEC-013` — shard sampling bias | NFR-002, NFR-003 | `[metrologist]` |
+
+---
+
+## 10. CHANGE LOG — v1.0 → v1.1
+
+All changes arise from the stakeholder review of 2026-08-27 (G1 criterion 7). No requirement ID
+was reused or renumbered; IDs are immortal per the Ìlànà kernel.
+
+### Modified (10)
+
+| ID | Change | Authority |
+| --- | --- | --- |
+| `DOM-008` | Rights model restored to the brief's four concepts. **`unknown` is an explicit state**, not all-false booleans. `cacheable` tracked additionally, never as a substitute | user #14, `DEC-018` |
+| `REQ-005` | `GitHubConnector` **M → S**. `SourceConnector` abstraction stays **M** | user #12 |
+| `REQ-025` | Circuit breaker **M → S**; abstraction retained for future network connectors | user #11 |
+| `REQ-029` | Immutability now governs the provenance envelope; bytes follow `REQ-098` | user #15 |
+| `REQ-034` | Retention rule derived from rights posture; deletion on request **and** expiry | user #15 |
+| `REQ-063` | Author correction/removal **S → M** | user #2 |
+| `REQ-067` | Occurrences endpoint now cursor-paginated | user #5 |
+| `NFR-002` | 99.9% is a **quality target, not an automatic gate failure**. Unexplained disagreement remains a failure | user #13, `DEC-023` |
+| `NFR-010` | Rebuild after tombstoning is "equivalent minus tombstoned", and the count is reported | `DEC-015` |
+| `NFR-011` | **Demoted to PROVISIONAL TARGET.** Does not gate G4. To be replaced by a measured target | user #1, `DEC-017` |
+
+### Added (14)
+
+| ID | Requirement | Authority |
+| --- | --- | --- |
+| `DOM-013` | Three identity classes: repository / organisation / individual author | user #4 |
+| `REQ-091` | Canonical backup, restore and restore-verification commands | user #3 |
+| `REQ-092` | Identity classification + per-field provenance purpose | user #4 |
+| `REQ-093` | API withholds personal information beyond attribution need | user #4 |
+| `REQ-094` | Schema version + non-destructive forward migration | user #6 |
+| `REQ-095` | Re-analysis: identify affected records and enqueue on analyser/rule/model change | user #7 |
+| `REQ-096` | Robots policy retrieval and evaluation per web connector | user #8 |
+| `REQ-097` | Configurable API rate limiting via port; simple in-process impl in Phase 1 | user #9 |
+| `REQ-098` | Rights-aware, default-non-permanent raw retention | user #15 |
+| `NFR-035` | Independent canonical recovery. **RPO ≤ 24 h, RTO ≤ 4 h**, restore executed once in Phase 1 | user #3 |
+| `NFR-036` | Data minimisation, verified by field-level audit | user #4 |
+| `NFR-037` | Robots / `Crawl-delay` / `Retry-After` compliance; API consumers distinguishable from crawlers | user #8 |
+| `NFR-038` | UTC, RFC 3339 timestamps everywhere | user #10 |
+| `NFR-039` | Structural rule: every unbounded collection is cursor-paginated | user #5 |
+
+### Added structurally
+
+- **§7.1 governing principle** — *design for future scale without implementing future scale*,
+  declared to outrank any individual requirement (user #16, #17, `DEC-021`).
+- **Canonical schema** — `schema_version`, `identity_class`, `rights.state`, `retention` block.
+
+### Not changed, and why
+
+- **Scope.** No Phase 1 expansion into AI, embeddings, Vectorize, graph, resolution or
+  composition. §7 now states this explicitly rather than leaving it to inference.
+- **The 76 requirements untouched by this review** remain as baselined in v1.0.

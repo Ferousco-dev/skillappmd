@@ -270,3 +270,106 @@ The memory ceiling is therefore **not** a constraint we tolerate — it is the t
 the streaming design that `NFR-031` ("no design element shall assume the dataset fits in
 memory") demands anyway. Local development inherits the production constraint on purpose;
 this is the whole point of `NFR-013`/`NFR-014`.
+
+---
+
+## DEC-017 — NFR-011 is a provisional target, not an acceptance criterion
+**Status:** DECIDED · user decision #1
+
+The analyst invented "10,000 occurrences ≤30 minutes" with no benchmark behind it. It does not
+gate G4. `[metrologist]` replaces it with a measured target from Phase 1 benchmark data.
+
+*Article 10 in its plainest form:* a number nobody measured is not a requirement, it is a guess
+wearing a requirement's clothes. Keeping it visible as a working figure is useful; letting it
+fail a build is not.
+
+---
+
+## DEC-018 — `unknown` is an explicit rights state
+**Status:** DECIDED · user decision #14 · **reverses an analyst departure from BRIEF §38**
+
+v1.0 collapsed the brief's `Unknown` into all-false booleans and added `cacheable`. The user
+rejected the collapse and was right to.
+
+Rights carry `state: "known" | "unknown"` alongside `indexable`, `linkable`, `redistributable`.
+`cacheable` is tracked additionally and **never substitutes** for `unknown`.
+
+*Why the collapse was wrong, stated precisely:* "we know this may not be redistributed" and
+"we do not know whether this may be redistributed" have the same operational consequence today
+and **completely different consequences tomorrow**. The first is settled. The second is a
+research task, and it is the one that becomes resolvable the moment a licence is found. Encoding
+both as `redistributable: false` destroys the information needed to tell them apart, and destroys
+it silently. That is precisely the fact/inference confusion `DOM-006` exists to prevent, and I
+introduced it in the very model meant to prevent it.
+
+---
+
+## DEC-019 — Raw retention is rights-aware and defaults to non-permanent
+**Status:** DECIDED · user decision #15 · closes the largest residual legal exposure in v1.0
+
+v1.0 retained full content for every occurrence unconditionally, including `unknown` licences.
+Storing is not redistributing, but holding a complete copy of millions of files of unknown
+licence at rest is a posture, and it was one nobody had chosen deliberately.
+
+**Lifecycle:** process → derive metadata → retain provenance envelope → **delete raw bytes when
+retention is no longer justified.** `unknown` and restrictive postures get the shortest retention.
+The provenance envelope and tombstone survive permanently (`DEC-015`).
+
+*Consequence accepted:* `REQ-032` (reprocess without source contact) is weakened for records
+whose bytes have expired — those must be re-fetched. That is the correct trade. The alternative
+is holding content we have no clear right to hold, in order to avoid a network request.
+
+---
+
+## DEC-020 — Three identity classes; personal data limited to provenance necessity
+**Status:** DECIDED · user decision #4
+
+GitSkills anonymised *commit* authors, but `repos.owner` and `repo_full_name` are identifiable
+natural persons, retained in full and exposed by the API. Intake Q5 assumed low personal-data
+exposure; that assumption was thinner than it looked and this corrects it.
+
+Identity resolves to **repository / organisation / individual author** (`DOM-013`). Each
+person-linked field records the provenance purpose justifying it; a field without a purpose is
+not stored (`REQ-092`). The public API withholds individual-author fields beyond attribution
+need (`REQ-093`).
+
+---
+
+## DEC-021 — Design for future scale without implementing future scale
+**Status:** DECIDED · user decisions #16, #17 · **governing principle, outranks individual requirements**
+
+| Phase 1 | Future |
+| --- | --- |
+| simple, cheap, testable | replaceable components, horizontal scaling |
+
+No distributed infrastructure enters because 1B+ records are eventually wanted. The obligation is
+**replaceability** (`NFR-027`, `NFR-028`) and **non-foreclosure** (`NFR-031`–`NFR-034`) — not
+construction.
+
+*Operational form:* where a requirement could be read as demanding infrastructure Phase 1 does
+not need, it is read the narrower way. This principle is the tie-breaker, and it is written down
+so that "we'll need it eventually" stops being a valid argument for building it now.
+
+---
+
+## DEC-022 — Phase 1 backup is a verified file copy, nothing more
+**Status:** DECIDED · user decision #3 + `DEC-021`
+
+RPO ≤ 24 h, RTO ≤ 4 h. Periodic full snapshot of canonical data plus schema version. Restore
+documented **and executed at least once** in Phase 1 — a restore procedure that has never been
+run is a document, not a capability.
+
+Explicitly **not** in Phase 1: replication, clustering, point-in-time recovery, cross-region.
+The requirement exists so the capability is designed in; the implementation stays proportionate.
+
+---
+
+## DEC-023 — The dedup threshold is a quality target, not an automatic gate failure
+**Status:** DECIDED · user decision #13
+
+≥99.9% agreement with `dedup_primary` is a target. A shortfall is a **finding to triage**, since
+legitimate policy differences from the oracle are expected (their grouping is exact-content; ours
+adds a normalisation tier).
+
+**The binding obligation is explanation, not agreement.** An unexplained disagreement *is* a gate
+failure. This keeps the oracle useful without letting someone else's policy choices fail our build.

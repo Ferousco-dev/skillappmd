@@ -2,13 +2,12 @@
   "ilana_version": "1.0.3",
   "project": "appmd-skill-cloud",
   "mode": "FLEET",
-  "phase": "02",
+  "phase": "01",
   "gate": "G1",
-  "agent": "architect",
+  "agent": "analyst",
   "process_style": "hybrid",
   "rigour": 3,
   "open": [
-    "G1-criterion-7-stakeholder-review",
     "RSK-002",
     "RSK-004",
     "RSK-005",
@@ -18,26 +17,31 @@
   ],
   "overrides": [],
   "counters": {
-    "REQ": 90,
-    "NFR": 34,
-    "DOM": 12,
+    "REQ": 98,
+    "NFR": 39,
+    "DOM": 13,
     "DES": 0,
     "UI": 0,
     "TC": 0,
     "DEF": 0,
     "CR": 0,
     "RSK": 8,
-    "DEC": 16,
+    "DEC": 23,
     "MET": 0,
     "ETH": 1
   },
   "attempts": {
-    "G1": 1
+    "G1": 2
   },
   "scope_deferred": [
     "frontend",
     "marketplace",
     "user accounts",
     "recommendation learning"
-  ]
+  ],
+  "baseline": {
+    "srs": "v1.1",
+    "at": "2026-08-27",
+    "change_control": "CR required"
+  }
 }
