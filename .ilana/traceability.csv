@@ -1,16 +1,16 @@
 req_id,requirement,type,priority,design_id,module,test_ids,status
-REQ-001,"The system shall define a SourceConnector contract with operations discover(), fetch(), identify(), getMetadata(), getContent(), getVersion(). No core component shall reference a named source.",functional,M,DES-001,,TC-030,implemented
-REQ-002,Every connector shall emit DiscoveryRecord objects of one normalised shape regardless of source.,functional,M,DES-001;DES-003,,,designed
+REQ-001,"The system shall define a SourceConnector contract with operations discover(), fetch(), identify(), getMetadata(), getContent(), getVersion(). No core component shall reference a named source.",functional,M,DES-001,,TC-030;TC-054,implemented
+REQ-002,Every connector shall emit DiscoveryRecord objects of one normalised shape regardless of source.,functional,M,DES-001;DES-003,,TC-058,implemented
 REQ-003,The system shall implement GitSkillsCorpusConnector reading the CC-BY-4.0 Parquet corpus.,functional,M,DES-004;DES-060,,,designed
 REQ-004,"The system shall implement SkillsMPConnector using only the documented REST and MCP endpoints, never HTML scraping of /creators/.",functional,M,DES-005,,,designed
 REQ-005,"The system shall implement GitHubConnector resolving owner/repo + path to repository metadata, licence and content via the official API. Demoted because the corpus supplies both content and L2 licence; the SourceConnector abstraction (RE...",functional,S,DES-006,,,designed
-REQ-006,"Each connector shall declare its access policy — rate limits, auth mode, permitted methods, ToS notes — as data the runtime enforces.",functional,M,DES-002;UI-008,,TC-032,implemented
-REQ-007,The system shall reject registration of a connector that declares no access policy.,functional,M,DES-002,,TC-031,implemented
+REQ-006,"Each connector shall declare its access policy — rate limits, auth mode, permitted methods, ToS notes — as data the runtime enforces.",functional,M,DES-002;UI-008,,TC-032;TC-055,implemented
+REQ-007,The system shall reject registration of a connector that declares no access policy.,functional,M,DES-002,,TC-031;TC-054,implemented
 REQ-008,"Adding a new source shall require no modification to discovery, queue, parse, normalise, fingerprint, dedup or storage code. Demonstrated by two connectors of genuinely different shape (bulk corpus vs rate-limited API).",functional,M,DES-001,,,designed
 REQ-009,"Discovery shall be separable from ingestion and independently re-runnable, answering only ""what exists?"".",functional,M,DES-008,,,designed
 REQ-010,"Discovery shall be resumable from a persisted cursor after interruption, without re-emitting completed work.",functional,M,DES-008;UI-005,,TC-049,implemented
 REQ-011,Re-running discovery over unchanged source state shall create no new canonical skills (idempotence).,functional,M,DES-008,,,designed
-REQ-012,"Discovery shall accept a bounded batch limit, so operators may run 100, then 1,000, then 10,000.",functional,M,DES-008;DES-067,,,designed
+REQ-012,"Discovery shall accept a bounded batch limit, so operators may run 100, then 1,000, then 10,000.",functional,M,DES-008;DES-067,,TC-057,implemented
 REQ-013,"Discovery shall record, per run: source, parameters, start/end time, count discovered, count skipped, errors.",functional,M,DES-008;DES-048;UI-004,,,designed
 REQ-014,The system shall poll the SkillsMP RSS feed for incremental discovery.,functional,S,DES-005,,,designed
 REQ-015,"Each pipeline stage shall be an independently queued job whose worker concurrency is configurable per stage, such that changing one stage's concurrency requires no change to any other stage's configuration or code.",functional,M,DES-009,,,designed
@@ -30,7 +30,7 @@ REQ-028,The fetcher shall skip re-fetch when the source reports content unchange
 REQ-029,"Raw content shall be stored immutably, addressed by content hash, before any parsing. Immutability governs the provenance envelope; content bytes are subject to the retention lifecycle of REQ-098 (DEC-015, DEC-019).",functional,M,DES-017;DES-018;DES-019,,,designed
 REQ-030,"Each raw record shall retain: original bytes, source, source URL, retrieval timestamp, source version, content hash.",functional,M,DES-020,,,designed
 REQ-031,Normalisation shall never mutate or delete raw records; RAW → PARSED → CANONICAL are distinct layers.,functional,M,DES-020,,,designed
-REQ-032,The system shall reprocess stored raw content into canonical records without re-contacting the source.,functional,M,DES-020,,,designed
+REQ-032,The system shall reprocess stored raw content into canonical records without re-contacting the source.,functional,M,DES-020,,TC-067,implemented
 REQ-033,"Raw content shall be treated as internal processing data, behind an access-control layer, and shall not be served publicly in Phase 1.",functional,M,DES-020,,,designed
 REQ-034,"Every raw record shall carry a retention rule derived from its rights posture, and shall be deletable both on request and on retention expiry, the deletion recorded as a tombstone that survives the bytes.",functional,M,DES-021;DES-022,,,designed
 REQ-035,The parser shall extract YAML frontmatter and Markdown body from SKILL.md.,functional,M,DES-023,,,designed
@@ -45,7 +45,7 @@ REQ-043,"The system shall compute normalised_hash (SHA-256 over normalised text:
 REQ-044,Occurrences with equal content_hash shall resolve to one CanonicalSkill as EXACT_DUPLICATE.,functional,M,DES-027,,TC-020;TC-044,implemented
 REQ-045,Deduplication shall never use name equality alone as evidence of duplication.,functional,M,DES-027,,TC-022,implemented
 REQ-046,"Every occurrence shall remain individually retrievable after deduplication, with its repository and path. Dedup collapses identity, never evidence.",functional,M,DES-027,,TC-045,implemented
-REQ-047,"Deduplication results shall be measurable against the corpus's published verdict, reporting precision, recall and a disagreement list.",functional,M,DES-070,,,designed
+REQ-047,"Deduplication results shall be measurable against the corpus's published verdict, reporting precision, recall and a disagreement list.",functional,M,DES-070,,TC-065,implemented
 REQ-048,The system shall record MIRROR and FORK relationships using repository fork metadata as a distinct signal from content equality.,functional,S,DES-028,,TC-023,implemented
 REQ-049,Near-duplicate detection via semantic fingerprinting.,functional,F,DES-028,,,designed
 REQ-050,"The canonical store shall hold CanonicalSkill, SkillOccurrence, Repository, Source, ProvenanceRecord, RightsPosture.",functional,M,DES-029,,,designed
@@ -83,7 +83,7 @@ REQ-081,Behavioural diffing between versions to detect malicious change.,functio
 REQ-082,"The system shall emit counters for: discovered, fetched, failed, parsed, duplicated, stored, dead-lettered.",functional,M,DES-047,,,designed
 REQ-083,"The system shall report queue depth, processing latency per stage, and per-source error rates.",functional,M,DES-047;UI-005,,,designed
 REQ-084,Every job's lifecycle shall be queryable by job_id and by skill_ref.,functional,M,DES-012,,TC-048,implemented
-REQ-085,"An ingestion run shall produce a report stating counts, failures, and any sampling bias or truncation applied (DEC-013).",functional,M,DES-048;UI-004,,,designed
+REQ-085,"An ingestion run shall produce a report stating counts, failures, and any sampling bias or truncation applied (DEC-013).",functional,M,DES-048;UI-004,,TC-062,implemented
 REQ-086,"Logs shall never contain secrets, credentials or tokens.",functional,M,DES-046;DES-049,,,designed
 REQ-087,AI processing cost accounting.,functional,F,DES-047,,,designed
 REQ-088,"An operator shall trigger discovery, ingestion, reprocessing and index rebuild via CLI without a frontend.",functional,M,DES-055;UI-001,,,designed
@@ -97,7 +97,7 @@ REQ-095,"The system shall support re-analysis: given a change of analyser versio
 REQ-096,"Every web-based connector shall retrieve the source's robots policy where one applies, cache it with a stated freshness, and evaluate each request against it before issuing it. A request that a directive disallows shall not be issued. Co...",functional,M,DES-007,,,designed
 REQ-097,"The API shall apply configurable rate limiting through a port interface, so limits are policy rather than code. Phase 1 requires a simple configurable abstraction with a working in-process implementation and nothing more (DEC-021); distr...",functional,M,DES-053,,,designed
 REQ-098,"Raw content retention shall be rights-aware and default to non-permanent (DEC-019). The system shall not indefinitely retain full third-party content by default. Where content is required only for processing, the system shall process it,...",functional,M,DES-021,,TC-010,implemented
-NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,DES-064,,,designed
+NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,DES-064,,TC-063,implemented
 NFR-002,"Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's dedup_primary on exact-content grouping over a ≥10,000-row sample. This is a quality target, not an automatic gate failure (DEC-023): a shortfall is a finding to ...",non-functional,M,DES-067;DES-070,,,designed
 NFR-003,"Parser frontmatter_valid shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other.",non-functional,M,DES-067;DES-070,,,designed
 NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,DES-041,,TC-025;TC-041,implemented
@@ -122,7 +122,7 @@ NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized inpu
 NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,DES-002;DES-015,,,designed
 NFR-024,"The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50).",non-functional,M,DES-007,,TC-033,implemented
 NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,DES-041,,,designed
-NFR-026,GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus.,non-functional,M,DES-004,,,designed
+NFR-026,GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus.,non-functional,M,DES-004,,TC-056,implemented
 NFR-027,"Every infrastructure dependency (queue, object store, canonical store, cache, scheduler) shall sit behind a port interface with at least two adapters, one of which requires no cloud account.",non-functional,M,DES-010;DES-017;DES-029;DES-059;DES-063,,,designed
 NFR-028,"Business logic shall not import a vendor SDK. Verified by a dependency-direction lint rule, not by review discipline.",non-functional,M,DES-029;DES-059,,,designed
 NFR-029,"Moving from local to Cloudflare shall require configuration and adapter selection only, with no change to pipeline logic.",non-functional,M,DES-011;DES-019;DES-031;DES-059,,,designed

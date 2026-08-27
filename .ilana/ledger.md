@@ -345,3 +345,57 @@ Invariants proven executable rather than aspirational:
   DEC-018 unknown is an explicit state, not all-false booleans (TC-006)
   DEC-025 consumer refuses to start without a DLQ (TC-034)
   REQ-045 same name different content is NOT a duplicate (TC-022)
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 2 COMPLETE
+Canonical store, schema v1, migrations, backup/restore/verify.
+  node:sqlite built in on Node 22.19 -> zero dependencies, no network (DEC-030).
+  Schema v1: 8 tables. Write-time invariants enforced TWICE - domain assertions AND
+  CHECK constraints (DEC-031). TC-041/TC-042 prove the database refuses the write even
+  when domain assertions are bypassed.
+  TC-050 EXECUTES backup -> verify -> delete -> restore, asserting records, digest and
+  schema_version all match. TC-051 proves verifyRestore FAILS on mismatch.
+  17 tests, all pass.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 3 COMPLETE
+GitSkillsCorpusConnector. Fixtures first, then a minimum real slice, per user instruction.
+
+  CorpusReader seam: FixtureCorpusReader (offline) | HfRowsCorpusReader (real, bounded)
+  | ParquetCorpusReader (designed, not built - see CR-002).
+
+  Synthetic fixtures deliberately reproduce the corpus pathology measured in R3:
+  size-ordered rows, ~50% duplicate share, ~77% frontmatter valid, ~4.6% has_scripts.
+  A fixture that did not reproduce the size ordering would let head-of-shard sampling
+  pass, which is the exact bug DEC-024 exists to prevent.
+
+  TC-060 is the load-bearing test: it asserts head sampling badly understates the
+  population while stratified sampling approximates it. If stratification were ever
+  dropped, that test fails loudly rather than silently producing good-looking numbers.
+
+  17 connector tests, all pass, all offline (NFR-030).
+
+EXIT CONDITION MET - 100 real records discovered:
+  offsets 0 .. 3,417,409 across 10 strata; 2.63e-3 % of the population
+  dedup_primary 43/100 = 43.0%   [R3 measured 50.2%, paper 50.5% - within binomial
+    sampling error for n=100, SE ~5%; not a discrepancy to explain away, but worth
+    stating rather than rounding toward the expected figure]
+  frontmatter_ok 31/43 = 72.1%   [R3 measured 77.4%]
+  body_chars mean 7861 over content-bearing rows only
+  436 KB cached under data/corpus/, gitignored. Re-run from cache: 3 ms, offline.
+
+  A flaw in the first run report was caught and fixed before it was recorded as evidence:
+  body statistics had been computed over ALL records, including non-primaries that carry
+  no content, dragging the median to 0. Exactly the class of misleading statistic REQ-085
+  exists to prevent - and it was produced by our own reporting code, not by the corpus.
+
+## 2026-08-27 | CR-003 | configuration-engineer | SELF-INFLICTED DEFECT, REMEDIATED
+Commit dd57d47 used `git add -A` in a working tree shared with the front-end session and
+tracked 37 files this session does not own (28 of them .next/ build artefacts).
+
+Compounding failure: the CR-001 .gitignore remediation was applied to the working tree,
+reported as done, and never committed. It was silently lost. Detected only because a
+routine git check-ignore during increment 3 named `data/` instead of `data/corpus/`.
+
+Remediated: git rm --cached on all 37 (index only, nothing deleted from disk),
+.gitignore rewritten to exclude them by explicit path, verified 0 tracked and all
+still present on disk. DEC-032 prohibits `git add -A` while the tree is shared, and
+adds the companion rule that a remediation is not done until committed AND verified.
