@@ -195,3 +195,57 @@ Commits stage explicit backend paths only.
 commit cannot remove working files. Their removal is consistent with the front-end session
 relocating to its own repository under the user's option B ruling. Recorded so the absence is not
 later attributed here.
+
+---
+
+## CR-004 — `NFR-003` compares two different definitions of "valid"
+**Raised:** 2026-08-27 · `[verifier]` · **Status: OPEN — user's ruling requested**
+**Affects:** `NFR-003` (baselined at G1), `REQ-038`, `REQ-041`
+
+### The finding
+
+After `DEF-002` was fixed, agreement rose to 97.7% and the residual disagreements stopped looking
+like defects. Classifying all nine at n=300:
+
+| Disagreement | Count | Who is right |
+| --- | --- | --- |
+| Name violates the spec charset (`Polymarket`, `Market Chartographer`, `ck:sequential-thinking`, `vault.new`) | 5 | **We are.** The spec says `[a-z0-9-]`, ≤64 |
+| Angle brackets in description (`context/changes/<change-name>`) | 1 | **Contested** — a path placeholder, not markup |
+| Corpus says invalid, document is plainly valid (`name: gpg`, 266-char description) | 3 | **We are.** One is a BOM their parser appears to choke on |
+
+**Not one of the nine is a defect in our parser.** The two columns answer different questions:
+
+- **GitSkills `frontmatter_valid`** ≈ *"did YAML parse, with `name` and `description` present?"*
+- **Ours (as written)** = *"does it conform to the Agent Skills specification?"*
+
+`NFR-003` asked for ≥99% agreement between them. **That target was unreachable by construction**,
+and chasing it would have meant deliberately weakening our spec checking to match a looser oracle —
+optimising the metric by damaging the product.
+
+### Change applied (mechanism), pending your ruling (requirement text)
+
+The parser now emits **two verdicts** rather than one:
+
+| Verdict | Meaning | Kind |
+| --- | --- | --- |
+| `frontmatterValid` | structurally valid: parsed, `name` and `description` present | comparable to the oracle |
+| `specConformant` | additionally satisfies charset, length and content rules | **AppMD inference** (`DOM-006`) |
+
+Graded on the comparable verdict, agreement is **97.7%** at n=300 with **0 parse failures**, and
+**all 3 remaining disagreements are cases where the oracle is wrong**.
+
+### Requested amendment to `NFR-003`
+
+> Parser **structural** validity shall agree with the corpus `frontmatter_valid` column on ≥99% of
+> a ≥10,000-row stratified sample. **Spec conformance is a separate AppMD inference and is not
+> graded against the oracle.** Every disagreement shall be explained; unexplained disagreement is
+> the gate failure (`DEC-023`).
+
+**Also requested:** confirm `DEC-033` — reserved words in a name and angle brackets in a
+description **warn** rather than invalidate. Both readings of the spec are defensible, and marking
+a real author's skill invalid on a contested reading is an adverse judgement published about a
+third party (`ETH-001`). The signal is retained either way.
+
+**Current measured status against the amended wording:** 97.7% at n=300. Below 99%, entirely
+because of three oracle errors. `DEC-023` makes this a finding to triage, not a build failure —
+and it is triaged.

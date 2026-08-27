@@ -29,3 +29,31 @@ identity alone).
 **Lesson recorded.** The crash was a gift. A bind error is loud; a silently-reset timestamp is not.
 Fixing only the symptom — defaulting `startedAt` at the call site — would have passed the tests and
 left the real defect in place.
+
+---
+
+## DEF-002 — Parser rejected YAML block scalars, failing 1 in 9 real SKILL.md documents
+**Found:** 2026-08-27 by oracle validation against the corpus · **Severity: HIGH** · **Status: CLOSED**
+**Requirement:** `REQ-035`, `REQ-041`, `NFR-003` · **Component:** `packages/ingestion/src/frontmatter.js`
+
+**Symptom.** Parser oracle agreement was **83.7%** against `frontmatter_valid`, well under
+`NFR-003`'s 99% target, with 5 outright parse failures in a 43-document comparable sample.
+
+**Cause.** The parser handled `key: value` and nested maps but not **block scalars** —
+`description: >`, `>-`, `|`, and the implicit form where `description:` is followed by indented
+prose. Encountering one, it treated the key as opening a nested map and then rejected the
+continuation line as "not a key/value pair".
+
+**Why it mattered more than it looked.** Descriptions are the longest field in a `SKILL.md` and
+the spec caps them at 1024 characters, so authors routinely wrap them in block scalars. This was
+not an edge case; it was **the common shape of a well-written skill.** Unit tests written from the
+spec all passed, because I had written the fixtures in the style I had implemented.
+
+**Only real data exposed it.** That is the argument for `REQ-047`/`NFR-003` existing at all: a
+suite that grades itself will agree with itself.
+
+**Fix.** Implemented `|`, `>`, with `-`/`+` chomping, plus implicit multi-line plain scalars,
+bounded by the same limits as everything else (`MAX_SCALAR`, `MAX_LINES`).
+
+**Result.** 83.7% → **97.7%** agreement, **0 parse failures**.
+**Regression test:** `TC-109` covers all four shapes and asserts folding versus literal semantics.

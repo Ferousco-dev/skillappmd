@@ -33,12 +33,12 @@ REQ-031,Normalisation shall never mutate or delete raw records; RAW → PARSED �
 REQ-032,The system shall reprocess stored raw content into canonical records without re-contacting the source.,functional,M,DES-020,,TC-067,implemented
 REQ-033,"Raw content shall be treated as internal processing data, behind an access-control layer, and shall not be served publicly in Phase 1.",functional,M,DES-020,,,designed
 REQ-034,"Every raw record shall carry a retention rule derived from its rights posture, and shall be deletable both on request and on retention expiry, the deletion recorded as a tombstone that survives the bytes.",functional,M,DES-021;DES-022,,,designed
-REQ-035,The parser shall extract YAML frontmatter and Markdown body from SKILL.md.,functional,M,DES-023,,,designed
-REQ-036,"The parser shall treat only name and description as required, and shall preserve unrecognised frontmatter keys rather than rejecting or discarding them.",functional,M,DES-023,,,designed
-REQ-037,"The parser shall handle malformed YAML, absent frontmatter, empty files and non-UTF-8 bytes by recording a parse failure with reason — never by crashing and never by silently emitting an empty record.",functional,M,DES-024;UI-003,,,designed
-REQ-038,"The parser shall record frontmatter_valid per the spec's stated constraints (name ≤64 chars [a-z0-9-], description non-empty ≤1024, no XML tags, reserved words).",functional,M,DES-023,,,designed
-REQ-039,"Normalisation shall produce a canonical record carrying mandatory attribution: repository, owner, canonical source URL. A record shall not be storable without them.",functional,M,DES-025;DES-041,,,designed
-REQ-040,"Normalisation shall record every field as source fact or AppMD inference, with provenance, and shall never merge the two into one field.",functional,M,DES-025;DES-036,,,designed
+REQ-035,The parser shall extract YAML frontmatter and Markdown body from SKILL.md.,functional,M,DES-023,,TC-093;TC-099;TC-106;TC-107,implemented
+REQ-036,"The parser shall treat only name and description as required, and shall preserve unrecognised frontmatter keys rather than rejecting or discarding them.",functional,M,DES-023,,TC-094;TC-117,implemented
+REQ-037,"The parser shall handle malformed YAML, absent frontmatter, empty files and non-UTF-8 bytes by recording a parse failure with reason — never by crashing and never by silently emitting an empty record.",functional,M,DES-024;UI-003,,TC-098,implemented
+REQ-038,"The parser shall record frontmatter_valid per the spec's stated constraints (name ≤64 chars [a-z0-9-], description non-empty ≤1024, no XML tags, reserved words).",functional,M,DES-023,,TC-095;TC-096;TC-097,implemented
+REQ-039,"Normalisation shall produce a canonical record carrying mandatory attribution: repository, owner, canonical source URL. A record shall not be storable without them.",functional,M,DES-025;DES-041,,TC-111;TC-119,implemented
+REQ-040,"Normalisation shall record every field as source fact or AppMD inference, with provenance, and shall never merge the two into one field.",functional,M,DES-025;DES-036,,TC-113,implemented
 REQ-041,"The parser's frontmatter_valid verdict shall be comparable against the corpus's own column, and disagreements shall be reportable.",functional,M,DES-023;DES-070,,,designed
 REQ-042,The system shall compute content_hash (SHA-256 over raw bytes) for every occurrence.,functional,M,DES-026,,TC-012;TC-014,implemented
 REQ-043,"The system shall compute normalised_hash (SHA-256 over normalised text: line endings, trailing whitespace, frontmatter key order).",functional,M,DES-026,,TC-013;TC-021,implemented
@@ -58,7 +58,7 @@ REQ-056,"The system shall record L1, L2 and L3 licence layers independently, eac
 REQ-057,"The system shall normalise licence identifiers to SPDX where recognised, and to UNKNOWN otherwise — never to a guess.",functional,M,DES-040,,TC-001;TC-002,implemented
 REQ-058,"Absent, unparseable or conflicting licence shall yield redistributable = false.",functional,M,DES-039,,TC-003;TC-004,implemented
 REQ-059,"The system shall compute and store indexable, linkable, cacheable, redistributable, each with the layer and evidence that produced it.",functional,M,DES-039,,,designed
-REQ-060,"Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the more restrictive applied for redistribution.",functional,M,DES-038,,TC-007,implemented
+REQ-060,"Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the more restrictive applied for redistribution.",functional,M,DES-038,,TC-007;TC-116,implemented
 REQ-061,Every publicly exposed record shall carry attribution and canonical source URL. The API shall be incapable of emitting a record without them.,functional,M,DES-041;DES-051;UI-007,,,designed
 REQ-062,The Phase 1 API shall not serve third-party skill content under any licence condition.,functional,M,DES-039,,,designed
 REQ-063,"The system shall provide an author-initiated correction/removal path, recording the request, the actor, the disposition and the timestamp. The path exists in Phase 1 even though Phase 1 exposes no content, because removal touches the can...",functional,M,DES-022;DES-042;UI-002,,,designed
@@ -73,7 +73,7 @@ REQ-071,"The API shall never emit secrets, credentials, internal storage keys or
 REQ-072,A CLI shall consume the same API surface as any future frontend.,functional,S,DES-055,,,designed
 REQ-073,MCP tool exposure.,functional,F,DES-050,,,designed
 REQ-074,"Semantic/hybrid search, capability, graph, resolution and composition endpoints.",functional,F,DES-050,,,designed
-REQ-075,"The system shall record deterministic security signals available in Phase 1 without executing content: presence of scripts, allowed-tools declarations, and detectable credential/network/shell patterns.",functional,S,DES-043,,,designed
+REQ-075,"The system shall record deterministic security signals available in Phase 1 without executing content: presence of scripts, allowed-tools declarations, and detectable credential/network/shell patterns.",functional,S,DES-043,,TC-105,implemented
 REQ-076,"Security findings shall be stored as AppMD inference, with analyser id, version and timestamp, never as source fact.",functional,M,DES-043,,TC-027,implemented
 REQ-077,Any published score shall be accompanied by its findings and their evidence. A bare score shall not be emitable.,functional,M,DES-044,,,designed
 REQ-078,"Absence of findings shall be reported as absence of findings, never as ""safe"".",functional,M,DES-044,,,designed
@@ -97,10 +97,10 @@ REQ-095,"The system shall support re-analysis: given a change of analyser versio
 REQ-096,"Every web-based connector shall retrieve the source's robots policy where one applies, cache it with a stated freshness, and evaluate each request against it before issuing it. A request that a directive disallows shall not be issued. Co...",functional,M,DES-007,,,designed
 REQ-097,"The API shall apply configurable rate limiting through a port interface, so limits are policy rather than code. Phase 1 requires a simple configurable abstraction with a working in-process implementation and nothing more (DEC-021); distr...",functional,M,DES-053,,,designed
 REQ-098,"Raw content retention shall be rights-aware and default to non-permanent (DEC-019). The system shall not indefinitely retain full third-party content by default. Where content is required only for processing, the system shall process it,...",functional,M,DES-021,,TC-010,implemented
-NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,DES-064,,TC-063,implemented
+NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,DES-064,,TC-063;TC-121,implemented
 NFR-002,"Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's dedup_primary on exact-content grouping over a ≥10,000-row sample. This is a quality target, not an automatic gate failure (DEC-023): a shortfall is a finding to ...",non-functional,M,DES-067;DES-070,,,designed
 NFR-003,"Parser frontmatter_valid shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other.",non-functional,M,DES-067;DES-070,,,designed
-NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,DES-041,,TC-025;TC-041,implemented
+NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,DES-041,,TC-025;TC-041;TC-112,implemented
 NFR-005,100% of canonical field values shall be classifiable as source fact or AppMD inference.,non-functional,M,DES-036,,TC-026,implemented
 NFR-006,0 canonical records shall carry redistributable = true without a recorded L2 licence evidencing it.,non-functional,M,DES-039,,TC-008;TC-042,implemented
 NFR-007,"No single job failure shall cause reprocessing of already-completed work. Verified by injecting failure at row *n* of 10,000 and asserting rows 1..*n*−1 are untouched.",non-functional,M,DES-014,,,designed
@@ -118,7 +118,7 @@ NFR-018,Corpus disk use in Phase 1 shall not exceed 1 GB (DEC-011: repos + one a
 NFR-019,"No secret shall appear in source control, logs, raw records, canonical records or API responses. Verified by a secret-scan in CI over the working tree and by assertion tests over log and API output.",non-functional,M,DES-046,,,designed
 NFR-020,"All credentials shall be supplied by environment/secret store, never by literal.",non-functional,M,DES-046,,,designed
 NFR-021,"Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it.",non-functional,M,DES-045,,,designed
-NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason.",non-functional,M,DES-024;DES-045,,,designed
+NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason.",non-functional,M,DES-024;DES-045,,TC-100;TC-101;TC-102;TC-103;TC-104,implemented
 NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,DES-002;DES-015,,,designed
 NFR-024,"The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50).",non-functional,M,DES-007,,TC-033,implemented
 NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,DES-041,,,designed
@@ -134,14 +134,14 @@ NFR-034,"The architecture shall document its next binding constraint at 1M, 10M 
 NFR-035,"The canonical store shall be recoverable independently of every derived index and of every external source. Phase 1 targets: RPO ≤ 24 hours (at most one day of ingestion replayable), RTO ≤ 4 hours (restore and verify on the development m...",non-functional,M,DES-035,,TC-050;TC-051,implemented
 NFR-036,"Personal information shall be limited to what provenance and attribution require (DOM-013). The system shall not collect email addresses, real names beyond the public account identifier, follower graphs, contribution histories, or any fi...",non-functional,M,DES-037,,,designed
 NFR-037,"Every web-based connector shall fetch and honour the source's robots policy where one applies, together with Crawl-delay and Retry-After, and shall never bypass a restriction. Where a source explicitly authorises API access, the connecto...",non-functional,M,DES-007,,,designed
-NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,TC-011;TC-038;TC-083,implemented
+NFR-038,"All system timestamps shall be UTC, machine-readable, and consistently formatted (RFC 3339, e.g. 2026-08-27T13:45:00Z). Local time and naive timestamps shall not appear in any stored record, log line or API response.",non-functional,M,DES-049;DES-058,,TC-011;TC-038;TC-083;TC-120,implemented
 NFR-039,"Every API collection whose size is not provably bounded shall be cursor-paginated with an enforced maximum page size. This is a structural rule, not a per-endpoint decision: an endpoint returning an unbounded collection shall not be adda...",non-functional,M,DES-052,,TC-046,implemented
 DOM-001,"A SkillOccurrence is uniquely keyed by (source_id, repo_full_name, path, content_hash). It is an observation, never an identity.",domain,M,DES-027;DES-064,,TC-018,implemented
 DOM-002,"A CanonicalSkill is an AppMD-assigned identity to which one or more occurrences resolve. Its id is stable, opaque, and never derived from a mutable attribute (name, URL, star count).",domain,M,DES-027;DES-033,,,designed
 DOM-003,"Canonical identity derives from origin repository coordinates plus content, never from an aggregator's identifier.",domain,M,DES-003,,,designed
 DOM-004,Two occurrences are EXACT_DUPLICATE iff their raw content hashes are equal.,domain,M,DES-027,,,designed
 DOM-005,"Occurrence relationships are drawn from a closed vocabulary: EXACT_DUPLICATE, NEAR_DUPLICATE, FORK, MIRROR, VERSION, RELATED, ALTERNATIVE, UNRELATED. Name equality alone never establishes any of them.",domain,M,DES-028,,,designed
-DOM-006,"Every field value in a CanonicalSkill is either a source fact (with its source) or an AppMD inference (with producer, version and confidence). There is no third kind and the two are never merged into one field.",domain,M,DES-036,,TC-024,implemented
+DOM-006,"Every field value in a CanonicalSkill is either a source fact (with its source) or an AppMD inference (with producer, version and confidence). There is no third kind and the two are never merged into one field.",domain,M,DES-036,,TC-024;TC-113;TC-118,implemented
 DOM-007,"Licence is three independent layers: L1 dataset/aggregator, L2 repository, L3 frontmatter claim. L3 is a claim, not an authority. Conflicts are recorded, never silently resolved.",domain,M,DES-038,,,designed
 DOM-008,"Rights posture is computed, never stored as a single inherited flag. It carries the brief's four concepts: indexable, linkable, redistributable, and unknown as an explicit state in its own right — never silently collapsed into all-false ...",domain,M,DES-039,,,designed
 DOM-009,A Repository is the attribution unit and the L2 licence holder. Attribution is mandatory on every canonical record.,domain,M,DES-041,,,designed

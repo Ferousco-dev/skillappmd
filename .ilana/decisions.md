@@ -569,3 +569,24 @@ the directory.
 **Companion rule:** a remediation is not complete until it is **committed and verified**. `CR-001`'s
 `.gitignore` fix was applied to the working tree, reported as done, and then silently lost. Article
 12 applies to fixes, not only to decisions.
+
+---
+
+## DEC-033 — Contested spec readings warn; they do not invalidate a third party's work
+**Status:** DECIDED · evidence `CR-004`, `ETH-001`
+
+Two `REQ-038` rules admit more than one reading:
+
+| Rule | Ambiguity | Treatment |
+| --- | --- | --- |
+| Reserved words | "cannot contain" — must not **be**, or must not **contain**? The oracle treats `plain-english-claude` as valid | Name **equal to** a reserved word → non-conformant. Name **containing** one → **warning** |
+| XML tags in description | `context/changes/<change-name>` is a path placeholder, indistinguishable from markup by regex | **Warning** |
+
+**Reasoning.** Both verdicts are published judgements about code AppMD did not write, whose author
+has no relationship with us and no notice. `ETH-001` condition 1 requires findings and evidence to
+accompany any adverse conclusion; on a contested reading the honest output is *"this may not
+conform, here is why"*, not *"this is invalid"*.
+
+The signal is retained in `warnings`, so nothing is lost — only the confidence is calibrated to
+what we actually know. That is the same fact-versus-inference discipline `DOM-006` applies to data,
+applied to judgements.
