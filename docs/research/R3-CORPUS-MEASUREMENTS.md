@@ -1,0 +1,70 @@
+# R3 — Corpus Measurements
+
+Status: **COMPLETE** · Date: 2026-08-27 · Agent: `[architect]`
+Purpose: supply **measured** inputs to `docs/models/sizing.py`, satisfying SRS rule that no
+storage or cost claim rests on a generic estimate (Article 10).
+Method: Hugging Face `datasets-server` `/rows`, stratified sample across the full 3,797,117-row
+range. **n = 1,200 sampled rows, 603 content-bearing.** Nothing downloaded.
+
+## Measured values
+
+| Metric | Value |
+| --- | --- |
+| `body_chars` mean | **4,425 bytes** |
+| `body_chars` median | 2,512 |
+| `body_chars` p90 / p99 / max | 11,581 / 20,662 / 20,774 |
+| `dedup_primary` share | **50.2%** |
+| `frontmatter_valid` (of content-bearing) | 77.4% |
+| `has_scripts` | 4.6% |
+| `sibling_count` mean | 4.47 |
+| `path` length mean | 50 bytes |
+| `repo_full_name` length mean | 26 bytes |
+
+## Finding 1 — the paper's headline figure reproduces
+
+Measured `dedup_primary` = **50.2%**. The paper reports **50.5%** verbatim copies.
+Independent stratified sampling lands within 0.3 points.
+
+This matters beyond corroboration: it means the oracle behaves as documented across the whole
+corpus, not only in aggregate, so `NFR-002`'s per-row precision/recall test is sound.
+
+## Finding 2 — the shards are ordered by file size, and the bias is severe
+
+Mean `body_chars` by sample offset:
+
+| Offset | 0 | 50k | 200k | 500k | 900k | 1.4M | 1.9M | 2.4M | 2.9M | 3.4M |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| mean bytes | **10** | 146 | 704 | 1,359 | 2,311 | 3,595 | 5,849 | 8,065 | 11,441 | **19,352** |
+
+Monotonic across three orders of magnitude. The dataset authors partitioned GitHub's code-search
+space **by file size** to defeat the 1,000-result cap (R1 §4.2), and the Parquet mirror preserves
+that write order.
+
+**This is empirical confirmation of `DEC-013`, and it is worse than `DEC-013` assumed.** Reading
+"the first shard" does not yield a slightly skewed sample — it yields **~10-byte files**, which
+are not representative of anything and would have made every downstream measurement meaningless.
+
+**Consequences, now mandatory rather than advisory:**
+
+1. `DEC-011`'s "one `artifacts` shard" must become **stratified sampling across shards**. A single
+   shard is unusable for validation. This is a change to a decision, recorded as such.
+2. Parser and dedup validation samples must be drawn across the offset range, or every reported
+   figure is a statement about tiny files.
+3. `REQ-085`'s sampling-bias disclosure is not paperwork. Without it, a Phase 1 report reading
+   "mean skill size 10 bytes" would be *technically produced by the pipeline* and completely false.
+
+Had this gone unmeasured, Phase 1 would have validated deduplication against a corpus of
+near-empty files and declared success. `NFR-002` would have passed while proving nothing.
+
+## Finding 3 — content lives only on primaries
+
+`content_fetched` tracks `dedup_primary` almost exactly (99.2% of content-bearing rows are
+primaries). The dataset stores one content copy per distinct content and references it from
+duplicates.
+
+**Storage consequence:** content volume scales with **distinct contents (~50.2%)**, not with
+occurrences. Sizing content at 3.8M × mean body would overstate it by ~2×.
+
+## Sources
+
+`https://datasets-server.huggingface.co/rows?dataset=mvaccargiu/gitskills&config=artifacts&split=train&offset={0,50k,200k,500k,900k,1.4M,1.9M,2.4M,2.9M,3.4M,3.7M,3796900}&length=100`

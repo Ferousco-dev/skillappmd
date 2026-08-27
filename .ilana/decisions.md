@@ -373,3 +373,101 @@ adds a normalisation tier).
 
 **The binding obligation is explanation, not agreement.** An unexplained disagreement *is* a gate
 failure. This keeps the oracle useful without letting someone else's policy choices fail our build.
+
+---
+
+## DEC-024 — Corpus sampling must be stratified across shards; single-shard sampling is withdrawn
+**Status:** DECIDED · **supersedes the sampling method in `DEC-011`** · evidence R3 Finding 2
+
+`DEC-011` fixed Phase 1's corpus subset at "one `artifacts` shard". Measurement shows the shards
+are **ordered by file size**: mean `body_chars` runs 10 → 146 → 704 → … → 19,352 across the
+offset range, monotonically, over three orders of magnitude.
+
+The first shard contains **~10-byte files**. Validating deduplication or parsing against it would
+have produced passing metrics that proved nothing.
+
+**Revised:** Phase 1 draws a **stratified sample across the full offset range**. The 100 / 1,000 /
+10,000 ladder is sampled proportionally across shards, not taken from the head.
+`repos` (0.02 GB) is still taken in full. The ~1 GB disk cap (`NFR-018`) is unaffected — stratified
+sampling reads *less* data than a whole shard, since it needs only selected row groups.
+
+*This is the clearest vindication of the "measure, don't estimate" rule in the whole project so
+far. `DEC-011` was written from a plausible assumption about shard contents. The assumption was
+wrong, and only measurement exposed it.*
+
+---
+
+## DEC-025 — RSK-005 RESOLVED: Cloudflare Queues has native DLQ and at-least-once delivery
+**Status:** DECIDED · **closes `RSK-005`** · evidence: Cloudflare docs fetched 2026-08-27
+
+| Question | Answer (verified) |
+| --- | --- |
+| Native DLQ? | **Yes.** `dead_letter_queue = "queue-name"` in wrangler config |
+| Trigger | Message reaches the consumer's retry limit (default **3**) |
+| No DLQ configured | *"messages that reach the retry limit are deleted permanently"* |
+| DLQ retention without consumer | 4 days |
+| Delivery guarantee | **At-least-once.** *"may be delivered more than once"* |
+| Ordering | Not stated in the fetched page → **UNVERIFIED**; assume none |
+
+**Consequences:**
+
+1. `REQ-020`/`REQ-021` are satisfiable natively. No application-level DLQ needed on Cloudflare —
+   but the **port interface still defines one**, because the local adapter must provide the same
+   semantics (`NFR-027`).
+2. *"Without a DLQ configured, messages are deleted permanently."* A missing DLQ therefore causes
+   **silent data loss**. The queue port shall **refuse to initialise a consumer without a DLQ**,
+   turning a configuration omission into a startup failure rather than a slow leak.
+3. **At-least-once delivery makes `REQ-016` (idempotency) load-bearing, not merely good practice.**
+   Cloudflare's own guidance is to use a unique message id as a primary key or idempotency key —
+   which is exactly the design `REQ-016` and `DOM-001` already mandate. The requirement was
+   written before this was verified; it turns out to be the vendor's own prescription.
+4. Ordering is unverified, so **no stage may assume ordered delivery**.
+
+---
+
+## DEC-026 — Provenance stored as a JSON column, not one row per field origin
+**Status:** ASSUMPTION · evidence `docs/DATABASE.md` §3.2
+
+Field-level provenance modelled as rows is **44% of total relational storage** (3.35 GB of 7.65 GB
+at full corpus). As a JSON column on the canonical row: **~4.3 GB total**, roughly doubling D1
+headroom from ~5.0M to ~8.8M occurrences.
+
+`REQ-040` requires provenance to be **recorded and retrievable**, not queried across records.
+JSON satisfies it. Row-per-origin remains the migration target if per-field provenance querying
+becomes a requirement; PostgreSQL JSONB+GIN would supply it without changing the storage shape.
+
+*Labelled ASSUMPTION because the 10-fields-per-skill figure is a modelling estimate, not a measurement.*
+
+---
+
+## DEC-027 — Canonical store: SQLite local → D1 production → PostgreSQL at a measured trigger
+**Status:** DECIDED · **closes `DEC-007`** · evidence `docs/DATABASE.md` §3–§6
+
+| Stage | Store |
+| --- | --- |
+| Phase 1 local | **SQLite** |
+| Phase 1–2 production | **Cloudflare D1** |
+| Beyond the trigger | **PostgreSQL** |
+
+**Migration trigger, whichever first:** canonical size **>7 GB** (70% of D1's ceiling); or a
+requirement needing vector/full-text/graph **in the same engine**; or write throughput blocked by
+D1's 100-bound-parameter cap.
+
+**The finding that drove this:** measured against real corpus data, the **entire known skill
+ecosystem — 3.8M occurrences — is 7.65 GB, or ~4.3 GB with `DEC-026`. One D1 database holds it,
+at about $2/month.** The brief's framing invites the assumption that Cloudflare storage is
+immediately inadequate. It is not. D1's ceiling is crossed at ~5.0M occurrences (~8.8M with
+`DEC-026`), which is *beyond the known corpus*.
+
+**Explicitly rejected: sharding D1 across many databases.** Available (50k databases, 1 TB) and
+wrong. It buys capacity by permanently adopting shard routing, cross-shard queries, per-shard
+migrations and per-shard backups — to defer a migration performable once. `DEC-021` settles it:
+that is *building* future scale. Migrating to Postgres is cheaper and is a single event.
+
+**Why not start on Postgres:** an account, a Workers connection story (Hyperdrive), and ops
+burden, for capacity Phase 1 will not use for years. Cheap, understandable, replaceable now.
+
+**This decision is only affordable because `NFR-027`/`NFR-028` hold.** If domain logic imports a
+SQL driver, `DEC-027` is a trap rather than a plan. The falsifiable test — write the Postgres
+adapter and pass the full suite **without editing `skill-core/` or `ingestion/`** — becomes a G4
+criterion.
