@@ -760,3 +760,24 @@ migration path is real. `skill-core/` needed no change, which is the part of `NF
 **The general rule:** a contract suite must contain at least one adapter that the wrong
 implementation **cannot** satisfy. `DeferredMemoryCanonicalStore` exists for exactly that and is
 not on any production path.
+
+## DEC-041 — a declared gap and an untested implementation are different findings
+**Status:** DECIDED · CI green on the public repository
+
+The traceability checker exited 1 on `REQ-005` and `REQ-014` — both deliberately unbuilt under
+`DEC-039` — so **CI was red by design** from the first push. A permanently red build teaches people
+to ignore CI, which costs more than the finding is worth.
+
+| Row | Meaning | Build |
+| --- | --- | --- |
+| `status=implemented`, no test | code exists that nothing proves — a **defect** | **fail** |
+| `status=designed`, no test | declared, not yet built — a **plan item** | pass, printed every run |
+
+**Not a way to silence findings.** A gap must be explicitly marked `designed` in a committed file,
+it is printed on every run, and the check **fails closed**: anything that is not literally
+`designed` — including a status that failed to parse — counts as a defect.
+
+**A latent bug surfaced while proving this.** The CSV parser dropped a column whenever a field was
+empty, so `…,src/x.js,,implemented` parsed `status` as `''`. Harmless while nothing read `status`;
+the moment it decided pass/fail it would have **silently downgraded a real defect to a declared
+gap**. Found by planting an orphan and watching it pass — not by reading the code.
