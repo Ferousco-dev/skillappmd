@@ -1,8 +1,10 @@
 # ============================================================
-# BACKEND repository (.ilana / docs / packages / apps).
-# The front-end lives in a SEPARATE repository (CR-001, option B).
-# Any front-end files still present in this working tree are being
-# relocated by their owner and are ignored here, never tracked.
+# SkillAppMD - one repository: site (app/, lib/, components/),
+# backend (packages/, apps/), Worker, and the engineering ledger.
+# CR-012 reversed the CR-001 split when the frontend and backend
+# became connected through next.config.mjs.
+#
+# DEC-032 still stands: no `git add -A`. Stage explicit paths.
 # ============================================================
 
 # --- secrets: never commit (intake Q5, NFR-019, NFR-020) ---
@@ -29,23 +31,11 @@ data/corpus/
 *.sqlite
 *.parquet
 
-# --- front-end artefacts in transit (CR-001). Not ours to track. ---
-/components.json
-/public/
+# CR-012: the frontend now lives in this repository. The exclusions below are the ones
+# that were never about the split - build output, local tooling, and secrets.
 /.claude/
-/app/
-/components/
-/pages/
-/lib/
-/types/
-/package.json
-/package-lock.json
 /next-env.d.ts
-/next.config.mjs
-/postcss.config.js
-/postcss.config.mjs
-/tailwind.config.ts
-/tsconfig.json
+/tsconfig.tsbuildinfo
 
 # --- os ---
 .DS_Store
@@ -55,7 +45,6 @@ packages/connectors/gitskills/node_modules/
 # Only the FRONT-END's root lockfile is ignored. The connector's lockfile is tracked:
 # a build cannot be reproducible if the versions of its only dependencies are local-only
 # (G6 criterion 2).
-/package-lock.json
 
 # --- raw object store: bytes are never vendored (REQ-033, NFR-019) ---
 data/raw/

@@ -1,0 +1,1003 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn design tokens, as HSL triplets because the Tailwind theme wraps them
+   as hsl(var(--token)).
+   Namespaced --sd-* deliberately: this page already owns --muted and --accent
+   as plain hex values, and an unprefixed shadcn token of the same name would
+   be overridden by them further down the file, yielding hsl(#6b6b74). */
+:root {
+  --sd-background: 0 0% 100%;
+  --sd-foreground: 240 10% 8%;
+  --sd-border: 240 6% 90%;
+  --sd-input: 240 6% 90%;
+  /* Focus ring picks up the site's peach accent (#c98f73). */
+  --sd-ring: 20 44% 62%;
+  --sd-muted: 240 5% 96%;
+  --sd-muted-foreground: 240 4% 46%;
+  --sd-primary: 240 10% 8%;
+  --sd-primary-foreground: 0 0% 100%;
+  --sd-secondary: 240 5% 96%;
+  --sd-secondary-foreground: 240 10% 8%;
+  --sd-accent: 240 5% 96%;
+  --sd-accent-foreground: 240 10% 8%;
+  --sd-destructive: 0 72% 51%;
+  --sd-destructive-foreground: 0 0% 100%;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --page-pad: clamp(28px, 4vw, 56px);
+  --ink: #111116;
+  --muted: #6b6b74;
+  --accent: #c98f73;
+  /* Text-safe accent. The brand peach is only 2.74:1 on white, which fails
+     WCAG AA for the rights label. This is the same hue darkened to 4.68:1.
+     --accent stays for fills and borders, where it is not carrying text. */
+  --accent-strong: #a86340;
+  --accent-soft: #e0b39c;
+  --accent-ink: #23150e;
+
+  /* Surfaces and hairlines, expressed as tokens so the dark theme is a value
+     swap rather than a second set of rules. --ink-rgb feeds the rgba() shadows
+     and borders that cannot take a hex token directly. */
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --ink-rgb: 17, 17, 22;
+  --accent-rgb: 201, 143, 115;
+  --shadow-strength: 1;
+}
+
+/* Dark theme. Applied by [data-theme="dark"] on <html>, which is set before
+   first paint by the inline script in the root layout. */
+:root[data-theme='dark'] {
+  --ink: #f3f3f6;
+  --muted: #9c9caa;
+  --accent: #d9a184;
+  /* On the dark surface the brand peach already reaches 8.78:1, so text and
+     fill can share one value. */
+  --accent-strong: #d9a184;
+  --accent-soft: #d9a184;
+  --accent-ink: #1a1013;
+  --surface: #0b0b0f;
+  --surface-raised: #16161c;
+  --ink-rgb: 243, 243, 246;
+  --accent-rgb: 217, 161, 132;
+  --shadow-strength: 2.2;
+
+  --sd-background: 240 12% 5%;
+  --sd-foreground: 240 10% 96%;
+  --sd-border: 240 6% 20%;
+  --sd-input: 240 6% 20%;
+  --sd-muted: 240 6% 14%;
+  --sd-muted-foreground: 240 5% 65%;
+  --sd-primary: 240 10% 96%;
+  --sd-primary-foreground: 240 12% 6%;
+  --sd-secondary: 240 6% 16%;
+  --sd-secondary-foreground: 240 10% 96%;
+  --sd-accent: 240 6% 16%;
+  --sd-accent-foreground: 240 10% 96%;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100svh;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hero-stage {
+  position: relative;
+  height: 200svh;
+}
+
+/* One way: once the hero has dissolved the stage leaves the layout entirely,
+   so there is nothing above to scroll back to. The brand mark restores it. */
+.is-dissolved .hero-stage {
+  display: none;
+}
+
+/* Pinned for the length of the stage, so the hero holds still while the page
+   scrolls past it. overflow:hidden clips the scene as it scales past the edges. */
+.page {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+
+/* The dissolving group. Origin sits below centre so the scale-up drifts the
+   content up and outward, which is what reads as pushing through it. */
+.hero-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--page-pad) + 52px) var(--page-pad) var(--page-pad);
+  transform-origin: 50% 78%;
+  transform: scale(calc(1 + var(--hero-progress, 0) * 0.28));
+  opacity: calc(1 - min(1, var(--hero-progress, 0) / 0.8));
+  will-change: transform, opacity;
+}
+
+.is-dissolved .next-section {
+  animation: next-section-in 420ms cubic-bezier(0.22, 0.8, 0.26, 1) both;
+}
+
+@keyframes next-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.next-section {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  background: var(--surface);
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+
+.next-inner {
+  width: min(100%, 760px);
+  padding: 0 var(--page-pad);
+}
+
+.next-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted);
+  font-family: 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.next-eyebrow span {
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+}
+
+.next-title {
+  margin: 16px 0 0;
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.next-list {
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.16);
+}
+
+.next-list a {
+  display: block;
+  padding: 20px 4px;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.09);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 160ms ease, padding-left 220ms cubic-bezier(0.22, 0.8, 0.26, 1);
+}
+
+.next-list a:hover,
+.next-list a:focus-visible {
+  background: rgba(var(--ink-rgb), 0.03);
+  padding-left: 14px;
+}
+
+.next-item-title {
+  display: block;
+  font-family: 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.next-list a:hover .next-item-title {
+  color: var(--accent);
+}
+
+.next-item-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-scene {
+    transform: none;
+  }
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(40px, 7vh, 88px);
+  padding: 40px 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.page-header {
+  position: fixed;
+  top: var(--page-pad);
+  right: var(--page-pad);
+  left: var(--page-pad);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: block;
+  width: 44px;
+  height: 44px;
+  color: currentColor;
+}
+
+.brand svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.brand rect {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+  vector-effect: non-scaling-stroke;
+}
+
+.brand:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 6px;
+}
+
+.step-cluster {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  width: clamp(240px, 40vw, 560px);
+  color: var(--ink);
+  opacity: 0.16;
+  pointer-events: none;
+}
+
+.step-cluster svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.step-cluster rect {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: step-rise 620ms cubic-bezier(0.22, 0.8, 0.26, 1) forwards;
+}
+
+@keyframes step-rise {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step-cluster rect {
+    animation-duration: 1ms;
+  }
+}
+
+
+.search-panel {
+  display: flex;
+  width: min(100%, 860px);
+  flex-direction: column;
+  align-items: center;
+}
+
+.collected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+
+.collected-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--accent-soft);
+}
+
+.collected-count {
+  font-family: 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.collected-label {
+  color: var(--muted);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 8px 8px 22px;
+  border: 1.5px solid var(--accent);
+  border-radius: 18px;
+  background: var(--surface-raised);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.18);
+}
+
+.search-icon {
+  display: flex;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+
+.search-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  height: clamp(46px, 5.4vh, 58px);
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: clamp(15px, 1.35vw, 18px);
+}
+
+.search-input::placeholder {
+  color: var(--muted);
+}
+
+.search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-submit {
+  display: inline-flex;
+  flex: none;
+  align-self: stretch;
+  align-items: center;
+  gap: 10px;
+  padding: 0 clamp(18px, 2vw, 28px);
+  border: none;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-family: inherit;
+  font-size: clamp(14px, 1.2vw, 16px);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+
+.search-submit svg {
+  width: 18px;
+  height: 18px;
+}
+
+.search-submit:hover {
+  background: var(--accent);
+}
+
+.search-submit:active {
+  transform: scale(0.985);
+}
+
+.search-submit:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+@media (max-width: 620px) {
+  .search {
+    gap: 10px;
+    padding-left: 16px;
+  }
+
+  .search-submit span {
+    display: none;
+  }
+
+  .search-submit {
+    padding: 0 18px;
+  }
+
+  .collected {
+    font-size: 13px;
+  }
+}
+
+.hangers {
+  --hanger-scale: 1;
+
+  position: absolute;
+  inset: 0 var(--page-pad);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hanger {
+  position: absolute;
+  top: 0;
+  left: var(--left);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: top center;
+  translate: -50% 0;
+  will-change: transform;
+}
+
+.hanger-pin {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.55;
+}
+
+.hanger-thread {
+  width: 1px;
+  height: calc(var(--drop) * var(--hanger-scale));
+  background: linear-gradient(180deg, rgba(var(--ink-rgb), 0.32), rgba(var(--ink-rgb), 0.18));
+}
+
+.hanger-card {
+  display: grid;
+  width: calc(var(--size) * var(--hanger-scale));
+  height: calc(var(--size) * var(--hanger-scale));
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: var(--surface-raised);
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, calc(0.4 * var(--shadow-strength)));
+  pointer-events: auto;
+  touch-action: none;
+  transition: box-shadow 220ms ease, border-color 220ms ease, scale 220ms ease;
+}
+
+.hanger-card:hover {
+  scale: 1.07;
+  border-color: rgba(var(--ink-rgb), 0.24);
+  box-shadow: 0 18px 34px -16px rgba(0, 0, 0, calc(0.5 * var(--shadow-strength)));
+}
+
+.hanger-card--rounded {
+  border-radius: 22%;
+}
+
+.hanger-card--arch {
+  border-radius: 50% 50% 16% 16%;
+}
+
+.hanger-card--circle {
+  border-radius: 50%;
+}
+
+.hanger-card img {
+  width: 52%;
+  height: 52%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.hanger-label {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 1280px) {
+  .hangers {
+    --hanger-scale: 0.82;
+  }
+}
+
+@media (max-width: 1120px) {
+  .hangers {
+    --hanger-scale: 0.66;
+  }
+}
+
+/* Phones: switch to the tighter arrangement instead of hiding the hangers,
+   so they stay draggable by touch. */
+@media (max-width: 980px) {
+  .hangers {
+    --hanger-scale: 1;
+    /* Hang from below the header, otherwise every thread slices through the
+       logo and the Documentation pill. */
+    inset: 96px var(--page-pad) 0;
+  }
+
+  /* Labels are wider than the gap between phone-sized cards, so they collide.
+     Hide them visually but keep them for screen readers. */
+  .hanger-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .hanger {
+    left: var(--left-m);
+  }
+
+  .hanger-thread {
+    height: var(--drop-m);
+  }
+
+  .hanger-card {
+    width: var(--size-m);
+    height: var(--size-m);
+    border-radius: 20%;
+  }
+
+  .hanger-card--circle {
+    border-radius: 50%;
+  }
+
+  .hanger-card--arch {
+    border-radius: 50% 50% 16% 16%;
+  }
+
+  /* Hover lift is meaningless on touch and leaves a stuck scaled card. */
+  .hanger-card:hover {
+    scale: 1;
+    border-color: rgba(var(--ink-rgb), 0.12);
+    box-shadow: 0 10px 24px -14px rgba(0, 0, 0, calc(0.4 * var(--shadow-strength)));
+  }
+}
+
+/* Landscape phones have no vertical room for hangers plus the hero. */
+@media (max-width: 980px) and (max-height: 620px) {
+  .hangers {
+    display: none;
+  }
+}
+
+.is-grabbing,
+.is-grabbing .hanger-card {
+  cursor: grabbing;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-left: 4px;
+}
+
+.suggestions-label {
+  margin-right: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.chip {
+  padding: 7px 14px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+
+.chip:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--ink);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.page-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.page-footer a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.page-footer a:hover {
+  color: var(--accent);
+}
+
+.page-footer a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+/* --- Custom cursor, scoped to the landing section ----------------------- *
+ * The plain pointer is the resting state everywhere, including over links and
+ * buttons. The click pointer is reserved for an actual mouse press, so it
+ * means "you are clicking", not "this is clickable".
+ * Every rule keeps a native keyword fallback in case a browser rejects the
+ * data URI.                                                                */
+
+.landing {
+  cursor: var(--cur-default), auto;
+}
+
+/* Tailwind preflight sets `button { cursor: pointer }`, and the UA stylesheet
+   forces the same on anchors. Both override inheritance, so they are handed
+   back to the section cursor explicitly. */
+.landing a,
+.landing button {
+  cursor: inherit;
+}
+
+/* Text entry keeps a real caret; a pointer image would hide the insertion
+   point. A direct rule also survives the inherited press state below. */
+.landing .search-input {
+  cursor: text;
+}
+
+/* Held mouse button anywhere in the section. Inherited by descendants, so the
+   pointer stays consistent even as it crosses gaps during a drag. */
+.is-pressing .landing {
+  cursor: var(--cur-click), pointer;
+}
+
+/* Dragging a hanger: the same click pointer, filled in. Declared after the
+   press rule so it wins at equal specificity while both are active. */
+.is-grabbing .landing,
+.is-grabbing .hanger-card {
+  cursor: var(--cur-drag), grabbing;
+}
+
+/* Pointer images are meaningless on touch devices. */
+@media (hover: none) {
+  .landing,
+  .landing .hanger-card,
+  .is-pressing .landing,
+  .is-grabbing .landing,
+  .is-grabbing .hanger-card {
+    cursor: auto;
+  }
+
+  .landing .hanger-card {
+    cursor: grab;
+  }
+}
+
+.hero-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(22px, 3.6vh, 40px);
+}
+
+/* Split-flap tiles invert with the theme so they never disappear into the
+   page. Consumed as props by SplitFlapText, which writes them straight into
+   custom properties, so a var() reference works. */
+:root {
+  --flap-tile: #111116;
+  --flap-text: #ffffff;
+}
+
+:root[data-theme='dark'] {
+  --flap-tile: #e8e8ee;
+  --flap-text: #101014;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.theme-toggle-icon {
+  display: block;
+  transition: transform 420ms cubic-bezier(0.22, 0.8, 0.26, 1);
+}
+
+.theme-toggle:hover .theme-toggle-icon {
+  transform: rotate(-18deg);
+}
+
+.theme-toggle:active .theme-toggle-icon {
+  transform: scale(0.9);
+}
+
+.theme-toggle svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+}
+
+.theme-toggle:hover {
+  border-color: rgba(var(--ink-rgb), 0.3);
+  background: rgba(var(--ink-rgb), 0.05);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+
+/* --- Theme change: circular reveal ------------------------------------- *
+ * The default view transition cross-fades both snapshots, which reads as a
+ * dip to grey. Here the animations are disabled so ThemeToggle can drive a
+ * single clip-path circle on the incoming snapshot instead: the new theme
+ * wipes in from the button while the old one simply sits underneath.        */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Entering dark: the incoming dark snapshot animates, so it sits on top. */
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2147483646;
+}
+
+/* Leaving dark: the OUTGOING dark snapshot is the one being clipped away, so
+   the stacking order flips and the light theme waits underneath. */
+:root[data-theme-transition='to-light']::view-transition-old(root) {
+  z-index: 2147483646;
+}
+
+:root[data-theme-transition='to-light']::view-transition-new(root) {
+  z-index: 1;
+}
+
+/* The root snapshot must not paint its own background, or the outgoing theme
+   would be hidden behind an opaque plate and the reveal would show nothing. */
+::view-transition-image-pair(root) {
+  isolation: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+}
+
+/* --- Header search ------------------------------------------------------ */
+
+.header-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 999px;
+  transition: border-color 160ms ease, width 220ms ease;
+}
+
+.header-search:focus-within {
+  border-color: var(--accent);
+}
+
+.header-search svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--muted);
+}
+
+.header-search input {
+  width: clamp(120px, 18vw, 220px);
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.header-search input::placeholder {
+  color: var(--muted);
+}
+
+.header-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.header-search kbd {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  border-radius: 5px;
+  color: var(--muted);
+  font-family: 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
+  font-size: 10px;
+}
+
+@media (max-width: 720px) {
+  .header-search {
+    display: none;
+  }
+}
+
+/* --- Install command ---------------------------------------------------- */
+
+.install {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 520px);
+  padding: 0 8px 0 20px;
+  height: clamp(56px, 6.4vw, 66px);
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  background: var(--surface-raised);
+  transition: border-color 160ms ease;
+}
+
+.install:hover {
+  border-color: var(--accent);
+}
+
+.install code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: 'SFMono-Regular', 'Roboto Mono', Menlo, Consolas, monospace;
+  font-size: clamp(13px, 1.3vw, 15px);
+  color: var(--ink);
+}
+
+.install code span {
+  color: var(--muted);
+}
+
+.install button {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.install button:hover {
+  color: var(--ink);
+  background: rgba(var(--ink-rgb), 0.06);
+}
+
+.install button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.install button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.install-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.install-note {
+  width: min(100%, 520px);
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+  text-align: center;
+}

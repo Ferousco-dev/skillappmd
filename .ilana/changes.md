@@ -619,3 +619,43 @@ the legitimate pre-migration case — is swallowed.
 
 **Not yet done:** no cloud deploy. `database_id` is a placeholder and `wrangler login` is an
 interactive OAuth flow the operator must run themselves.
+
+---
+
+## CR-012 — the frontend joins this repository (reverses `CR-001` / the option-B split)
+
+**Raised:** 2026-08-27 · **Requested by:** user · **Status:** APPROVED, IMPLEMENTED
+
+### Why the original decision no longer holds
+
+At G2 the user chose **option B, separate repositories**, with a standing instruction not to
+modify the frontend. `CR-001` implemented that by gitignoring `/app/`, `/lib/`, `/components/`,
+`/next.config.mjs` and the root `package.json` — *"front-end artefacts in transit. Not ours to
+track."* `CR-003` reinforced it after `git add -A` tracked 37 frontend files by accident.
+
+Three things changed:
+
+1. The user directed work **on** the frontend (the documentation page, then the API wiring).
+2. `next.config.mjs` is now the frontend↔backend connection itself. A repository that cannot
+   express how its own two halves connect is not a complete repository.
+3. The project is being open-sourced. Publishing the backend alone would ship a README whose
+   instructions do not work.
+
+### What changes
+
+The ignore rules covering frontend source are removed. `node_modules/`, `.next/`, `.env*`
+(except `.env.example`), `data/` and the corpus formats stay ignored — those exclusions were never
+about the split.
+
+### What does not change
+
+**`DEC-032` stands: no `git add -A`.** The bug `CR-003` recorded was the blanket add, not the
+frontend's presence. Every commit still stages explicit paths.
+
+### Correction recorded
+
+Commit `6dca17b` was titled *"connect the frontend to the backend"* while the frontend was still
+ignored, so its diff contained none of that work. The message was amended before publication to
+describe what it actually contains. Noted here because a commit message that overstates its diff
+is a defect in the record, and this one was caught only by checking the diff rather than trusting
+the message.
