@@ -1,0 +1,3 @@
+{ "name": "@appmd/api", "version": "0.1.0", "private": true, "type": "module",
+  "description": "Read-only HTTP API. Edge runtime (DATABASE.md §7).",
+  "scripts": { "test": "node --test test/*.test.js" } }

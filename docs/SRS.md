@@ -371,7 +371,7 @@ requirements; the following are.
 
 | ID | Requirement |
 | --- | --- |
-| **NFR-011** | **PROVISIONAL TARGET, NOT AN ACCEPTANCE CRITERION** (`DEC-017`). Working figure: a 10,000-occurrence batch end-to-end in ≤30 minutes on the development machine. This number was invented by the analyst with no benchmark behind it. It shall not gate G4 and shall be replaced by a measured target, set from Phase 1 benchmark data by `[metrologist]`, before it binds anything. |
+| **NFR-011** | **MEASURED** (`DEC-034`, supersedes the provisional figure of `DEC-017`). The pipeline shall complete **canonical processing** of a 10,000-occurrence batch in **≤10 seconds** on the development machine. Observed 2026-08-27: **958 ms** (10,442 rec/s) at the corpus's measured mean body of 4,425 B. Scope excludes network fetch, which is bounded by source rate limits (`REQ-024`) and measured separately. |
 | **NFR-012** | `GET /api/v1/skills/:id` shall respond in ≤200 ms at p95 against a 10,000-skill store, measured locally. |
 | **NFR-013** | Fetch concurrency shall be configurable per source and shall default to ≤6 simultaneous outgoing connections, matching the Workers ceiling so local behaviour predicts production behaviour (R1 §6.3). |
 | **NFR-014** | Memory use per worker process shall stay ≤128 MB, matching the Workers isolate limit, so no design depends on headroom production will not have. |

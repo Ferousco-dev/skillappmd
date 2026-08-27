@@ -190,6 +190,32 @@ export class SqliteCanonicalStore {
     return { rows, cursor: { next, limit: n } };
   }
 
+  getSource(id) {
+    return this.#db.prepare('SELECT * FROM sources WHERE id = ?').get(id) ?? null;
+  }
+
+  /**
+   * REQ-069 keyword search over canonical METADATA only (never content, REQ-062).
+   * SQLite LIKE is adequate at Phase 1 scale; SCALING.md ~10M names FTS as the
+   * point where this must be replaced by a derived index (REQ-051).
+   */
+  search({ q, cursor = null, limit = 50 }) {
+    const n = Math.min(Math.max(1, limit), 100);
+    const like = `%${String(q).replace(/[%_]/g, (c) => '\\' + c)}%`;
+    const rows = cursor
+      ? this.#db.prepare(
+          `SELECT * FROM canonical_skills
+           WHERE (declared_name LIKE ? ESCAPE '\\' OR declared_description LIKE ? ESCAPE '\\')
+             AND (created_at, id) > (?, ?)
+           ORDER BY created_at, id LIMIT ?`).all(like, like, ...decodeCursor(cursor), n)
+      : this.#db.prepare(
+          `SELECT * FROM canonical_skills
+           WHERE declared_name LIKE ? ESCAPE '\\' OR declared_description LIKE ? ESCAPE '\\'
+           ORDER BY created_at, id LIMIT ?`).all(like, like, n);
+    const next = rows.length === n ? encodeCursor(rows.at(-1).created_at, rows.at(-1).id) : null;
+    return { rows, cursor: { next, limit: n } };
+  }
+
   counts() {
     const one = (t) => this.#db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n;
     return { canonical: one('canonical_skills'), occurrences: one('occurrences'),

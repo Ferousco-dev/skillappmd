@@ -1,0 +1,3 @@
+{ "name": "@appmd/cli", "version": "0.1.0", "private": true, "type": "module",
+  "description": "Operator CLI. Batch runtime (DATABASE.md §7).",
+  "bin": { "appmd": "src/appmd.mjs" } }

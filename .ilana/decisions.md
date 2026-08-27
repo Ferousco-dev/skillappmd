@@ -590,3 +590,36 @@ conform, here is why"*, not *"this is invalid"*.
 The signal is retained in `warnings`, so nothing is lost — only the confidence is calibrated to
 what we actually know. That is the same fact-versus-inference discipline `DOM-006` applies to data,
 applied to judgements.
+
+---
+
+## DEC-034 — `NFR-011` replaced with a measured target
+**Status:** DECIDED · **closes `DEC-017`** · evidence: increment 8 benchmark, 2026-08-27
+
+`DEC-017` demoted `NFR-011` to a provisional target because the analyst had invented
+"10,000 occurrences in ≤30 minutes" with nothing behind it. Measured:
+
+| Batch | Wall clock | Throughput |
+| --- | ---: | ---: |
+| 1,000 | 102 ms | 9,837 rec/s |
+| 10,000 | 958 ms | 10,442 rec/s |
+
+Full pipeline — parse, normalise, fingerprint, dedup lookup, canonical write — at the corpus's
+**measured** mean body of 4,425 B. Throughput is flat between the rungs, so nothing in the design
+degrades with batch size at this scale.
+
+**The invented target was wrong by a factor of about 1,900.** Not conservative — meaningless. It
+would have permitted a build 1,000× slower than the code actually is, and no one would have noticed.
+
+**Measured replacement:**
+
+> **`NFR-011` (measured).** The pipeline shall process a 10,000-occurrence batch of canonical
+> processing in **≤10 seconds** on the development machine — roughly a 10× margin over the
+> observed 958 ms, so ordinary variation does not fail a build while a real regression does.
+>
+> **Scope, stated because it changes the meaning:** this covers **canonical processing only**.
+> Network fetch is bounded by source rate limits (`REQ-024`), not by our code, and is measured
+> separately. A single figure conflating the two would be a number that cannot be acted on —
+> a regression in our code would be invisible behind network variance.
+
+*Article 10, closed properly: the claim now has an instrument, and the instrument has a scope.*

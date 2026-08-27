@@ -522,3 +522,49 @@ EXIT CONDITION MET, invariants asserted against THE STORE rather than our own ob
   NFR-005  unclassifiable field origins         0  PASS
 
 145 tests, 145 pass.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 8 COMPLETE
+Read API and operator CLI.
+
+EXIT CONDITION MET, and by a wide margin:
+  NFR-012  GET /skills/:id at 10,000 skills: p50 0.02ms, p95 0.02ms, p99 0.03ms
+           against a 200ms target. Measured over 500 requests across spread ids,
+           after warm-up, so it is not one hot row.
+  NFR-032  cursor pagination does not degrade with depth: 51 pages over 5,000
+           records, first-5 avg 0.64ms vs last-5 avg 0.49ms. Deep pages are FASTER,
+           which is the behaviour offset pagination cannot provide.
+
+DEC-034 CLOSES DEC-017. NFR-011's invented target replaced with measured data:
+  1,000 records   102ms   9,837 rec/s
+ 10,000 records   958ms  10,442 rec/s
+  The invented figure (30 minutes) was wrong by a factor of about 1,900. Not
+  conservative - meaningless. It would have permitted a build 1,000x slower than the
+  code actually is and nobody would have noticed. The measured replacement is 10s
+  with the scope stated: canonical processing only, network measured separately,
+  because a single figure conflating the two hides our own regressions behind
+  network variance.
+
+API GUARANTEES, all tested:
+  REQ-062  content is NEVER served - asserted by checking the body text does not
+           appear anywhere in the serialised payload, for every record
+  REQ-061  the serialiser REFUSES a record without attribution (TC-152), and a
+           corrupt stored record yields a 500 with a named code, never a silent
+           omission (TC-162). For most OSS licences, attribution failure IS the
+           licence violation, so omitting it quietly is the worse outcome.
+  DEC-018  rights.state travels on the wire, so a consumer can distinguish
+           "we know you may not" from "we do not know"
+  NFR-039  page size capped at 100 rather than honoured blindly (TC-153)
+  REQ-097  429 with Retry-After, per client not global - the same courtesy outward
+           that NFR-023 requires of us inward
+
+CLI: verified end to end against 131 REAL ingested records. backup create -> verify
+returned "record count and digest match" on real data.
+
+Two UI defects found and fixed during the demo rather than shipped:
+  - "did you mean" suggested "source" for "skil" because it matched on first letter.
+    A confident wrong suggestion is worse than none; replaced with edit distance.
+  - a null declared name rendered as "(no name)" for every early-offset record.
+    Null IS correct data (~23% of the corpus omits `name`), so the row now shows
+    its path and stays identifiable.
+
+164 tests, 164 pass.
