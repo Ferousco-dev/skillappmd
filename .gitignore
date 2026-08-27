@@ -30,6 +30,9 @@ data/corpus/
 *.parquet
 
 # --- front-end artefacts in transit (CR-001). Not ours to track. ---
+/components.json
+/public/
+/.claude/
 /app/
 /components/
 /pages/
@@ -49,7 +52,10 @@ data/corpus/
 
 # --- dependency: quarantined to packages/connectors/gitskills (CR-005) ---
 packages/connectors/gitskills/node_modules/
-package-lock.json
+# Only the FRONT-END's root lockfile is ignored. The connector's lockfile is tracked:
+# a build cannot be reproducible if the versions of its only dependencies are local-only
+# (G6 criterion 2).
+/package-lock.json
 
 # --- raw object store: bytes are never vendored (REQ-033, NFR-019) ---
 data/raw/
