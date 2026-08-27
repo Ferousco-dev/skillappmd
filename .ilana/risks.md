@@ -25,11 +25,11 @@ an undefined state.
 
 **Reduced, not eliminated.** `DEC-019` made raw retention rights-aware and non-permanent, and
 `REQ-062` serves no content at all in Phase 1. Residual exposure: **AppMD holds bytes of unknown
-licence during processing** — measured at 68.7% of records resolving to `unknown`.
+licence during processing** — measured at 60.1% of records resolving to `unknown` (n=4,665).
 
 **Cannot be closed in Phase 1**, because closing it would require either serving nothing ever
 (which makes the product pointless) or resolving licences we cannot resolve from the data available.
-It is the price of operating over a corpus where 62% of repositories carry no licence.
+It is the price of operating over a corpus where 47.8% of repositories carry no licence.
 
 **Trigger for re-assessment:** the first proposal to serve any third-party content.
 

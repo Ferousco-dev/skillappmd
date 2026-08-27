@@ -35,7 +35,7 @@ SOURCE → DISCOVERY → QUEUE → FETCH → PARSE → NORMALISE → FINGERPRINT
 
 **Two rights states, and `unknown` is one of them.** Not three. A licence that forbids redistribution is still *known* — it reports `state: "known"` with `redistributable: false`. Collapsing those would destroy the difference between *"we know you may not"* and *"we do not know"*.
 
-> **68.7%** of real records resolve to `unknown`. That is the ordinary case, not an edge case. `unknown` is never treated as permission.
+> **60.1%** of records in the live index resolve to `unknown` — measured over 4,665 records from 3,074 real repositories. That is the ordinary case, not an edge case, and `unknown` is never treated as permission.
 
 **Facts and inferences are structurally separate.** `declared` holds what the source file says; `inferred` holds what SkillAppMD worked out. `provenance.field_origins` labels every field as `source_fact:` or `appmd_inference:` with the analyser version that produced it — so "which records did this analyser touch?" is a query too.
 
@@ -140,7 +140,9 @@ https://skill.appmd.dev/api/v1/search?q=pdf
 
 **Published on npm:** [`skillappmd`](https://www.npmjs.com/package/skillappmd) — `npx skillappmd@latest init` works today.
 
-The index currently holds a handful of seed records, not the full corpus. The ingestion ladder is proven to 10,000 records locally and byte-identical on re-run, but has not been run against production D1.
+The live index holds **4,668 records** from 3,074 public repositories, ingested through the real pipeline (`apps/cli/src/ingest.mjs`) with licences resolved per repository.
+
+That is a stratified sample of the 3.8M corpus, not the whole of it — chosen because it spans the size distribution rather than the easy end. Ingesting the full corpus is a paced job against D1's free-tier write budget, not a single command.
 
 Semantic search (task → capability, rather than keyword matching) is specified and costed in `.ilana/changes.md` as `CR-010`, and is not built. Today, `q=extract content from a web page` returns **zero results** while `q=html` returns one — which is the whole argument for building it.
 

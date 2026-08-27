@@ -32,3 +32,6 @@ MET-030,2026-08-27,parser_oracle_agreement,product,0.977,ratio,"structural valid
 MET-031,2026-08-27,test_executions,product,355,executions,"340 > 314 because contract suites run one case against several adapters"
 MET-032,2026-08-27,canonical_rows_per_skill,product,2.00,rows,"measured over 4678 real records, file-backed SQLite"
 MET-033,2026-08-27,async_conversion_throughput_cost,process,3.9,ratio,"10442 -> 2704 rec/s; the price of DEF-009's fix, measured not estimated"
+MET-034,2026-08-27,rights_unknown_share,product,0.601,ratio,"n=4665 over 3074 repositories; supersedes 0.687 at n=131"
+MET-035,2026-08-27,repos_with_licence,product,0.522,ratio,"1604/3074 real repositories carry a licence"
+MET-036,2026-08-27,production_index_size,product,4668,records,"live via GET /api/v1/skills cursor walk"

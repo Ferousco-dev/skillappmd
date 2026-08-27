@@ -113,3 +113,31 @@ This is the empirical justification for three decisions that looked merely cauti
 `DEC-009` (serve nothing in Phase 1), `DEC-018` (`unknown` as an explicit state), and `DEC-019`
 (rights-aware retention — 90 of 131 records get the shortest retention, because we hold bytes we
 have no clear right to hold).
+
+---
+
+## Superseded, 2026-08-27 — the same questions at 35× the sample
+
+The figures above were measured on **n=131**. The production ingest asked the same questions of
+**4,665 records across 3,074 real repositories**. The original numbers are left unedited: they were
+correct for the sample they had, and rewriting them would hide how much the sample was worth.
+
+| Measure | n=131 | n=4,665 | Move |
+| --- | ---: | ---: | --- |
+| rights `unknown` | 68.7% | **60.1%** | −8.6 pts |
+| repositories with no licence | 62% | **47.8%** | −14.2 pts |
+| duplicates collapsed | ~49.8% (corpus-wide, by `file_sha`) | **0.3%** | see below |
+
+**The repository figure reversed a claim.** "62% of repositories carry no licence" became
+*"most repositories DO carry one"* (52.2%). That was quoted in the README, the docs page and
+`test-plan.md`; all three are corrected.
+
+**The duplicate rate is not a regression.** 49.8% was measured by grouping the whole corpus on
+`file_sha`. This sample is **stratified** — 1,000 rows drawn evenly across a size-ordered corpus of
+3.8M — so it almost never draws both copies of the same file. A sparse sample of a corpus cannot
+reproduce that corpus's duplicate density, and 0.3% is the arithmetic of the sampling method, not a
+property of the deduplicator. The oracle still agrees with `file_sha` grouping at 100%.
+
+**What this says about small samples.** `n=131` was chosen to be cheap, and it was accurate to
+within about nine points on one measure and fourteen on the other — close enough to reason with,
+not close enough to publish. Every figure above now carries its sample size for that reason.

@@ -99,7 +99,7 @@ Produced on real corpus data, reproducible by the commands shown:
 | Ingests a real corpus | 10,000 records, stratified across the size-ordered shards, byte-identical re-run |
 | Deduplicates better than its oracle | 13 near-duplicate pairs found that byte-identical hashing, **including the corpus's own `file_sha`**, cannot see |
 | Preserves provenance | 100% attribution; write-time rejection, not read-time filtering |
-| Handles licences honestly | 62% of repositories carry no licence; 68.7% of skills resolve to `unknown` and are **not** redistributable |
+| Handles licences honestly | 47.8% of repositories carry no licence; 60.1% of skills resolve to `unknown` and are **not** redistributable (n=4,665 over 3,074 repositories) |
 | Reprocesses without the source | 100 records from raw with `fetch` disabled and every connector method throwing — **0 network calls** |
 | Rebuilds derived indexes | index destroyed → search returns 0 → rebuilt → search works |
 | Honours author removal | bytes deleted, provenance envelope and attribution survive |

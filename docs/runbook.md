@@ -22,7 +22,7 @@ not also the first time anyone asks what to watch.
 | --- | --- | ---: | --- |
 | Dead-letter depth | `appmd dlq list` | **> 0** | A DLQ entry is a job that exhausted its retries. One is a question; a rising count is an incident |
 | Parse failure rate | run report | **> 5%** | Measured baseline is **0.46%** (2 of 438). 5% is ~10× the observed rate — a real regression, not noise |
-| Rights `unknown` share | run report | **swing > 15 points** | Measured 68.7%. A sudden move means the licence lookup broke, not that the world changed |
+| Rights `unknown` share | run report | **swing > 15 points** | Measured **60.1%** over 4,665 records (supersedes 68.7% from an n=131 sample). A sudden move means the licence lookup broke, not that the world changed |
 | Dedup collapse rate | run report | **falls below 20%** | Measured ~50% corpus-wide. A collapse to near zero means fingerprinting is broken and the index is inflating |
 | Raw retention backlog | `appmd raw status` | **expired > 1,000** | Bytes we hold past their retention window are a licence exposure (`DEC-019`), not just untidiness |
 | Pipeline memory | ladder harness | **delta > 128 MB** | `NFR-014`. This has already caught one regression (`DEF-007`) |

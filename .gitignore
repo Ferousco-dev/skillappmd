@@ -49,5 +49,8 @@ packages/connectors/gitskills/node_modules/
 # --- raw object store: bytes are never vendored (REQ-033, NFR-019) ---
 data/raw/
 data/objects/
+# Emitted D1 batches and the intermediate store: derived from the corpus by
+# apps/cli/src/ingest.mjs and reproducible from it. Never source of truth.
+data/d1-batches/
 .vercel
 .env*

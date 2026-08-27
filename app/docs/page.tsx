@@ -269,9 +269,9 @@ export default function DocsPage() {
               quietly promoted to MIT — the claim is recorded as a claim.
             </P>
             <P>
-              This matters more than it sounds: <strong>62% of repositories in the corpus carry no
-              licence at all</strong>. A model that forced a single answer would be inventing one
-              most of the time.
+              This matters more than it sounds: <strong>47.8% of repositories carry no licence at
+              all</strong>, measured across 3,074 real repositories. A model that forced a single
+              answer would be inventing one for nearly half the index.
             </P>
           </Section>
 
@@ -307,8 +307,8 @@ export default function DocsPage() {
             <P>
               That distinction is the point. <C>unknown</C> never means forbidden; it means SkillAppMD
               could not determine the licence and you should check the source before reusing the
-              file. In a measured sample of 131 real records,{' '}
-              <strong>68.7% resolved to <C>unknown</C></strong> — so this is the ordinary case, not
+              file. Measured over 4,665 records from 3,074 repositories,{' '}
+              <strong>60.1% resolve to <C>unknown</C></strong> — so this is the ordinary case, not
               a rare edge, and collapsing it into a false boolean would misrepresent most of the
               index.
             </P>

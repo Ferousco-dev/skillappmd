@@ -1099,3 +1099,26 @@ showed `two-factor auth: disabled`. With a passkey (WebAuthn) there is no code a
 `npm publish` opens a browser flow instead.
 
 README and docs/page.tsx updated: both had said "not published yet".
+
+## 2026-08-27 | increment 15 | developer | PRODUCTION INGEST — 4,668 records live
+apps/cli/src/ingest.mjs: licence resolution (cached) -> real pipeline -> emitted D1 SQL.
+Phase 3 writes files and stops; applying is a separate operator step, so the expensive
+part re-runs without risking the live index. Refuses to emit above a declared write
+budget rather than half-loading the index.
+
+4,678 records with content from 3,074 repositories. 154 licence requests, 431s.
+14,009 row-writes in 29 batches, 15.6% of the free-tier daily budget. All 29 applied,
+zero failures. Live index verified by walking the public cursor: 4,668 records over
+47 pages, 39.9% known / 60.1% unknown - matching the local pipeline exactly.
+
+MEASUREMENTS THAT MOVED, at 35x the previous sample:
+  rights unknown            68.7% (n=131) -> 60.1% (n=4,665)
+  repositories no licence   62%           -> 47.8%
+The second REVERSED a published claim: "most repositories carry no licence" is false;
+52.2% do carry one. Corrected in README, docs page, test-plan.md, LICENSE, runbook
+threshold and risks.md. R3 was APPENDED to, not rewritten - it was correct for its
+sample, and hiding that would hide what the sample was worth.
+
+Duplicate collapse 0.3% vs 49.8% corpus-wide is the arithmetic of stratified sampling,
+not a dedup regression: a sparse even sample of 3.8M rows rarely draws both copies of a
+file. Oracle agreement with file_sha grouping remains 100%.

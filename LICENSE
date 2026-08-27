@@ -27,7 +27,7 @@ NOTE ON INDEXED CONTENT
 This licence covers SkillAppMD's own source code only.
 
 It does NOT cover the SKILL.md files this project indexes. Each of those remains
-under the licence of the repository that published it, and 68.7% of them resolve
+under the licence of the repository that published it, and 60.1% of them resolve
 to `unknown` — meaning no licence could be determined, which is not permission.
 SkillAppMD serves no third-party skill content under any licence (REQ-062); it
 records where each file came from and points at the origin.
