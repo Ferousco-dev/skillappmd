@@ -2,9 +2,9 @@
   "ilana_version": "1.0.3",
   "project": "appmd-skill-cloud",
   "mode": "FLEET",
-  "phase": "03",
-  "gate": "G1",
-  "agent": "interaction-designer",
+  "phase": "04",
+  "gate": "G3",
+  "agent": "constructor",
   "process_style": "hybrid",
   "rigour": 3,
   "open": [
@@ -19,8 +19,8 @@
     "NFR": 39,
     "DOM": 13,
     "DES": 71,
-    "UI": 0,
-    "TC": 0,
+    "UI": 10,
+    "TC": 36,
     "DEF": 0,
     "CR": 1,
     "RSK": 8,
@@ -29,7 +29,9 @@
     "ETH": 1
   },
   "attempts": {
-    "G1": 2
+    "G1": 2,
+    "G2": 1,
+    "G3": 1
   },
   "scope_deferred": [
     "frontend",

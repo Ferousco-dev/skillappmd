@@ -285,3 +285,63 @@ HANDOFF
   assumed:  DEC-026 (JSON provenance), row-size 1.6x index factor,
             queue ordering UNVERIFIED, D1 write throughput UNVERIFIED
   next:     AWAIT USER RULING. No code before it.
+
+---
+
+## 2026-08-27 | CR-001 | conductor | DISPOSITION: OPTION B
+User ruling: separate repositories. appmd-skill-cloud IS the backend repository. The front-end
+moves to its own repo and communicates exclusively through docs/API.md. Front-end files in this
+working tree are NOT to be modified, moved, deleted or integrated - relocation belongs to their
+owner. CR-001 CLOSED. Consequence recorded as DEC-029.
+
+Practical constraint recorded honestly: /package.json belongs to the front-end, so the backend
+cannot claim the root workspace manifest. Each backend package carries its own package.json
+until the root is free. Directory names checked for collision: front-end uses app/ components/
+pages/ lib/ types/ data/; backend uses apps/ packages/. No collision, including on a
+case-insensitive filesystem.
+
+## 2026-08-27 | G3 | interaction-designer | GATE PASS
+Artifact: docs/INTERFACE.md. Criteria 1-8 assessed (Rigour 3).
+
+  Criterion 2 orphan check caught 5 uncovered user-facing requirements
+  (REQ-064..REQ-067, REQ-069). UI-009 and UI-010 added. Now 0 uncovered.
+  Design elements: 81 (71 DES + 10 UI). Traceability: 150/150 requirements designed.
+
+  The CLI was NOT treated as exempt from UI principles. Two error codes exist specifically
+  because measurement showed the failure would otherwise be silent:
+  SAMPLING_NOT_STRATIFIED (R3: shards are size-ordered; an offset-0 run reports
+  "mean skill size 10 bytes" and looks like a success) and NO_DLQ_CONFIGURED
+  (DEC-025: Cloudflare deletes exhausted messages permanently when no DLQ is set).
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 1 COMPLETE
+Skeleton, domain core, ports, dependency lint.
+
+  packages/skill-core   pure domain, no I/O, no vendor SDK
+    model/types.js       closed vocabularies (DOM-005, DOM-013, ORIGIN_KIND, RIGHTS_STATE, STAGE)
+    rights/licence.js    three-layer resolution, SPDX normalisation, conflict handling
+    rights/rights.js     rights posture with EXPLICIT unknown state (DEC-018), retention (DEC-019)
+    identity/fingerprint content_hash + normalised_hash + git blob sha cross-check (DEC-012)
+    identity/occurrence  occurrence key, idempotency key, relationship resolution
+    provenance/          fact-vs-inference, write-time invariants
+  packages/ports        interfaces only; connector + queue contract assertions
+  packages/tools        depcheck.js - the NFR-028 dependency lint
+
+EVIDENCE, increment 1 exit condition (ROADMAP.md SS2):
+  clean tree            -> depcheck exit 0
+  deliberate violation  -> depcheck exit 1, names file, import and rule
+  violation removed     -> depcheck exit 0
+  NFR-028 is enforced by a failing build, not by review discipline.
+
+TESTS: 36 written, 36 pass, 0 fail. Run: node --test 'packages/skill-core/test/*.test.js'
+  Note: `node --test <dir>` fails on this Node version - it resolves the bare directory as a
+  module. Invocation issue, not a code failure; package.json now uses the glob form.
+  TC-001..TC-036. 25 requirements now carry >= 1 test case.
+
+Invariants proven executable rather than aspirational:
+  NFR-004 attribution missing        -> write REJECTED (TC-025)
+  NFR-005 unclassifiable field       -> write REJECTED (TC-026)
+  NFR-006 redistributable without L2     -> throws (TC-008)
+  REQ-058 unknown => not redistributable (TC-004, TC-005)
+  DEC-018 unknown is an explicit state, not all-false booleans (TC-006)
+  DEC-025 consumer refuses to start without a DLQ (TC-034)
+  REQ-045 same name different content is NOT a duplicate (TC-022)
