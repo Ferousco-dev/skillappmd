@@ -486,3 +486,31 @@ tracked file stays visible to git. Verified by `git check-ignore` in both direct
 *Small change, recorded because silently re-ignoring `data/` would have made another session's
 work vanish from version control without anyone being told — the kind of failure that is
 invisible until it costs someone a day.*
+
+---
+
+## DEC-029 — Backend layout under a shared root: per-package manifests, no root workspace manifest yet
+**Status:** DECIDED · closes `CR-001` · user ruling: separate repositories
+
+`appmd-skill-cloud` is the backend repository. The front-end moves to its own repo and talks to
+this one **only** through `docs/API.md`. Its files stay in the working tree untouched until its
+owner relocates them.
+
+**The practical constraint:** `/package.json` exists and belongs to the front-end
+(`appmd-skill-frontend`). The user's instruction not to modify front-end files means the backend
+**cannot claim the root manifest**, which is where an npm workspace root would normally live.
+
+**Resolution:** each backend package carries its **own `package.json`**. No root workspace
+manifest is created while the front-end occupies the root.
+
+| Now | After the front-end's owner relocates its files |
+| --- | --- |
+| `apps/*` and `packages/*` each self-contained | add a root workspace manifest, delete the per-package duplication |
+
+Directory names were checked for collision: the front-end uses `app/`, `components/`, `pages/`,
+`lib/`, `types/`, `data/`. The backend uses **`apps/`**, **`packages/`** — neither collides, including
+on a case-insensitive filesystem.
+
+*Cost of this arrangement:* some duplicated devDependencies across packages until the root is free.
+*Benefit:* zero modification to another session's files, and conversion to a workspace later is
+adding one file and deleting a few lines. Cheap and reversible beats correct and destructive.

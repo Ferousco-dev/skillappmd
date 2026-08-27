@@ -70,3 +70,13 @@ DES-068,Zero-AI-spend guard,ARCHITECTURE.md#5,NFR-015
 DES-069,"Reference-only message payload (storage key + hash, never content)",QUEUE_MODEL.md#3,REQ-018
 DES-070,"Oracle validation harness (dedup_primary / frontmatter_valid, stratified)",TEST_STRATEGY.md#2,REQ-047;REQ-041;NFR-002;NFR-003
 DES-071,Offline test harness + recorded connector fixtures,TEST_STRATEGY.md#1,NFR-030
+UI-001,CLI + read-only HTTP API; no GUI,INTERFACE.md#1,REQ-088;REQ-089;REQ-090
+UI-002,"Destructive-action guards (--confirm, --dry-run)",INTERFACE.md#4,REQ-063;REQ-091;REQ-052
+UI-003,Error catalogue with recovery paths,INTERFACE.md#5,REQ-037;REQ-071
+UI-004,Run report surfaced to terminal incl. sampling bias,INTERFACE.md#3,REQ-085;REQ-013
+UI-005,Progress + latency budget; Ctrl-C safe,INTERFACE.md#7,REQ-010;REQ-083
+UI-006,"Accessibility: no colour-only meaning, --json, NO_COLOR",INTERFACE.md#8,REQ-089
+UI-007,API response notice + rights.state on the wire,INTERFACE.md#9,REQ-070;REQ-079;REQ-061
+UI-008,Source list shows declared access policy,INTERFACE.md#3,REQ-068;REQ-006
+UI-009,"API endpoint surface as an interface: versioned paths, stable shapes",INTERFACE.md#9,REQ-064;REQ-065;REQ-069
+UI-010,"Cursor pagination UX: opaque cursor, enforced page size, no offset",INTERFACE.md#9,REQ-066;REQ-067

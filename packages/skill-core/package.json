@@ -1,0 +1,9 @@
+{
+  "name": "@appmd/skill-core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure domain: identity, rights, provenance. NO I/O. NO vendor SDK. (NFR-028)",
+  "main": "src/index.js",
+  "scripts": { "test": "node --test test/*.test.js" }
+}

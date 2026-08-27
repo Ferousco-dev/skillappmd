@@ -2,17 +2,16 @@
   "ilana_version": "1.0.3",
   "project": "appmd-skill-cloud",
   "mode": "FLEET",
-  "phase": "02",
+  "phase": "03",
   "gate": "G1",
-  "agent": "architect",
+  "agent": "interaction-designer",
   "process_style": "hybrid",
   "rigour": 3,
   "open": [
     "RSK-002",
     "RSK-004",
     "RSK-007",
-    "ETH-001",
-    "CR-001"
+    "ETH-001"
   ],
   "overrides": [],
   "counters": {
@@ -25,7 +24,7 @@
     "DEF": 0,
     "CR": 1,
     "RSK": 8,
-    "DEC": 28,
+    "DEC": 29,
     "MET": 0,
     "ETH": 1
   },

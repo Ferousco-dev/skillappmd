@@ -1,0 +1,8 @@
+{
+  "name": "@appmd/ports",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Interface definitions only. Every port has >=2 adapters, one needing no cloud account (NFR-027).",
+  "main": "src/index.js"
+}

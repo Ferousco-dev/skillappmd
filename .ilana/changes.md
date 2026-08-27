@@ -79,3 +79,15 @@ It is recorded so the boundary it describes is visible in this session's ledger 
 - Impact 1: **applied** — secret protections restored additively.
 - Impact 2: **applied** — corpus path changed to `data/corpus/`, `DEC-011` superseded.
 - Impact 3: **BLOCKED pending the user's ruling.** Carried into G2 as an open item.
+
+### CR-001 DISPOSITION — 2026-08-27
+
+**User ruling: Option B — separate repositories.**
+
+- `appmd-skill-cloud` **is the backend repository.**
+- The front-end will live in its own repository and communicates **exclusively** through the API
+  contract in `docs/API.md`.
+- **Front-end files in this working tree are not to be modified, moved, deleted or integrated.**
+  Their relocation belongs to their owner, not to this session.
+
+**CR-001 CLOSED.** Consequence recorded as `DEC-029`.
