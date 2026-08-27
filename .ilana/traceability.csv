@@ -22,7 +22,7 @@ REQ-020,"A job exceeding maximum attempts shall move to a dead letter queue, nev
 REQ-021,"Dead-lettered jobs shall be listable, inspectable, and manually re-submittable.",functional,M,DES-013,,TC-080;TC-081,implemented
 REQ-022,"Failure of one job shall not halt, restart or re-run the pipeline for any other job.",functional,M,DES-014,,TC-075;TC-079,implemented
 REQ-023,The queue shall be provided through a port interface with a local adapter and a Cloudflare Queues adapter.,functional,M,DES-009;DES-010;DES-011,,,designed
-REQ-024,"The fetcher shall enforce per-source rate limits, concurrency caps, backoff, jitter and Retry-After.",functional,M,DES-015,,,designed
+REQ-024,"The fetcher shall enforce per-source rate limits, concurrency caps, backoff, jitter and Retry-After.",functional,M,DES-015,,TC-136,implemented
 REQ-025,The fetcher shall open a circuit breaker on repeated source failure and report it. The abstraction is defined in Phase 1 and retained for future network-based connectors; only the local-corpus path may omit an implementation.,functional,S,DES-016,,,designed
 REQ-026,"The fetcher shall send a truthful, contactable User-Agent identifying AppMD, and shall never impersonate a browser or another bot.",functional,M,DES-015,,,designed
 REQ-027,"The system shall contain no mechanism for evading rate limits, bot detection, authentication or access controls.",functional,M,DES-007,,,designed
@@ -55,10 +55,10 @@ REQ-053,The canonical schema shall be extensible: new fields shall not require r
 REQ-054,The store shall be provided through a port interface with a local adapter; the production adapter is chosen in DATABASE.md at G2.,functional,M,DES-029;DES-030;DES-031;DES-032,,,designed
 REQ-055,Historical versions shall never be silently overwritten; a content change creates a new version linked to its predecessor.,functional,M,DES-033,,,designed
 REQ-056,"The system shall record L1, L2 and L3 licence layers independently, each with its evidence.",functional,M,DES-038,,,designed
-REQ-057,"The system shall normalise licence identifiers to SPDX where recognised, and to UNKNOWN otherwise — never to a guess.",functional,M,DES-040,,TC-001;TC-002,implemented
+REQ-057,"The system shall normalise licence identifiers to SPDX where recognised, and to UNKNOWN otherwise — never to a guess.",functional,M,DES-040,,TC-001;TC-002;TC-139,implemented
 REQ-058,"Absent, unparseable or conflicting licence shall yield redistributable = false.",functional,M,DES-039,,TC-003;TC-004,implemented
 REQ-059,"The system shall compute and store indexable, linkable, cacheable, redistributable, each with the layer and evidence that produced it.",functional,M,DES-039,,,designed
-REQ-060,"Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the more restrictive applied for redistribution.",functional,M,DES-038,,TC-007;TC-116,implemented
+REQ-060,"Where L2 and L3 conflict, both shall be retained, the conflict flagged, and the more restrictive applied for redistribution.",functional,M,DES-038,,TC-007;TC-116;TC-142,implemented
 REQ-061,Every publicly exposed record shall carry attribution and canonical source URL. The API shall be incapable of emitting a record without them.,functional,M,DES-041;DES-051;UI-007,,,designed
 REQ-062,The Phase 1 API shall not serve third-party skill content under any licence condition.,functional,M,DES-039,,,designed
 REQ-063,"The system shall provide an author-initiated correction/removal path, recording the request, the actor, the disposition and the timestamp. The path exists in Phase 1 even though Phase 1 exposes no content, because removal touches the can...",functional,M,DES-022;DES-042;UI-002,,,designed
@@ -100,9 +100,9 @@ REQ-098,"Raw content retention shall be rights-aware and default to non-permanen
 NFR-001,Re-running the full pipeline over an identical input batch shall produce a byte-identical canonical record set. Verified by hashing the canonical output of two independent runs.,non-functional,M,DES-064,,TC-063;TC-121,implemented
 NFR-002,"Exact-duplicate detection shall achieve ≥99.9% agreement with the corpus's dedup_primary on exact-content grouping over a ≥10,000-row sample. This is a quality target, not an automatic gate failure (DEC-023): a shortfall is a finding to ...",non-functional,M,DES-067;DES-070,,,designed
 NFR-003,"Parser frontmatter_valid shall agree with the corpus column on ≥99% of a ≥10,000-row sample; every disagreement shall be triaged as a defect in one implementation or the other.",non-functional,M,DES-067;DES-070,,,designed
-NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,DES-041,,TC-025;TC-041;TC-112,implemented
-NFR-005,100% of canonical field values shall be classifiable as source fact or AppMD inference.,non-functional,M,DES-036,,TC-026,implemented
-NFR-006,0 canonical records shall carry redistributable = true without a recorded L2 licence evidencing it.,non-functional,M,DES-039,,TC-008;TC-042,implemented
+NFR-004,"100% of canonical records shall carry attribution and canonical source URL. A record lacking either shall be rejected at write time, not filtered at read time.",non-functional,M,DES-041,,TC-025;TC-041;TC-112;TC-144,implemented
+NFR-005,100% of canonical field values shall be classifiable as source fact or AppMD inference.,non-functional,M,DES-036,,TC-026;TC-145,implemented
+NFR-006,0 canonical records shall carry redistributable = true without a recorded L2 licence evidencing it.,non-functional,M,DES-039,,TC-008;TC-042;TC-140,implemented
 NFR-007,"No single job failure shall cause reprocessing of already-completed work. Verified by injecting failure at row *n* of 10,000 and asserting rows 1..*n*−1 are untouched.",non-functional,M,DES-014,,,designed
 NFR-008,The pipeline shall resume from its persisted cursor after abrupt termination (SIGKILL) with no duplicate canonical records and no lost jobs.,non-functional,M,DES-064,,,designed
 NFR-009,Every stage shall be idempotent: executing the same job 10 times shall produce the state of executing it once.,non-functional,M,DES-064,,TC-040;TC-127,implemented
@@ -119,9 +119,9 @@ NFR-019,"No secret shall appear in source control, logs, raw records, canonical 
 NFR-020,"All credentials shall be supplied by environment/secret store, never by literal.",non-functional,M,DES-046,,,designed
 NFR-021,"Third-party content shall be treated as untrusted input at every stage; no stage shall execute, evaluate or shell out to it.",non-functional,M,DES-045,,,designed
 NFR-022,"Parsing shall be resistant to malformed, adversarial and oversized input; a 100 MB file, a YAML bomb and invalid UTF-8 shall each fail cleanly with a recorded reason.",non-functional,M,DES-024;DES-045,,TC-100;TC-101;TC-102;TC-103;TC-104,implemented
-NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,DES-002;DES-015,,,designed
+NFR-023,"The system shall respect every declared source rate limit and Retry-After, verified by a test asserting no request exceeds the declared budget.",non-functional,M,DES-002;DES-015,,TC-137,implemented
 NFR-024,"The system shall contain no access-control, rate-limit or bot-detection circumvention (BRIEF §50).",non-functional,M,DES-007,,TC-033,implemented
-NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,DES-041,,,designed
+NFR-025,"Attribution shall be preserved through every transformation, from discovery to API response.",non-functional,M,DES-041,,TC-144,implemented
 NFR-026,GitSkills CC-BY-4.0 attribution shall appear in the repository and in any output derived from that corpus.,non-functional,M,DES-004,,TC-056,implemented
 NFR-027,"Every infrastructure dependency (queue, object store, canonical store, cache, scheduler) shall sit behind a port interface with at least two adapters, one of which requires no cloud account.",non-functional,M,DES-010;DES-017;DES-029;DES-059;DES-063,,,designed
 NFR-028,"Business logic shall not import a vendor SDK. Verified by a dependency-direction lint rule, not by review discipline.",non-functional,M,DES-029;DES-059,,TC-090,implemented

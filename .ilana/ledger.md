@@ -483,3 +483,42 @@ singletons, and oracle 3's evidence covers 4 groups. Broader evidence is increme
 job, on the 1,000 and 10,000 rungs.
 
 133 tests, 133 pass.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 7 COMPLETE
+Provenance, licence and rights, end to end on real corpus data.
+
+Built RepoLicenceReader over the datasets-server /filter endpoint. `IN (...)` is rejected
+by the service, so lookups batch with OR: 231 repositories resolved in 12 requests.
+
+DEFECT IN OUR OWN CONNECTOR, found live: a HTTP 500 carrying
+{"error":"the dataset index is loading, this can take a minute"} - a transient warm-up
+indistinguishable from a hard failure unless the body is read. The reader had shipped
+WITHOUT the retry behaviour REQ-024 already required. Added fetchWithRetry: bounded
+exponential backoff with jitter, Retry-After honoured in preference to our own delay,
+and PERMANENT failures (404) attempted exactly once - retrying those burns a source's
+quota for nothing. TC-136, TC-137.
+
+MEASURED LICENCE REALITY (n=700 repos, stratified; metadata_fetched=1 for all 700,
+so empty values are real absences):
+  62.0% of repositories carry NO LICENCE AT ALL
+  MIT 28.6% | NOASSERTION 4.4% | Apache-2.0 3.3% | copyleft ~1.3%
+
+END-TO-END RUN (131 real records):
+  rights known           41  (31.3%)
+  rights UNKNOWN         90  (68.7%)
+  redistributable        36  (27.5%)
+  L2/L3 conflicts         2
+  L3 claim, no L2         4
+  retention: 90 process-then-delete, 5 short, 36 standard
+
+  Had AppMD treated "publicly accessible" as "freely redistributable" - the assumption
+  BRIEF SS38 forbids - roughly TWO THIRDS of the corpus would have been mislabelled, and
+  the error would have stayed invisible until someone was harmed by it. DEC-009, DEC-018
+  and DEC-019 looked merely cautious on paper; the data says they were load-bearing.
+
+EXIT CONDITION MET, invariants asserted against THE STORE rather than our own objects:
+  NFR-006  redistributable without L2 evidence  0  PASS
+  NFR-004  missing attribution                  0  PASS
+  NFR-005  unclassifiable field origins         0  PASS
+
+145 tests, 145 pass.

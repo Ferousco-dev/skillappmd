@@ -143,3 +143,49 @@ test('TC-069 stratifiedPlan handles awkward sizes without losing records', () =>
 test('TC-070 INVALID_CURSOR is reported rather than silently ignored', async () => {
   await assert.rejects(() => conn().discover({ limit: 10, cursor: 'garbage' }), /INVALID_CURSOR/);
 });
+
+test('TC-136 REQ-024 transient failures retry with backoff; permanent ones do not', async (t) => {
+  const { fetchWithRetry } = await import('../src/retry.js');
+  const orig = globalThis.fetch;
+  const waits = [];
+  const sleep = async (ms) => { waits.push(ms); };
+  try {
+    // Transient: the real observed case - HTTP 500 "dataset index is loading".
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return calls < 3
+        ? { ok: false, status: 500, headers: new Map([]), text: async () => 'loading' }
+        : { ok: true, status: 200 };
+    };
+    const res = await fetchWithRetry('https://x', { sleep, rng: () => 0.5, baseMs: 100 });
+    assert.equal(res.ok, true);
+    assert.equal(calls, 3, 'retried twice, then succeeded');
+    assert.equal(waits.length, 2);
+    assert.ok(waits[1] > waits[0], 'backoff grows between attempts');
+
+    // Permanent: a 404 must NOT be retried - retrying a permanent failure burns
+    // the source's quota for nothing (NFR-023).
+    calls = 0;
+    globalThis.fetch = async () => { calls++; return { ok: false, status: 404, headers: new Map() }; };
+    await assert.rejects(() => fetchWithRetry('https://x', { sleep }), /HTTP 404/);
+    assert.equal(calls, 1, 'a permanent failure is attempted exactly once');
+  } finally { globalThis.fetch = orig; }
+});
+
+test('TC-137 NFR-023 a stated Retry-After overrides our own backoff', async () => {
+  const { fetchWithRetry } = await import('../src/retry.js');
+  const orig = globalThis.fetch;
+  const waits = [];
+  try {
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return calls === 1
+        ? { ok: false, status: 429, headers: new Map([['retry-after', '7']]) }
+        : { ok: true, status: 200 };
+    };
+    await fetchWithRetry('https://x', { sleep: async (ms) => { waits.push(ms); }, baseMs: 100 });
+    assert.equal(waits[0], 7000, 'the source\'s stated delay is honoured, not our shorter one');
+  } finally { globalThis.fetch = orig; }
+});

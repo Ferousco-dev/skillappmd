@@ -68,3 +68,48 @@ occurrences. Sizing content at 3.8M × mean body would overstate it by ~2×.
 ## Sources
 
 `https://datasets-server.huggingface.co/rows?dataset=mvaccargiu/gitskills&config=artifacts&split=train&offset={0,50k,200k,500k,900k,1.4M,1.9M,2.4M,2.9M,3.4M,3.7M,3796900}&length=100`
+
+---
+
+## Addendum — Licence distribution (measured 2026-08-27, increment 7)
+
+Stratified sample of the corpus `repos` table, **n = 700** across the full offset range.
+`metadata_fetched = 1` for all 700, so empty licence values are **real absences**, not unfetched rows.
+
+| Licence | Count | Share |
+| --- | ---: | ---: |
+| **(empty — no licence)** | **434** | **62.0%** |
+| MIT | 200 | 28.6% |
+| NOASSERTION | 31 | 4.4% |
+| Apache-2.0 | 23 | 3.3% |
+| AGPL-3.0 | 5 | 0.7% |
+| GPL-3.0 | 3 | 0.4% |
+| ISC / BSD-2-Clause / LGPL-2.1 / WTFPL | 1 each | 0.6% |
+
+### The finding
+
+**Roughly 62% of repositories hosting agent skills carry no licence at all.**
+
+Under default copyright, no licence means **no permission granted** — not permission implied.
+Running the full pipeline over a 131-record real sample gives:
+
+| Outcome | Count | Share |
+| --- | ---: | ---: |
+| rights `known` | 41 | 31.3% |
+| **rights `unknown`** | **90** | **68.7%** |
+| redistributable | 36 | 27.5% |
+| L2/L3 conflicts | 2 | — |
+| L3 claim with no L2 backing | 4 | — |
+
+**Had AppMD treated "publicly accessible" as "freely redistributable" — the assumption BRIEF §38
+explicitly forbids — approximately two thirds of the corpus would have been mislabelled**, and the
+error would have been invisible until someone was harmed by it.
+
+`NOASSERTION` is GitHub's marker for *"a licence file exists but we could not identify it."* It is
+normalised to `UNKNOWN` rather than guessed (`REQ-057`), which is the correct reading: an
+unidentified licence is not an absent one, and it is certainly not a permissive one.
+
+This is the empirical justification for three decisions that looked merely cautious on paper:
+`DEC-009` (serve nothing in Phase 1), `DEC-018` (`unknown` as an explicit state), and `DEC-019`
+(rights-aware retention — 90 of 131 records get the shortest retention, because we hold bytes we
+have no clear right to hold).

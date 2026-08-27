@@ -8,6 +8,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { REQUIRED_COLUMNS } from './corpus-reader.js';
+import { fetchWithRetry } from './retry.js';
 
 const BASE = 'https://datasets-server.huggingface.co/rows';
 const DATASET = 'mvaccargiu/gitskills';
@@ -39,12 +40,7 @@ export class HfRowsCorpusReader {
 
     const url = `${BASE}?dataset=${encodeURIComponent(DATASET)}&config=${this.#config}` +
                 `&split=train&offset=${offset}&length=${length}`;
-    const res = await fetch(url, { headers: { 'User-Agent': this.#ua, Accept: 'application/json' } });
-    if (res.status === 429) {
-      const ra = res.headers.get('retry-after');
-      throw new Error(`SOURCE_RATE_LIMITED: honour Retry-After${ra ? `: ${ra}s` : ''}`);
-    }
-    if (!res.ok) throw new Error(`corpus read failed: HTTP ${res.status} at offset ${offset}`);
+    const res = await fetchWithRetry(url, { headers: { 'User-Agent': this.#ua, Accept: 'application/json' } });
 
     const body = await res.json();
     // Keep only the columns Phase 1 needs - the point of a columnar source.
