@@ -177,3 +177,28 @@ test('TC-084 REQ-019 jitter actually varies the deferral across messages', async
 test('TC-083 NFR-038 the queue refuses an implicit clock', () => {
   assert.throws(() => new LocalQueue({}), /clock/);
 });
+
+
+test('TC-193 DEF-006 an absorbed duplicate is SETTLED, so the consumer terminates', async () => {
+  // The bug: an absorbed duplicate was never marked done, so consume() re-selected it
+  // forever. The handler was correctly never re-run - so the idempotency GUARANTEE held
+  // while the consumer hung. A liveness bug hiding behind a correctness guarantee, and
+  // invisible to every test that only asserted "the handler ran once".
+  const queue = q();
+  // Same idempotency key sent twice, as a repeated trigger would produce.
+  queue.send('ingest', ref(1), { idempotencyKey: 'same' });
+  queue.send('ingest', ref(1), { idempotencyKey: 'same' });
+
+  let handled = 0;
+  const done = queue.consume('ingest', async () => { handled++; },
+    { ...DLQ, batchSize: 10, maxBatches: 50 });
+  const stats = await Promise.race([
+    done,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('consume did not terminate')), 4000)),
+  ]);
+
+  assert.equal(handled, 1, 'the handler runs exactly once');
+  assert.equal(stats.duplicatesAbsorbed, 1);
+  assert.equal(queue.depth('ingest'), 0, 'BOTH messages are settled, not just the first');
+  queue.close();
+});

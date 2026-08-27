@@ -10,7 +10,7 @@
  * drops 7.65 GB -> ~4.3 GB and D1 headroom roughly doubles.
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
  * REQ-094: migrations are ordered, re-runnable, and record what they touched.
@@ -132,6 +132,41 @@ export const MIGRATIONS = [
       // Cursor pagination (NFR-032): stable composite ordering.
       `CREATE INDEX IF NOT EXISTS idx_cs_cursor ON canonical_skills(created_at, id)`,
       `CREATE INDEX IF NOT EXISTS idx_jobs_skill_ref ON jobs(skill_ref)`,
+    ],
+  },
+  {
+    version: 2,
+    name: 'removal-requests-and-analyser-versions',
+    up: [
+      // REQ-063: author-initiated correction and removal. The REQUEST is recorded
+      // whatever its disposition - a refusal that leaves no trace is indistinguishable
+      // from never having been asked.
+      `CREATE TABLE IF NOT EXISTS removal_requests (
+         request_id TEXT PRIMARY KEY,
+         canonical_id TEXT,
+         content_hash TEXT,
+         repository TEXT NOT NULL,
+         kind TEXT NOT NULL,                    -- removal | correction
+         reason TEXT NOT NULL,
+         requested_by TEXT NOT NULL,
+         requested_at TEXT NOT NULL,
+         disposition TEXT NOT NULL,             -- pending | actioned | declined
+         disposition_reason TEXT,
+         actioned_at TEXT,
+         actor TEXT
+       )`,
+      `CREATE INDEX IF NOT EXISTS idx_removal_repo ON removal_requests(repository)`,
+      `CREATE INDEX IF NOT EXISTS idx_removal_disposition ON removal_requests(disposition)`,
+
+      // REQ-095: "which records are affected?" must be a QUERY, not a guess. The
+      // producing analyser and version travel beside the value they produced.
+      `ALTER TABLE canonical_skills ADD COLUMN analyser_versions TEXT NOT NULL DEFAULT '{}'`,
+      `CREATE INDEX IF NOT EXISTS idx_cs_analysers ON canonical_skills(analyser_versions)`,
+
+      // DEC-015: a tombstone outlives the bytes it describes.
+      `ALTER TABLE canonical_skills ADD COLUMN tombstoned_at TEXT`,
+      `ALTER TABLE canonical_skills ADD COLUMN content_bytes_held INTEGER NOT NULL DEFAULT 1`,
+      `CREATE INDEX IF NOT EXISTS idx_cs_tombstoned ON canonical_skills(tombstoned_at)`,
     ],
   },
 ];

@@ -253,6 +253,78 @@ export class SqliteCanonicalStore {
     ).run(id, sourceId, position, now);
   }
 
+  // ---- removal and correction (REQ-063, DEC-015) --------------------------
+
+  recordRemovalRequest(r) {
+    this.#db.prepare(
+      `INSERT INTO removal_requests (request_id, canonical_id, content_hash, repository, kind,
+         reason, requested_by, requested_at, disposition, disposition_reason, actioned_at, actor)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(request_id) DO UPDATE SET
+         disposition=excluded.disposition, disposition_reason=excluded.disposition_reason,
+         actioned_at=excluded.actioned_at, actor=excluded.actor`
+    ).run(r.requestId, r.canonicalId ?? null, r.contentHash ?? null, r.repository, r.kind,
+          r.reason, r.requestedBy, r.requestedAt, r.disposition,
+          r.dispositionReason ?? null, r.actionedAt ?? null, r.actor ?? null);
+    return r.requestId;
+  }
+
+  getRemovalRequest(id) {
+    return this.#db.prepare('SELECT * FROM removal_requests WHERE request_id = ?').get(id) ?? null;
+  }
+  listRemovalRequests({ repository = null, disposition = null } = {}) {
+    if (repository) return this.#db.prepare(
+      'SELECT * FROM removal_requests WHERE repository = ? ORDER BY requested_at').all(repository);
+    if (disposition) return this.#db.prepare(
+      'SELECT * FROM removal_requests WHERE disposition = ? ORDER BY requested_at').all(disposition);
+    return this.#db.prepare('SELECT * FROM removal_requests ORDER BY requested_at').all();
+  }
+
+  /**
+   * DEC-015: deletes the BYTES and marks the record, while the provenance envelope
+   * and the tombstone survive permanently. The canonical row is NOT deleted - an
+   * index that can silently lose records is not an index.
+   */
+  markTombstoned({ canonicalId, now }) {
+    this.#db.prepare(
+      `UPDATE canonical_skills SET tombstoned_at = ?, content_bytes_held = 0, updated_at = ?
+       WHERE id = ?`).run(now, now, canonicalId);
+  }
+
+  tombstonedCount() {
+    return this.#db.prepare(
+      'SELECT COUNT(*) AS n FROM canonical_skills WHERE tombstoned_at IS NOT NULL').get().n;
+  }
+
+  // ---- re-analysis (REQ-095) ----------------------------------------------
+
+  setAnalyserVersions(canonicalId, versions, now) {
+    this.#db.prepare(
+      'UPDATE canonical_skills SET analyser_versions = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify(versions), now, canonicalId);
+  }
+
+  /**
+   * REQ-095: "which records are affected?" answered by QUERY, not by guess.
+   * Returns records whose recorded version for `analyser` differs from `version`,
+   * including records that have never been analysed by it.
+   */
+  findForReanalysis({ analyser, version, cursor = null, limit = 100 }) {
+    const n = Math.min(Math.max(1, limit), 1000);
+    const rows = cursor
+      ? this.#db.prepare(
+          `SELECT id, content_hash, analyser_versions, created_at FROM canonical_skills
+           WHERE json_extract(analyser_versions, '$.' || ?) IS NOT ?
+             AND (created_at, id) > (?, ?)
+           ORDER BY created_at, id LIMIT ?`).all(analyser, version, ...decodeCursor(cursor), n)
+      : this.#db.prepare(
+          `SELECT id, content_hash, analyser_versions, created_at FROM canonical_skills
+           WHERE json_extract(analyser_versions, '$.' || ?) IS NOT ?
+           ORDER BY created_at, id LIMIT ?`).all(analyser, version, n);
+    const next = rows.length === n ? encodeCursor(rows.at(-1).created_at, rows.at(-1).id) : null;
+    return { rows, cursor: { next, limit: n } };
+  }
+
   /** DEC-015: bytes deletable, provenance envelope permanent. */
   tombstone({ contentHash, reason, actor, now, provenance }) {
     this.#db.prepare(

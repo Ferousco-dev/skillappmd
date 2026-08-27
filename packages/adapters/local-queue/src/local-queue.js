@@ -129,6 +129,11 @@ export class LocalQueue {
               this.#db.prepare(
                 'UPDATE processed SET deliveries = deliveries + 1 WHERE idempotency_key = ?')
                 .run(msg.idempotency_key);
+              // DEF-006: an absorbed duplicate must ALSO be settled. Leaving it 'ready'
+              // meant consume() re-selected it forever - the handler was correctly never
+              // called, so the idempotency guarantee held while the consumer hung. A
+              // liveness bug hiding behind a correctness guarantee.
+              this.#db.prepare(`UPDATE messages SET status='done' WHERE id = ?`).run(msg.id);
               stats.duplicatesAbsorbed++;
               continue;
             }

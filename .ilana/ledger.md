@@ -691,3 +691,51 @@ TWO HARNESS FLAWS CAUGHT BEFORE THEY BECAME EVIDENCE:
     repoLicence null so it runs offline (NFR-030). Now labelled "BY CONSTRUCTION".
 
 180 tests, 180 pass.
+
+## 2026-08-27 | phase 04 | constructor | INCREMENT 10 COMPLETE
+Author correction/removal and re-analysis. Schema migrated v1 -> v2, which exercised
+REQ-094 for real rather than in a fixture: two ALTER TABLE statements and a new
+removal_requests table applied to an existing populated store with no data loss.
+
+REQ-063 - author correction and removal:
+  The REQUEST is recorded before any disposition is decided. A refusal that leaves no
+  trace is indistinguishable from never having been asked, so a decline is stored with
+  its reason and stays visible to the requester (TC-185).
+  Requests missing repository, reason or requester are refused (TC-182).
+  A request cannot be actioned twice (TC-186).
+
+DEC-015 - tombstoning, demonstrated on real records:
+  Bytes are deleted; the canonical record is RETAINED and marked. An index that
+  silently loses records is not an index, and attribution is what the author is owed
+  even after removal. Verified on real data: after removal the record still carries
+  PhongFeng/FFramework and its canonical source URL (TC-183).
+  The tombstone envelope carries who asked, for what, when, and under what claim.
+
+REQ-095 - re-analysis:
+  "Which records are affected?" is a QUERY, not a guess, because every derived value
+  carries the analyser id and version that produced it. On the real 300-record store:
+  279 affected by a security-scanner 0.1.0 -> 0.2.0 bump, including records never
+  analysed at all (TC-188). --dry-run reports the blast radius without enqueuing
+  (TC-189). Repeated triggers are absorbed by idempotency key (TC-190). Messages carry
+  references and name their trigger, never content (TC-191).
+
+NFR-010 accounting on the demo store: canonical 299, tombstoned 2, servable 297,
+tombstone envelopes 2. Reported as "equivalent minus tombstoned", never "identical".
+
+DEF-006 (HIGH, liveness) FOUND AND CLOSED:
+  The increment 10 suite HUNG with no output. An absorbed duplicate delivery was never
+  marked done, so consume() re-selected it forever. Every existing test passed
+  throughout: TC-076 asserts every duplicate is absorbed and no key processed twice,
+  and that was TRUE during the hang - the handler genuinely never ran again. The
+  idempotency GUARANTEE held perfectly while the consumer never terminated.
+  A liveness bug hiding behind a correctness guarantee. The tests asked "did the
+  handler run once?" and never "did the consumer finish?" - different questions, and
+  only the second one fails here. Surfaced only because re-analysis enqueues the same
+  idempotency key twice BY DESIGN; a repeated trigger is the expected case for REQ-095.
+  TC-193 now asserts termination with a race guard, so a recurrence fails loudly
+  instead of hanging the suite.
+
+Two API/store tests asserted schema_version 1 and were updated to the constant rather
+than a literal, so the next migration does not break them.
+
+193 tests, 193 pass.

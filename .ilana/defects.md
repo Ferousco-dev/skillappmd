@@ -177,3 +177,33 @@ oracle agreement **97.7% over 438 records**.
 author's assumptions". This is the same, sharpened: **I wrote a YAML subset by imagining what
 `SKILL.md` files look like.** 438 real documents disagreed four separate ways, and no amount of
 unit testing against my own fixtures would have surfaced any of them.
+
+---
+
+## DEF-006 — An absorbed duplicate was never settled, so the consumer looped forever
+**Found:** 2026-08-27 in increment 10 · **Severity: HIGH (liveness)** · **Status: CLOSED**
+**Requirement:** `REQ-016`, `REQ-022` · **Component:** `packages/adapters/local-queue/src/local-queue.js`
+
+**Symptom.** The increment 10 test file hung with no output. Not a failure — a hang.
+
+**Cause.** When the idempotency ledger absorbed a duplicate delivery, the code did the right thing
+about the *handler* — skipped it — and then `continue`d **without marking the message done**. The
+message stayed `ready`, so the next `consume()` poll selected it again, absorbed it again, and
+looped indefinitely.
+
+**Why every existing test passed.** `TC-076` asserts every duplicate is absorbed and no key is
+processed twice. That assertion was **true throughout the hang** — the handler genuinely never ran
+again. The idempotency *guarantee* held perfectly while the consumer never terminated.
+
+**A liveness bug hiding behind a correctness guarantee.** The tests asked "did the handler run
+exactly once?" and never asked "did the consumer finish?". Those are different questions, and only
+the second one fails here.
+
+It surfaced only because increment 10's re-analysis enqueues the *same* idempotency key twice by
+design — a repeated trigger is the expected case for `REQ-095`, not an edge case.
+
+**Fix.** An absorbed duplicate is now marked `done` alongside incrementing its delivery count.
+
+**Regression test:** `TC-193` asserts the handler runs once **and** that both messages are settled
+**and** that `consume()` terminates, with a 4-second race guard so a recurrence fails loudly
+instead of hanging the suite.

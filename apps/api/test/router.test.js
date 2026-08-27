@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiRouter, NOTICE } from '../src/router.js';
 import { serialiseSkill } from '../src/serialise.js';
-import { SqliteCanonicalStore } from '../../../packages/adapters/sqlite/src/index.js';
+import { SqliteCanonicalStore, SCHEMA_VERSION } from '../../../packages/adapters/sqlite/src/index.js';
 import { MemoryRateLimiter } from '../../../packages/adapters/memory-ratelimit/src/index.js';
 import { parseSkill, normalise, fingerprint, resolveOccurrence } from '../../../packages/ingestion/src/index.js';
 
@@ -33,7 +33,7 @@ test('TC-146 REQ-064 the API is versioned and reports health', () => {
   const { router, store } = rig();
   const r = GET(router, '/api/v1/health');
   assert.equal(r.status, 200);
-  assert.equal(r.body.schema_version, 1);
+  assert.equal(r.body.schema_version, SCHEMA_VERSION, 'health reports the live schema version');
   store.close();
 });
 

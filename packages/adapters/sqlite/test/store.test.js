@@ -35,9 +35,14 @@ function skill({ body = 'name: alpha\nbody', licence = { l2: { spdx: 'MIT', evid
 test('TC-037 REQ-094 migration is re-runnable and records what it applied', () => {
   const s = new SqliteCanonicalStore(':memory:');
   assert.equal(s.schemaVersion(), 0);
-  assert.deepEqual(s.migrate({ now: NOW }), { from: 0, to: 1, applied: [1] });
-  assert.deepEqual(s.migrate({ now: NOW }), { from: 1, to: 1, applied: [] });
-  assert.equal(s.migrationLog().length, 1);
+  // Applies every pending migration in order, and records each one.
+  const first = s.migrate({ now: NOW });
+  assert.equal(first.from, 0);
+  assert.equal(first.to, SCHEMA_VERSION);
+  assert.deepEqual(first.applied, Array.from({ length: SCHEMA_VERSION }, (_, i) => i + 1));
+  // Re-running is a no-op: idempotent by version, not by luck.
+  assert.deepEqual(s.migrate({ now: NOW }), { from: SCHEMA_VERSION, to: SCHEMA_VERSION, applied: [] });
+  assert.equal(s.migrationLog().length, SCHEMA_VERSION);
   s.close();
 });
 

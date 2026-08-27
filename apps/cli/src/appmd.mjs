@@ -42,6 +42,7 @@ const NOUNS = {
   source: ['list'], skill: ['get', 'list'], occurrence: ['list'],
   job: ['get', 'list'], dlq: ['list', 'inspect', 'resubmit'],
   index: ['rebuild'], backup: ['create', 'verify', 'restore'], doctor: [],
+  removal: ['request', 'list', 'action', 'decline'], reanalyse: ['plan'],
 };
 
 function usage() {
@@ -56,6 +57,11 @@ function usage() {
   appmd backup create [--out PATH]
   appmd backup verify <path>
   appmd backup restore <path> --confirm
+  appmd removal request --skill <id> --repo <r> --reason <text> --by <who>
+  appmd removal list [--repo R]
+  appmd removal action <request-id> --confirm     (deletes bytes; envelope survives)
+  appmd removal decline <request-id> --reason <text>
+  appmd reanalyse plan --analyser <id> --version <v>
 
 Global: --db PATH   --json   --limit N   --cursor C
 Read verbs never mutate. Mutating verbs require --confirm.`);
@@ -199,6 +205,61 @@ try {
       process.exit(0);
     }
     s.close();
+  }
+
+  else if (noun === 'removal') {
+    const s2 = open();
+    const { RemovalService } = await import('../../../packages/ingestion/src/index.js');
+    const svc = new RemovalService({ store: s2, clock: NOW });
+    if (verb === 'request') {
+      const id = flags.id ?? `rq_${Date.now().toString(36)}`;
+      const r = svc.submit({ requestId: id, canonicalId: flags.skill ?? null,
+        repository: flags.repo, kind: flags.kind ?? 'removal',
+        reason: flags.reason, requestedBy: flags.by });
+      out(r, () => console.log(`request ${r.requestId} recorded as ${r.disposition}`));
+    } else if (verb === 'list') {
+      const rows = svc.history(flags.repo);
+      out({ requests: rows }, () => {
+        for (const q of rows) console.log(`${q.request_id}  ${q.disposition.padEnd(9)} ${q.kind.padEnd(10)} ${q.repository}  ${q.reason}`);
+        if (!rows.length) console.log('(no requests)');
+      });
+    } else if (verb === 'action') {
+      // UI-002: destructive and irreversible for the bytes. Say exactly what dies.
+      if (flags.confirm !== true && flags.confirm !== 'true') {
+        const q = s2.getRemovalRequest(rest[0]);
+        console.error(`This DELETES the stored content bytes for ${q?.repository ?? 'that record'}.`);
+        console.error('The provenance envelope, attribution and tombstone are PRESERVED (DEC-015).');
+        console.error('Re-run with --confirm.');
+        process.exit(2);
+      }
+      const r = await svc.action({ requestId: rest[0], actor: flags.actor ?? 'operator' });
+      out(r, () => {
+        console.log(`actioned ${r.requestId}`);
+        console.log(`  tombstoned    ${r.tombstoned}`);
+        console.log(`  bytes deleted ${r.bytesDeleted}${r.bytesDeleted ? '' : '   (no object store configured; the canonical record is still tombstoned)'}`);
+        console.log('  preserved     provenance envelope, attribution, tombstone (DEC-015)');
+      });
+    } else if (verb === 'decline') {
+      const r = svc.decline({ requestId: rest[0], actor: flags.actor ?? 'operator',
+                              dispositionReason: flags.reason });
+      out(r, () => console.log(`declined ${r.requestId}`));
+    }
+    s2.close();
+  }
+
+  else if (noun === 'reanalyse' && verb === 'plan') {
+    const s2 = open();
+    const { ReanalysisService } = await import('../../../packages/ingestion/src/index.js');
+    const svc = new ReanalysisService({ store: s2, clock: NOW });
+    const p = svc.plan({ analyser: flags.analyser, version: flags.version,
+                         limit: Number(flags.limit ?? 1000) });
+    out(p, () => {
+      console.log(`analyser ${p.analyser} -> ${p.targetVersion}`);
+      console.log(`affected records: ${p.count}`);
+      for (const a of p.affected.slice(0, 10)) console.log(`  ${a.id}  current=${a.currentVersion ?? 'never analysed'}`);
+      if (p.count > 10) console.log(`  ... ${p.count - 10} more`);
+    });
+    s2.close();
   }
 
   else { usage(); process.exit(2); }
