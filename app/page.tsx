@@ -1,3 +1,5 @@
+'use client'
+
 export default function SkillsLanding() {
   const bars = [
     { height: '54%', left: '0%', delay: '0ms' },
@@ -181,7 +183,7 @@ export default function SkillsLanding() {
         }
         .footer {
           position: absolute;
-          right: clamp(24px, 7.1vw, 108px);
+          left: clamp(24px, 7.1vw, 108px);
           bottom: clamp(28px, 5vh, 54px);
           color: var(--muted);
           font-size: 12px;

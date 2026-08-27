@@ -514,3 +514,43 @@ on a case-insensitive filesystem.
 *Cost of this arrangement:* some duplicated devDependencies across packages until the root is free.
 *Benefit:* zero modification to another session's files, and conversion to a workspace later is
 adding one file and deleting a few lines. Cheap and reversible beats correct and destructive.
+
+---
+
+## DEC-030 — SQLite adapter uses built-in `node:sqlite`, not a third-party driver
+**Status:** DECIDED · evidence: Node v22.19.0 ships `node:sqlite` (`DatabaseSync`, `backup`)
+
+Phase 1's canonical store needs **no dependency install and no network**. That satisfies three
+requirements at once: `NFR-016` (no paid plan to run locally), `NFR-030` (unit tests run with no
+network), and `DEC-021` (cheap, understandable).
+
+It also keeps `NFR-028` honest: with zero third-party packages there is nothing for domain code to
+accidentally import.
+
+**Known caveat, recorded not glossed:** `node:sqlite` is flagged **experimental** and emits a
+warning; its API may change. Mitigation is structural rather than hopeful — the adapter sits behind
+the `CanonicalStore` port, so swapping to `better-sqlite3` is one file. That is exactly the
+replaceability `NFR-027` exists to provide, tested here on its first real occasion.
+
+*Dialect discipline:* everything in `schema.js` must remain expressible in D1, since `DEC-027`'s
+production step depends on the local and production adapters sharing a dialect.
+
+---
+
+## DEC-031 — Write-time invariants are enforced twice: in domain code and as database constraints
+**Status:** DECIDED · `NFR-004`, `NFR-006`
+
+`skill-core` asserts attribution and the rights invariant; the schema *also* enforces them as
+`CHECK` constraints:
+
+```sql
+attribution_repository TEXT NOT NULL CHECK (attribution_repository <> '')
+CHECK (rights_redistributable = 0 OR rights_state = 'known')
+```
+
+Deliberate duplication. A domain assertion protects the path that goes through the domain; a
+database constraint protects **every** path, including a future bulk loader, a migration, or a
+second adapter written by someone who has not read `PROVENANCE.md`.
+
+An invariant that only holds when the code remembers to check it is a convention, not an invariant.
+`TC-041` and `TC-042` prove the database refuses the write even when domain assertions are bypassed.
